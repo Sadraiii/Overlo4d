@@ -1,0 +1,8 @@
+version: 1
+bundleID: com.mahmud.RepCounter
+product: RepCounter
+entitlementsPath: Support/RepCounter.entitlements
+extensions:
+  - product: RepCounterWidget
+    infoPath: Support/RepCounterWidget-Info.plist
+    entitlementsPath: Support/RepCounterWidget.entitlements
