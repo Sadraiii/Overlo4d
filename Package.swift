@@ -20,12 +20,16 @@ let package = Package(
             targets: ["TallyWidget"]
         ),
     ],
+    dependencies: [
+        // Plain-Swift logic with Linux unit tests.
+        .package(path: "Packages/TallyCore"),
+    ],
     targets: [
         // Theme, shared data and Live Activity attributes used by both the app and the widget.
         .target(name: "TallyKit"),
         .target(
             name: "Tally",
-            dependencies: ["TallyKit"]
+            dependencies: ["TallyKit", .product(name: "TallyCore", package: "TallyCore")]
         ),
         .target(
             name: "TallyWidget",

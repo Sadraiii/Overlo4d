@@ -1,6 +1,5 @@
 .DS_Store
 /.build
-/Packages
 xcuserdata/
 DerivedData/
 .swiftpm/configuration/registries.json
@@ -8,3 +7,4 @@ DerivedData/
 .netrc
 
 /xtool
+.superpowers/
