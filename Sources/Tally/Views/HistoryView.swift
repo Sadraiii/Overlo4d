@@ -5,17 +5,20 @@ import SwiftUI
 struct HistoryView: View {
     @Environment(GymStore.self) private var gym
 
-    private var byMonth: [(month: Date, workouts: [Workout])] {
-        let grouped = Dictionary(grouping: gym.workouts) {
-            Calendar.current.dateInterval(of: .month, for: $0.startedAt)?.start ?? $0.startedAt
+    private var byMonth: [(month: Date, items: [HistoryItem])] {
+        let items = gym.workouts.map(HistoryItem.workout) + gym.healthWorkouts.map(HistoryItem.health)
+        let grouped = Dictionary(grouping: items) {
+            Calendar.current.dateInterval(of: .month, for: $0.date)?.start ?? $0.date
         }
-        return grouped.keys.sorted(by: >).map { ($0, grouped[$0] ?? []) }
+        return grouped.keys.sorted(by: >).map { month in
+            (month, (grouped[month] ?? []).sorted { $0.date > $1.date })
+        }
     }
 
     var body: some View {
         NavigationStack {
             List {
-                if !gym.workouts.isEmpty {
+                if !gym.workouts.isEmpty || !gym.healthWorkouts.isEmpty {
                     MonthCalendar()
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -23,23 +26,32 @@ struct HistoryView: View {
                 }
                 ForEach(byMonth, id: \.month) { group in
                     Section {
-                        ForEach(group.workouts) { workout in
-                            NavigationLink(value: workout.id) {
-                                WorkoutCard(workout: workout)
+                        ForEach(group.items) { item in
+                            Group {
+                                switch item {
+                                case .workout(let workout):
+                                    NavigationLink(value: workout.id) { WorkoutCard(workout: workout) }
+                                case .health(let workout):
+                                    NavigationLink(value: workout) { HealthWorkoutCard(workout: workout) }
+                                }
                             }
                             .navigationLinkIndicatorVisibility(.hidden)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                         }
-                        .onDelete { offsets in offsets.map { group.workouts[$0] }.forEach(gym.deleteWorkout) }
+                        .onDelete { offsets in
+                            for index in offsets {
+                                if case .workout(let workout) = group.items[index] { gym.deleteWorkout(workout) }
+                            }
+                        }
                     } header: {
                         // Dark month band, as in Outdoor Office's schedule.
                         HStack(alignment: .firstTextBaseline) {
                             Text(group.month.formatted(.dateTime.month(.wide).year()))
                                 .font(Typo.body(14.5, .semibold))
                             Spacer()
-                            Text("\(group.workouts.count) \(group.workouts.count == 1 ? "workout" : "workouts")")
+                            Text("\(group.items.count) \(group.items.count == 1 ? "workout" : "workouts")")
                                 .font(Typo.body(12.5, .medium))
                                 .opacity(0.7)
                         }
@@ -55,7 +67,7 @@ struct HistoryView: View {
             .listStyle(.plain)
             .screenBackground()
             .overlay {
-                if gym.workouts.isEmpty {
+                if gym.workouts.isEmpty && gym.healthWorkouts.isEmpty {
                     ContentUnavailableView(
                         "No workouts yet",
                         systemImage: "calendar",
@@ -70,6 +82,27 @@ struct HistoryView: View {
                 }
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
+            .navigationDestination(for: HealthWorkout.self) { HealthWorkoutDetailView(workout: $0) }
+        }
+    }
+}
+
+/// A row in History: a Tally workout or a workout from Apple Health.
+enum HistoryItem: Identifiable {
+    case workout(Workout)
+    case health(HealthWorkout)
+
+    var id: UUID {
+        switch self {
+        case .workout(let workout): workout.id
+        case .health(let workout): workout.id
+        }
+    }
+
+    var date: Date {
+        switch self {
+        case .workout(let workout): workout.startedAt
+        case .health(let workout): workout.start
         }
     }
 }

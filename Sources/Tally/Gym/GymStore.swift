@@ -28,6 +28,8 @@ final class GymStore {
     private(set) var summaryWorkout: Workout?
     /// Set IDs that were personal records at the time, with the record kinds they set.
     private(set) var records: [UUID: [RecordKind]] = [:]
+    /// Workouts from Apple Health not recorded by Tally and not merged into a Tally workout, newest first.
+    private(set) var healthWorkouts: [HealthWorkout] = []
 
     private let fileURL = URL.documentsDirectory.appending(path: "gym.json")
 
@@ -316,6 +318,39 @@ final class GymStore {
         records = result
     }
 
+    // MARK: Apple Health
+
+    /// Start dates of Tally and Health workouts, for the calendar, week streak and widget.
+    var activityDates: [Date] { workouts.map(\.startedAt) + healthWorkouts.map(\.start) }
+
+    /// Takes the latest workouts from Health. Links recent Tally workouts to strength sessions that
+    /// overlap them, and keeps the rest to show in History. Returns the IDs of Tally's own Health
+    /// copies that are now duplicates (linked workouts that still have a saved copy).
+    func applyHealthWorkouts(_ all: [HealthWorkout]) -> [UUID] {
+        let recent = Date.now.addingTimeInterval(-3 * 86_400)
+        var linked = Set(workouts.compactMap(\.linkedHealthID))
+        var changed = false
+        for index in workouts.indices where workouts[index].linkedHealthID == nil && workouts[index].startedAt >= recent {
+            let workout = workouts[index]
+            let candidates = all
+                .filter { $0.isStrengthLike && !linked.contains($0.id) }
+                .map { (id: $0.id, interval: $0.interval) }
+            let span = DateInterval(start: workout.startedAt, end: max(workout.endedAt ?? workout.startedAt, workout.startedAt))
+            if let match = Overlap.bestMatch(for: span, in: candidates) {
+                workouts[index].linkedHealthID = match
+                linked.insert(match)
+                changed = true
+            }
+        }
+        healthWorkouts = all.filter { !linked.contains($0.id) }
+        if changed { save() }
+        writeSnapshot()
+        return workouts.filter { $0.linkedHealthID != nil }.compactMap(\.savedHealthID)
+    }
+
+    // Replaced in Task 8.
+    func healthCopyDeleted(_ healthID: UUID) {}
+
     // MARK: Plans
 
     func savePlan(_ plan: Plan) {
@@ -361,7 +396,7 @@ final class GymStore {
 
     /// Consecutive weeks (ending this week or last week) with at least one workout.
     var weekStreak: Int {
-        let weeks = Set(workouts.map { weekStart($0.startedAt) })
+        let weeks = Set(activityDates.map { weekStart($0) })
         var week = weekStart(.now)
         if !weeks.contains(week) {
             week = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: week) ?? week
@@ -387,7 +422,7 @@ final class GymStore {
             )
         }
         return ActivitySnapshot(
-            workoutDates: workouts.map(\.startedAt).filter { $0 >= since },
+            workoutDates: activityDates.filter { $0 >= since },
             weekStreak: weekStreak,
             lastWorkout: last
         )

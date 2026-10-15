@@ -144,6 +144,10 @@ struct Workout: Codable, Identifiable, Hashable, Sendable {
     var notes = ""
     /// The plan this workout was started from, if any.
     var planID: UUID?
+    /// The Apple Health workout (e.g. from Apple Watch) this session was merged with.
+    var linkedHealthID: UUID?
+    /// The workout Tally itself saved to Apple Health for this session.
+    var savedHealthID: UUID?
 
     var duration: TimeInterval { (endedAt ?? .now).timeIntervalSince(startedAt) }
     var allSets: [WorkoutSet] { exercises.flatMap(\.sets) }

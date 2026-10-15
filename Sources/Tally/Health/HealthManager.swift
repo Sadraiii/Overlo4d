@@ -40,6 +40,8 @@ final class HealthManager {
     /// Body weight over the last 180 days, oldest first.
     private(set) var weights: [Weight] = []
     private var workoutHealth: [UUID: WorkoutHealth] = [:]
+    /// Asked once per launch so types added in an update (e.g. distance) get their permission prompt.
+    private var askedForNewTypes = false
 
     private let store = HKHealthStore()
 
@@ -50,6 +52,9 @@ final class HealthManager {
         HKQuantityType(.appleExerciseTime),
         HKQuantityType(.heartRate),
         HKQuantityType(.bodyMass),
+        HKQuantityType(.distanceWalkingRunning),
+        HKQuantityType(.distanceCycling),
+        HKQuantityType(.distanceSwimming),
     ]
 
     private static let shareTypes: Set<HKSampleType> = [
@@ -71,6 +76,11 @@ final class HealthManager {
 
     func refresh() async {
         guard isAvailable, isConnected else { return }
+        if !askedForNewTypes {
+            askedForNewTypes = true
+            // HealthKit only shows the sheet for types it hasn't asked about before.
+            try? await store.requestAuthorization(toShare: Self.shareTypes, read: Self.readTypes)
+        }
         let start = Calendar.current.startOfDay(for: .now)
         async let steps = Self.sum(.stepCount, unit: .count(), from: start, to: .now, store: store)
         async let energy = Self.sum(.activeEnergyBurned, unit: .kilocalorie(), from: start, to: .now, store: store)
@@ -80,19 +90,32 @@ final class HealthManager {
         self.weights = await weights
     }
 
-    /// Energy and heart rate recorded between the workout's start and end, if Health has any.
-    func health(for workout: Workout) async -> WorkoutHealth? {
+    /// Energy and heart rate recorded between `start` and `end`, if Health has any. Cached by `key`.
+    func health(from start: Date, to end: Date, key: UUID) async -> WorkoutHealth? {
         guard isAvailable, isConnected else { return nil }
-        if let cached = workoutHealth[workout.id] { return cached }
-        let end = workout.endedAt ?? .now
+        if let cached = workoutHealth[key] { return cached }
         let bpm = HKUnit.count().unitDivided(by: .minute())
-        async let energy = Self.sum(.activeEnergyBurned, unit: .kilocalorie(), from: workout.startedAt, to: end, store: store)
-        async let average = Self.statistic(.heartRate, option: .discreteAverage, unit: bpm, from: workout.startedAt, to: end, store: store)
-        async let max = Self.statistic(.heartRate, option: .discreteMax, unit: bpm, from: workout.startedAt, to: end, store: store)
+        async let energy = Self.sum(.activeEnergyBurned, unit: .kilocalorie(), from: start, to: end, store: store)
+        async let average = Self.statistic(.heartRate, option: .discreteAverage, unit: bpm, from: start, to: end, store: store)
+        async let max = Self.statistic(.heartRate, option: .discreteMax, unit: bpm, from: start, to: end, store: store)
         let result = WorkoutHealth(activeEnergy: await energy, averageHeartRate: await average, maxHeartRate: await max)
-        workoutHealth[workout.id] = result
+        workoutHealth[key] = result
         return result
     }
+
+    /// Energy and heart rate recorded between the workout's start and end, if Health has any.
+    func health(for workout: Workout) async -> WorkoutHealth? {
+        await health(from: workout.startedAt, to: workout.endedAt ?? .now, key: workout.id)
+    }
+
+    /// Workouts in Health since `start` that other apps (e.g. the Watch Workout app) recorded, newest first.
+    func workouts(since start: Date) async -> [HealthWorkout] {
+        guard isAvailable, isConnected else { return [] }
+        return await Self.workouts(since: start, store: store)
+    }
+
+    // Replaced in Task 8.
+    func deleteWorkout(_ id: UUID) async -> Bool { false }
 
     /// Saves a finished workout to Health as strength training.
     func save(_ workout: Workout) async {
@@ -127,6 +150,16 @@ final class HealthManager {
         default: nil
         }
         return quantity?.doubleValue(for: unit)
+    }
+
+    private nonisolated static func workouts(since start: Date, store: HKHealthStore) async -> [HealthWorkout] {
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.workout(HKQuery.predicateForSamples(withStart: start, end: nil))],
+            sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)]
+        )
+        let own = HKSource.default()
+        let samples = (try? await descriptor.result(for: store)) ?? []
+        return samples.filter { $0.sourceRevision.source != own }.map(HealthWorkout.init)
     }
 
     private nonisolated static func weights(store: HKHealthStore) async -> [Weight] {

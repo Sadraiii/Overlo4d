@@ -12,6 +12,7 @@ struct MonthCalendar: View {
         let interval = calendar.dateInterval(of: .month, for: month)
         let workouts = gym.workouts.filter { interval?.contains($0.startedAt) ?? false }
         let trained = Set(workouts.map { calendar.startOfDay(for: $0.startedAt) })
+        let watchDays = Set(gym.healthWorkouts.filter { interval?.contains($0.start) ?? false }.map { calendar.startOfDay(for: $0.start) })
         let days = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
         let leading = ActivitySnapshot.weekdayIndex(of: month)
         let isCurrent = calendar.isDate(month, equalTo: .now, toGranularity: .month)
@@ -42,15 +43,16 @@ struct MonthCalendar: View {
                 ForEach(1...days, id: \.self) { day in
                     let date = calendar.date(byAdding: .day, value: day - 1, to: month) ?? month
                     let didTrain = trained.contains(calendar.startOfDay(for: date))
+                    let watchOnly = !didTrain && watchDays.contains(calendar.startOfDay(for: date))
                     let isToday = calendar.isDateInToday(date)
                     Text("\(day)")
-                        .font(Typo.body(13, didTrain || isToday ? .bold : .medium))
+                        .font(Typo.body(13, didTrain || watchOnly || isToday ? .bold : .medium))
                         .monospacedDigit()
-                        .foregroundStyle(didTrain ? Theme.accentInk : isToday ? Theme.accent : Theme.ink2)
+                        .foregroundStyle(didTrain ? Theme.accentInk : (watchOnly || isToday) ? Theme.accent : Theme.ink2)
                         .frame(maxWidth: .infinity, minHeight: 34)
-                        .background(didTrain ? Theme.accent : .clear, in: .rect(cornerRadius: 10))
+                        .background(didTrain ? Theme.accent : watchOnly ? Theme.accentSoft : .clear, in: .rect(cornerRadius: 10))
                         .overlay {
-                            if isToday && !didTrain {
+                            if isToday && !didTrain && !watchOnly {
                                 RoundedRectangle(cornerRadius: 10)
                                     .strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
                             }
@@ -58,7 +60,14 @@ struct MonthCalendar: View {
                 }
             }
 
-            Text("\(workouts.count) \(workouts.count == 1 ? "workout" : "workouts") · \(trained.count) days · \(Fmt.volume(workouts.reduce(0) { $0 + $1.volume }))")
+            let other = gym.healthWorkouts.filter { interval?.contains($0.start) ?? false }.count
+            let days = trained.union(watchDays).count
+            Text([
+                "\(workouts.count) \(workouts.count == 1 ? "workout" : "workouts")",
+                other > 0 ? "\(other) other" : nil,
+                "\(days) days",
+                Fmt.volume(workouts.reduce(0) { $0 + $1.volume }),
+            ].compactMap { $0 }.joined(separator: " · "))
                 .font(Typo.body(12.5, .semibold))
                 .foregroundStyle(Theme.ink3)
                 .frame(maxWidth: .infinity, alignment: .leading)

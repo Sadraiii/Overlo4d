@@ -49,12 +49,13 @@ struct TallyApp: App {
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear { rest.requestPermission() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }
+                .onChange(of: health.isConnected) { Task { await HealthSync.refresh(gym: gym, health: health) } }
         }
         .onChange(of: scenePhase) { _, phase in
             // Pick up the new day (and any widget-side changes) when returning to the app.
             guard phase == .active else { return }
             reps.reload()
-            Task { await health.refresh() }
+            Task { await HealthSync.refresh(gym: gym, health: health) }
         }
     }
 
