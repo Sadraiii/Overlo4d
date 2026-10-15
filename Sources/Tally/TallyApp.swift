@@ -20,6 +20,7 @@ struct TallyApp: App {
     @State private var gym = GymStore()
     @State private var rest = RestTimer()
     @State private var ui = AppUI()
+    @State private var health = HealthManager()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -36,17 +37,20 @@ struct TallyApp: App {
                 .environment(gym)
                 .environment(rest)
                 .environment(ui)
+                .environment(health)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
-                .sheet(isPresented: $ui.showingSettings) { SettingsSheet() }
+                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear { rest.requestPermission() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }
         }
         .onChange(of: scenePhase) { _, phase in
             // Pick up the new day (and any widget-side changes) when returning to the app.
-            if phase == .active { reps.reload() }
+            guard phase == .active else { return }
+            reps.reload()
+            Task { await health.refresh() }
         }
     }
 

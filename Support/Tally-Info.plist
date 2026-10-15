@@ -29,6 +29,12 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Tally shows your steps, active energy, heart rate and body weight next to your training.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Tally saves finished workouts to Apple Health.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Tally saves share images to your photo library.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UILaunchScreen</key>

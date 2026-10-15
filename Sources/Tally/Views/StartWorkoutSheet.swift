@@ -207,6 +207,8 @@ struct SettingsSheet: View {
                         .padding(4)
                         .background(Theme.line, in: .rect(cornerRadius: 15))
                     }
+
+                    HealthSettingsSection()
                 }
                 .padding(16)
             }

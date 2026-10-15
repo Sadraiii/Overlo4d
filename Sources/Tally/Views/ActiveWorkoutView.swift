@@ -4,6 +4,7 @@ import SwiftUI
 struct ActiveWorkoutView: View {
     @Environment(GymStore.self) private var gym
     @Environment(RestTimer.self) private var rest
+    @Environment(HealthManager.self) private var health
 
     /// Local copy of the workout. Edits are pushed to the store, so this view never binds to the store's
     /// optional `activeWorkout` (which becomes nil when the workout is finished or discarded).
@@ -90,7 +91,11 @@ struct ActiveWorkoutView: View {
             .confirmationDialog("Finish workout?", isPresented: $confirmingFinish, titleVisibility: .visible) {
                 Button("Finish") {
                     rest.stop()
-                    if !gym.finishWorkout(draft) { showingNothingDone = true }
+                    if gym.finishWorkout(draft), let saved = gym.summaryWorkout {
+                        Task { await health.save(saved) }
+                    } else {
+                        showingNothingDone = true
+                    }
                 }
             } message: {
                 Text("Sets that aren't ticked off won't be saved.")

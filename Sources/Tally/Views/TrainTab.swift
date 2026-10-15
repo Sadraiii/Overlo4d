@@ -35,6 +35,8 @@ struct TrainTab: View {
 
                     WeekCard(onStart: onStart)
 
+                    HealthCard()
+
                     SectionHead("Routines") {
                         Button("New") { editingRoutine = Routine(name: "", exercises: []) }
                     }
