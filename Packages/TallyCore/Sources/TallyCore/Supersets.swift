@@ -32,25 +32,27 @@ public enum Supersets {
         return position == .none || position == .last
     }
 
-    /// Links the exercise at `other` into the superset of the exercise at `anchor`; `other` moves to
-    /// just after the anchor's group. Returns the new order (indices into the original list) and
-    /// the IDs in that order.
+    /// Puts the exercises at `anchor` and `other` in one superset. `other` joins the anchor's group
+    /// and moves to just after it; when only `other` is in a superset, the anchor joins that one
+    /// instead. Returns the new order (indices into the original list) and the IDs in that order.
     public static func link(_ anchor: Int, with other: Int, in ids: [UUID?], newID: UUID = UUID()) -> (order: [Int], ids: [UUID?]) {
         guard anchor != other, ids.indices.contains(anchor), ids.indices.contains(other) else {
             return (Array(ids.indices), ids)
         }
-        let groupID = ids[anchor] ?? newID
+        let joinsOther = ids[anchor] == nil && ids[other] != nil
+        let (target, moving) = joinsOther ? (other, anchor) : (anchor, other)
+        let groupID = ids[target] ?? newID
         var updated = ids
-        updated[anchor] = groupID
-        updated[other] = groupID
+        updated[target] = groupID
+        updated[moving] = groupID
 
-        var order = Array(ids.indices).filter { $0 != other }
-        guard var end = order.firstIndex(of: anchor) else { return (Array(ids.indices), ids) }
-        // Walk to the end of the anchor's original group (the moved exercise is already out).
-        while end + 1 < order.count, let anchorID = ids[anchor], ids[order[end + 1]] == anchorID {
+        var order = Array(ids.indices).filter { $0 != moving }
+        guard var end = order.firstIndex(of: target) else { return (Array(ids.indices), ids) }
+        // Walk to the end of the target's original group (the moved exercise is already out).
+        while end + 1 < order.count, let targetID = ids[target], ids[order[end + 1]] == targetID {
             end += 1
         }
-        order.insert(other, at: end + 1)
+        order.insert(moving, at: end + 1)
         return (order, normalized(order.map { updated[$0] }))
     }
 

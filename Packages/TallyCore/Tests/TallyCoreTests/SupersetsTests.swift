@@ -44,10 +44,17 @@ private let b = UUID()
     }
 
     @Test func linkMovingOutOfAGroupClearsTheLeftoverLoner() {
-        // Exercise 1 leaves group b (exercises 0 and 1) to join exercise 2.
-        let result = Supersets.link(2, with: 1, in: [b, b, nil], newID: a)
-        #expect(result.order == [0, 2, 1])
-        #expect(result.ids == [nil, a, a])
+        // Both are grouped: exercise 2 leaves group b (exercises 2 and 3) to join group a.
+        let result = Supersets.link(0, with: 2, in: [a, a, b, b], newID: UUID())
+        #expect(result.order == [0, 1, 2, 3])
+        #expect(result.ids == [a, a, a, nil])
+    }
+
+    @Test func linkJoinsTheOtherExercisesGroupWhenTheAnchorHasNone() {
+        // Exercise 0 isn't grouped; exercise 1 is in group a with 2, so 0 joins that group.
+        let result = Supersets.link(0, with: 1, in: [nil, a, a], newID: b)
+        #expect(result.order == [1, 2, 0])
+        #expect(result.ids == [a, a, a])
     }
 
     @Test func linkWithItselfChangesNothing() {

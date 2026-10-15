@@ -187,7 +187,8 @@ final class HealthManager {
         guard let samples = try? await descriptor.result(for: store) else { return false }
         guard let workout = samples.first else { return true }
         do {
-            _ = try await store.deleteObjects(
+            // Fails with "no data" when Tally added no energy (the Watch measured it), which is fine.
+            _ = try? await store.deleteObjects(
                 of: HKQuantityType(.activeEnergyBurned),
                 predicate: HKQuery.predicateForObjects(from: workout)
             )

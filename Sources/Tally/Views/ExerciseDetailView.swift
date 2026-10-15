@@ -33,21 +33,34 @@ struct ExerciseDetailView: View {
             }
         }
 
-        func value(_ session: ExerciseSession) -> Double {
+        /// The session's value for this chart, or nil when the session has nothing to plot
+        /// (e.g. a run logged with time only has no distance or pace).
+        func value(_ session: ExerciseSession) -> Double? {
             let sets = session.sets.filter { $0.type != .warmup }
             switch self {
-            case .heaviest: return sets.map { $0.weight ?? 0 }.max() ?? 0
-            case .oneRepMax: return sets.map(\.estimatedOneRepMax).max() ?? 0
-            case .volume: return sets.reduce(0) { $0 + $1.volume }
-            case .reps: return Double(sets.reduce(0) { $0 + ($1.reps ?? 0) })
-            case .time: return Double(sets.reduce(0) { $0 + ($1.seconds ?? 0) })
-            case .assistance: return sets.filter { ($0.reps ?? 0) > 0 }.compactMap(\.assistance).min() ?? 0
-            case .distance: return sets.reduce(0) { $0 + ($1.meters ?? 0) } / 1000
+            case .heaviest:
+                return sets.compactMap(\.weight).max()
+            case .oneRepMax:
+                return sets.map(\.estimatedOneRepMax).filter { $0 > 0 }.max()
+            case .volume:
+                let volume = sets.reduce(0) { $0 + $1.volume }
+                return volume > 0 ? volume : nil
+            case .reps:
+                let reps = sets.compactMap(\.reps)
+                return reps.isEmpty ? nil : Double(reps.reduce(0, +))
+            case .time:
+                let seconds = sets.compactMap(\.seconds)
+                return seconds.isEmpty ? nil : Double(seconds.reduce(0, +))
+            case .assistance:
+                return sets.filter { ($0.reps ?? 0) > 0 }.compactMap(\.assistance).min()
+            case .distance:
+                let meters = sets.compactMap(\.meters)
+                return meters.isEmpty ? nil : meters.reduce(0, +) / 1000
             case .pace:
                 let timed = sets.filter { ($0.meters ?? 0) > 0 && ($0.seconds ?? 0) > 0 }
                 let km = timed.reduce(0) { $0 + ($1.meters ?? 0) } / 1000
                 let seconds = Double(timed.reduce(0) { $0 + ($1.seconds ?? 0) })
-                return km > 0 ? seconds / km : 0
+                return km > 0 ? seconds / km : nil
             }
         }
 
@@ -82,8 +95,9 @@ struct ExerciseDetailView: View {
     private func content(_ exercise: ExerciseDef) -> some View {
         let sessions = gym.sessions(for: exercise.id)
         let metrics = ChartMetric.metrics(for: exercise.kind)
-        let selected = metric ?? metrics[0]
-        let points = sessions.reversed().map { (date: $0.date, value: selected.value($0)) }
+        // Open on the first chart that has data, so a run logged with time only doesn't open on "0 km".
+        let selected = metric ?? metrics.first { option in sessions.contains { option.value($0) != nil } } ?? metrics[0]
+        let points = sessions.reversed().compactMap { session in selected.value(session).map { (date: session.date, value: $0) } }
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {

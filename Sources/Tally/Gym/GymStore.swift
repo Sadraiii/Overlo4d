@@ -34,8 +34,17 @@ final class GymStore {
     private let fileURL = URL.documentsDirectory.appending(path: "gym.json")
 
     init() {
-        let data = (try? Data(contentsOf: fileURL))
-            .flatMap { try? JSONDecoder().decode(GymData.self, from: $0) } ?? GymData()
+        var data = GymData()
+        if let raw = try? Data(contentsOf: fileURL) {
+            if let decoded = try? JSONDecoder().decode(GymData.self, from: raw) {
+                data = decoded
+            } else {
+                // Keep what couldn't be read instead of overwriting it with an empty store.
+                StoreFile.setAside(fileURL, stamp: String(Int(Date.now.timeIntervalSince1970)))
+            }
+        }
+        // One copy from before 0.6 rewrites the file, in case the update has to be undone.
+        StoreFile.backUpOnce(fileURL, to: URL.documentsDirectory.appending(path: "gym-before-0.6.json"))
         exercises = ExerciseLibrary.merge(into: data.exercises)
         workouts = data.workouts.sorted { $0.startedAt > $1.startedAt }
         plans = data.plans
@@ -323,29 +332,30 @@ final class GymStore {
     /// Start dates of Tally and Health workouts, for the calendar, week streak and widget.
     var activityDates: [Date] { workouts.map(\.startedAt) + healthWorkouts.map(\.start) }
 
-    /// Takes the latest workouts from Health. Links recent Tally workouts to strength sessions that
+    /// Takes the latest workouts from Health. Links Tally workouts to the strength sessions that
     /// overlap them, and keeps the rest to show in History. Returns the IDs of Tally's own Health
-    /// copies that are now duplicates (linked workouts that still have a saved copy).
+    /// copies that are now duplicates (recent linked workouts that still have a saved copy).
     func applyHealthWorkouts(_ all: [HealthWorkout]) -> [UUID] {
-        let recent = Date.now.addingTimeInterval(-3 * 86_400)
-        var linked = Set(workouts.compactMap(\.linkedHealthID))
-        var changed = false
-        for index in workouts.indices where workouts[index].linkedHealthID == nil && workouts[index].startedAt >= recent {
-            let workout = workouts[index]
-            let candidates = all
-                .filter { $0.isStrengthLike && !linked.contains($0.id) }
-                .map { (id: $0.id, interval: $0.interval) }
-            let span = DateInterval(start: workout.startedAt, end: max(workout.endedAt ?? workout.startedAt, workout.startedAt))
-            if let match = Overlap.bestMatch(for: span, in: candidates) {
-                workouts[index].linkedHealthID = match
-                linked.insert(match)
-                changed = true
-            }
+        let plan = HealthLinking.plan(
+            sessions: workouts.map { workout in
+                LinkableSession(
+                    id: workout.id,
+                    interval: DateInterval(start: workout.startedAt, end: max(workout.endedAt ?? workout.startedAt, workout.startedAt)),
+                    linkedHealthID: workout.linkedHealthID,
+                    savedHealthID: workout.savedHealthID
+                )
+            },
+            candidates: all.filter(\.isStrengthLike).map { (id: $0.id, interval: $0.interval) },
+            now: .now
+        )
+        for index in workouts.indices {
+            if let link = plan.links[workouts[index].id] { workouts[index].linkedHealthID = link }
         }
+        let linked = Set(workouts.compactMap(\.linkedHealthID))
         healthWorkouts = all.filter { !linked.contains($0.id) }
-        if changed { save() }
+        if !plan.links.isEmpty { save() }
         writeSnapshot()
-        return workouts.filter { $0.linkedHealthID != nil }.compactMap(\.savedHealthID)
+        return plan.deletions
     }
 
     /// Tally's own copy in Health was deleted because a Watch session covers the workout.
