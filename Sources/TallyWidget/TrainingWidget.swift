@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 import WidgetKit
 
@@ -7,7 +7,7 @@ struct TrainingWidget: Widget {
         StaticConfiguration(kind: WidgetKind.training, provider: TrainingProvider()) { entry in
             TrainingWidgetView(entry: entry)
                 .containerBackground(Theme.card, for: .widget)
-                .widgetURL(URL(string: "plusultra://train"))
+                .widgetURL(URL(string: "tally://train"))
         }
         .configurationDisplayName("Training week")
         .description("This week's workouts, streak and last session.")

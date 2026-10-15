@@ -1,8 +1,9 @@
 version: 1
+# Bundle and App Group IDs keep the app's earlier name so installed data carries over.
 bundleID: com.mahmud.plusultra
-product: PlusUltra
-infoPath: Support/PlusUltra-Info.plist
-entitlementsPath: Support/PlusUltra.entitlements
+product: Tally
+infoPath: Support/Tally-Info.plist
+entitlementsPath: Support/Tally.entitlements
 iconPath: Resources/AppIcon.png
 resources:
   - Resources/AppIcon60x60@2x.png
@@ -15,9 +16,9 @@ resources:
   - Resources/Fonts/SchibstedGrotesk-SemiBold.ttf
   - Resources/Fonts/SchibstedGrotesk-Bold.ttf
 extensions:
-  - product: PlusUltraWidget
-    infoPath: Support/PlusUltraWidget-Info.plist
-    entitlementsPath: Support/PlusUltraWidget.entitlements
+  - product: TallyWidget
+    infoPath: Support/TallyWidget-Info.plist
+    entitlementsPath: Support/TallyWidget.entitlements
     resources:
       - Resources/Seal.png
       - Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf

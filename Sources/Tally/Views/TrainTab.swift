@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 
 struct TrainTab: View {
@@ -15,7 +15,7 @@ struct TrainTab: View {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 10) {
                         Seal(size: 38)
-                        Text("Plus Ultra")
+                        Text("Tally")
                             .font(Typo.display(21))
                             .tracking(1.5)
                             .textCase(.uppercase)

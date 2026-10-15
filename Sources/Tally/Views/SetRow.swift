@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 
 /// Text field bound to an optional number. Keeps its own text so partial input like "62." isn't reformatted while typing.

@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 
 /// Searchable, multi-select list of exercises grouped by muscle.

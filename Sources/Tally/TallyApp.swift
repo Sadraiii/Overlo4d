@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 import UIKit
 import WidgetKit
@@ -15,7 +15,7 @@ final class AppUI {
 }
 
 @main
-struct PlusUltraApp: App {
+struct TallyApp: App {
     @State private var reps = RepModel()
     @State private var gym = GymStore()
     @State private var rest = RestTimer()
@@ -106,7 +106,7 @@ struct RootView: View {
             WorkoutFlowView()
         }
         .onOpenURL { url in
-            // Widgets deep-link with plusultra://reps and plusultra://train.
+            // Widgets deep-link with tally://reps and tally://train.
             switch url.host() {
             case "reps": tab = .reps
             case "train": tab = .train

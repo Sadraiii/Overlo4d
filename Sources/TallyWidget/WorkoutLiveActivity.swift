@@ -1,5 +1,5 @@
 import ActivityKit
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 import WidgetKit
 
@@ -10,7 +10,7 @@ struct WorkoutLiveActivity: Widget {
             LockScreenActivityView(context: context)
                 .activityBackgroundTint(Theme.card)
                 .activitySystemActionForegroundColor(Theme.ink)
-                .widgetURL(URL(string: "plusultra://train"))
+                .widgetURL(URL(string: "tally://train"))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -47,7 +47,7 @@ struct WorkoutLiveActivity: Widget {
                 Image(systemName: "figure.strengthtraining.traditional").foregroundStyle(Theme.accent)
             }
             .keylineTint(Theme.accent)
-            .widgetURL(URL(string: "plusultra://train"))
+            .widgetURL(URL(string: "tally://train"))
         }
     }
 }

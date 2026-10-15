@@ -1,9 +1,9 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 import WidgetKit
 
 @main
-struct PlusUltraWidgets: WidgetBundle {
+struct TallyWidgets: WidgetBundle {
     init() {
         Typo.registerFonts()
     }

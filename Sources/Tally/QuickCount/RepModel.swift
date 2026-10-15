@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import PlusUltraKit
+import TallyKit
 import WidgetKit
 
 @MainActor

@@ -1,5 +1,5 @@
 import Charts
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 
 struct ProgressTabView: View {

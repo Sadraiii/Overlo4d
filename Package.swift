@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "PlusUltra",
+    name: "Tally",
     platforms: [
         // iOS 26.1 for Liquid Glass and the tab bar accessory.
         .iOS("26.1"),
@@ -11,25 +11,25 @@ let package = Package(
     products: [
         // The main app.
         .library(
-            name: "PlusUltra",
-            targets: ["PlusUltra"]
+            name: "Tally",
+            targets: ["Tally"]
         ),
         // Home screen / lock screen widgets and the workout Live Activity.
         .library(
-            name: "PlusUltraWidget",
-            targets: ["PlusUltraWidget"]
+            name: "TallyWidget",
+            targets: ["TallyWidget"]
         ),
     ],
     targets: [
         // Theme, shared data and Live Activity attributes used by both the app and the widget.
-        .target(name: "PlusUltraKit"),
+        .target(name: "TallyKit"),
         .target(
-            name: "PlusUltra",
-            dependencies: ["PlusUltraKit"]
+            name: "Tally",
+            dependencies: ["TallyKit"]
         ),
         .target(
-            name: "PlusUltraWidget",
-            dependencies: ["PlusUltraKit"],
+            name: "TallyWidget",
+            dependencies: ["TallyKit"],
             linkerSettings: [
                 // xtool links extensions with `-e _NSExtensionMain`, so nothing references the
                 // WidgetBundle's `main` and the linker strips the widget code. Force it to stay.

@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 
 /// Quick rep counter, laid out like Outdoor Office's counters.

@@ -166,7 +166,7 @@ public struct Bib: View {
     }
 }
 
-/// The Plus Ultra seal (ink fist on an off-white disc).
+/// The Tally seal (ink fist on an off-white disc).
 public struct Seal: View {
     let size: CGFloat
 

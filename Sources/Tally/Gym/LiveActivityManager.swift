@@ -1,6 +1,6 @@
 import ActivityKit
 import Foundation
-import PlusUltraKit
+import TallyKit
 
 /// Starts, updates and ends the workout Live Activity (lock screen + Dynamic Island).
 @MainActor

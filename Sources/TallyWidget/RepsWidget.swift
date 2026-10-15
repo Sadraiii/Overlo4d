@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 import WidgetKit
 
@@ -7,7 +7,7 @@ struct RepsWidget: Widget {
         StaticConfiguration(kind: WidgetKind.reps, provider: RepsProvider()) { entry in
             RepsWidgetView(entry: entry)
                 .containerBackground(Theme.card, for: .widget)
-                .widgetURL(URL(string: "plusultra://reps"))
+                .widgetURL(URL(string: "tally://reps"))
         }
         .configurationDisplayName("Reps")
         .description("Today's reps and your daily goal.")

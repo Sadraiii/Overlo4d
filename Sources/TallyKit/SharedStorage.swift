@@ -1,5 +1,6 @@
 import Foundation
 
+/// Kept from the app's earlier name so widgets already on the home screen keep working.
 public enum WidgetKind {
     public static let reps = "PlusUltraReps"
     public static let training = "PlusUltraTraining"

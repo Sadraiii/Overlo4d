@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Plus Ultra</string>
+	<string>Tally</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
@@ -22,10 +22,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.mahmud.plusultra</string>
+			<string>com.mahmud.tally</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>plusultra</string>
+				<string>tally</string>
 			</array>
 		</dict>
 	</array>

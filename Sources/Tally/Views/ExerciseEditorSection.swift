@@ -1,4 +1,4 @@
-import PlusUltraKit
+import TallyKit
 import SwiftUI
 
 /// List section for one exercise inside a workout or routine: header menu, notes, set rows, "Add set".
