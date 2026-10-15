@@ -20,6 +20,14 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.6", date: DateComponents(year: 2026, month: 10, day: 16), changes: [
+            "Supersets: link exercises so the rest timer starts after the last one.",
+            "New exercise types: weighted and assisted bodyweight, and distance with time and pace.",
+            "Time is entered like a timer: type 2500 for 25:00.",
+            "Workouts from Apple Watch and other apps show in History and the calendar.",
+            "A Watch workout recorded during a Tally workout is merged into it instead of being saved twice.",
+            "Weekly recap on Home each Monday, and for past weeks in Progress.",
+        ]),
         ChangelogEntry(version: "0.5", date: DateComponents(year: 2026, month: 10, day: 15), changes: [
             "Plans have their own tab.",
             "Reps moved to a card on Home. Tap it for the counter.",
