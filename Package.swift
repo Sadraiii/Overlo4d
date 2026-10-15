@@ -3,33 +3,33 @@
 import PackageDescription
 
 let package = Package(
-    name: "RepCounter",
+    name: "PlusUltra",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
+        // iOS 26.1 for Liquid Glass and the tab bar accessory.
+        .iOS("26.1"),
     ],
     products: [
         // The main app.
         .library(
-            name: "RepCounter",
-            targets: ["RepCounter"]
+            name: "PlusUltra",
+            targets: ["PlusUltra"]
         ),
-        // The home screen widget extension.
+        // Home screen / lock screen widgets and the workout Live Activity.
         .library(
-            name: "RepCounterWidget",
-            targets: ["RepCounterWidget"]
+            name: "PlusUltraWidget",
+            targets: ["PlusUltraWidget"]
         ),
     ],
     targets: [
-        // Data model + storage shared by the app and the widget.
-        .target(name: "RepCore"),
+        // Theme, shared data and Live Activity attributes used by both the app and the widget.
+        .target(name: "PlusUltraKit"),
         .target(
-            name: "RepCounter",
-            dependencies: ["RepCore"]
+            name: "PlusUltra",
+            dependencies: ["PlusUltraKit"]
         ),
         .target(
-            name: "RepCounterWidget",
-            dependencies: ["RepCore"],
+            name: "PlusUltraWidget",
+            dependencies: ["PlusUltraKit"],
             linkerSettings: [
                 // xtool links extensions with `-e _NSExtensionMain`, so nothing references the
                 // WidgetBundle's `main` and the linker strips the widget code. Force it to stay.

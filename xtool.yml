@@ -1,8 +1,27 @@
 version: 1
-bundleID: com.mahmud.RepCounter
-product: RepCounter
-entitlementsPath: Support/RepCounter.entitlements
+bundleID: com.mahmud.plusultra
+product: PlusUltra
+infoPath: Support/PlusUltra-Info.plist
+entitlementsPath: Support/PlusUltra.entitlements
+iconPath: Resources/AppIcon.png
+resources:
+  - Resources/AppIcon60x60@2x.png
+  - Resources/AppIcon60x60@3x.png
+  - Resources/Seal.png
+  - Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf
+  - Resources/Fonts/BigShouldersDisplayThin-Black.ttf
+  - Resources/Fonts/SchibstedGrotesk-Regular.ttf
+  - Resources/Fonts/SchibstedGrotesk-Medium.ttf
+  - Resources/Fonts/SchibstedGrotesk-SemiBold.ttf
+  - Resources/Fonts/SchibstedGrotesk-Bold.ttf
 extensions:
-  - product: RepCounterWidget
-    infoPath: Support/RepCounterWidget-Info.plist
-    entitlementsPath: Support/RepCounterWidget.entitlements
+  - product: PlusUltraWidget
+    infoPath: Support/PlusUltraWidget-Info.plist
+    entitlementsPath: Support/PlusUltraWidget.entitlements
+    resources:
+      - Resources/Seal.png
+      - Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf
+      - Resources/Fonts/BigShouldersDisplayThin-Black.ttf
+      - Resources/Fonts/SchibstedGrotesk-Medium.ttf
+      - Resources/Fonts/SchibstedGrotesk-SemiBold.ttf
+      - Resources/Fonts/SchibstedGrotesk-Bold.ttf
