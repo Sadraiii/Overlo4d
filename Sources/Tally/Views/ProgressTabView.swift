@@ -53,6 +53,7 @@ struct ProgressTabView: View {
             .background(ScreenBackground())
             .navigationTitle("Progress")
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
+            .navigationDestination(for: RecapRoute.self) { RecapView(weekStart: $0.weekStart) }
             .toolbar {
                 if page == .exercises {
                     Button("New exercise", systemImage: "plus") { showingCreate = true }
@@ -123,21 +124,6 @@ struct ProgressOverview: View {
         return counts.map { ($0.key, $0.value) }.sorted { $0.sets > $1.sets }
     }
 
-    /// Working sets per muscle over the last 30 days, scaled to 0–1. Secondary muscles count half.
-    private var muscleLevels: [Muscle: Double] {
-        let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
-        var counts: [Muscle: Double] = [:]
-        for workout in gym.workouts where workout.startedAt >= since {
-            for exercise in workout.exercises {
-                guard let def = gym.exercise(exercise.exerciseID) else { continue }
-                let sets = Double(exercise.sets.filter { $0.type != .warmup }.count)
-                for muscle in def.primary { counts[muscle, default: 0] += sets }
-                for muscle in def.secondary { counts[muscle, default: 0] += sets / 2 }
-            }
-        }
-        guard let most = counts.values.max(), most > 0 else { return [:] }
-        return counts.mapValues { $0 / most }
-    }
 
     private struct RecordItem: Identifiable {
         var id: UUID { workoutSet.id }
@@ -165,6 +151,25 @@ struct ProgressOverview: View {
     var body: some View {
         let weeks = weeks
         VStack(alignment: .leading, spacing: 14) {
+            NavigationLink {
+                RecapListView()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 34, height: 34)
+                        .background(Theme.line, in: .rect(cornerRadius: 10))
+                    Text("Weekly recaps").font(Typo.body(15, .semibold))
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
+                }
+                .foregroundStyle(Theme.ink)
+                .padding(10)
+                .background(Theme.card, in: .rect(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+
             HStack(spacing: 8) {
                 Tile(value: "\(gym.workouts.count)", label: "Workouts")
                 Tile(value: "\(gym.weekStreak)", label: "Week streak", tint: gym.weekStreak > 0 ? Theme.hot : Theme.ink, symbol: gym.weekStreak > 0 ? "flame.fill" : nil)
@@ -241,7 +246,7 @@ struct ProgressOverview: View {
                 SectionHead("Muscles")
                 let most = max(muscleSets.first?.sets ?? 1, 1)
                 VStack(spacing: 12) {
-                    AnatomyFigure(levels: muscleLevels)
+                    AnatomyFigure(levels: gym.muscleLevels(in: DateInterval(start: Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now, end: .now)))
                         .frame(height: 200)
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, 6)

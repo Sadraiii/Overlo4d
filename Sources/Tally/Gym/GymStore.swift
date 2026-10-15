@@ -403,6 +403,50 @@ final class GymStore {
         )
     }
 
+    // MARK: Recap
+
+    /// Finished workouts reduced for the weekly recap.
+    var sessionSummaries: [SessionSummary] {
+        workouts.map { workout in
+            var best: [UUID: Double] = [:]
+            for exercise in workout.exercises where self.exercise(exercise.exerciseID)?.kind == .weightReps {
+                let value = exercise.sets.filter { $0.type != .warmup }.map(\.estimatedOneRepMax).max() ?? 0
+                if value > 0 { best[exercise.exerciseID] = max(best[exercise.exerciseID] ?? 0, value) }
+            }
+            return SessionSummary(
+                start: workout.startedAt,
+                duration: workout.duration,
+                volume: workout.volume,
+                sets: workout.completedSets.count,
+                records: recordCount(in: workout),
+                bestOneRepMax: best
+            )
+        }
+    }
+
+    func recap(weekOf date: Date) -> WeeklyRecap? {
+        Recaps.recap(
+            weekOf: date,
+            sessions: sessionSummaries,
+            activities: healthWorkouts.map { ActivitySummary(start: $0.start, duration: $0.duration, energy: $0.energy) }
+        )
+    }
+
+    /// Working sets per muscle in `interval`, scaled to 0–1. Secondary muscles count half.
+    func muscleLevels(in interval: DateInterval) -> [Muscle: Double] {
+        var counts: [Muscle: Double] = [:]
+        for workout in workouts where workout.startedAt >= interval.start && workout.startedAt < interval.end {
+            for exercise in workout.exercises {
+                guard let def = self.exercise(exercise.exerciseID) else { continue }
+                let sets = Double(exercise.sets.filter { $0.type != .warmup }.count)
+                for muscle in def.primary { counts[muscle, default: 0] += sets }
+                for muscle in def.secondary { counts[muscle, default: 0] += sets / 2 }
+            }
+        }
+        guard let most = counts.values.max(), most > 0 else { return [:] }
+        return counts.mapValues { $0 / most }
+    }
+
     // MARK: Stats
 
     /// Start of the week containing `date`.
