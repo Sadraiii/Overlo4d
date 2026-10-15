@@ -114,15 +114,19 @@ final class HealthManager {
         return await Self.workouts(since: start, store: store)
     }
 
-    // Replaced in Task 8.
-    func deleteWorkout(_ id: UUID) async -> Bool { false }
+    /// Deletes a workout Tally saved, with the energy sample Tally added to it. True when it's gone.
+    func deleteWorkout(_ id: UUID) async -> Bool {
+        guard isAvailable, isConnected else { return false }
+        return await Self.deleteWorkout(id: id, store: store)
+    }
 
-    /// Saves a finished workout to Health as strength training.
-    func save(_ workout: Workout) async {
-        guard isAvailable, isConnected, savesWorkouts, workout.endedAt != nil else { return }
+    /// Saves a finished workout to Health as strength training. Returns the saved workout's UUID.
+    func save(_ workout: Workout) async -> UUID? {
+        guard isAvailable, isConnected, savesWorkouts, workout.endedAt != nil else { return nil }
         if weights.isEmpty { weights = await Self.weights(store: store) }
-        await Self.saveWorkout(workout, bodyMass: weights.last?.kg, store: store)
+        let id = await Self.saveWorkout(workout, bodyMass: weights.last?.kg, store: store)
         workoutHealth[workout.id] = nil
+        return id
     }
 
     // MARK: Queries
@@ -175,8 +179,27 @@ final class HealthManager {
         return samples.map { Weight(date: $0.endDate, kg: $0.quantity.doubleValue(for: .gramUnit(with: .kilo))) }
     }
 
-    private nonisolated static func saveWorkout(_ workout: Workout, bodyMass: Double?, store: HKHealthStore) async {
-        guard let end = workout.endedAt else { return }
+    private nonisolated static func deleteWorkout(id: UUID, store: HKHealthStore) async -> Bool {
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.workout(HKQuery.predicateForObject(with: id))],
+            sortDescriptors: []
+        )
+        guard let samples = try? await descriptor.result(for: store) else { return false }
+        guard let workout = samples.first else { return true }
+        do {
+            _ = try await store.deleteObjects(
+                of: HKQuantityType(.activeEnergyBurned),
+                predicate: HKQuery.predicateForObjects(from: workout)
+            )
+            try await store.delete(workout)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private nonisolated static func saveWorkout(_ workout: Workout, bodyMass: Double?, store: HKHealthStore) async -> UUID? {
+        guard let end = workout.endedAt else { return nil }
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining
         configuration.locationType = .indoor
@@ -201,9 +224,10 @@ final class HealthManager {
                 HKMetadataKeyWorkoutBrandName: "Tally",
             ])
             try await builder.endCollection(at: end)
-            _ = try await builder.finishWorkout()
+            return try await builder.finishWorkout()?.uuid
         } catch {
             builder.discardWorkout()
+            return nil
         }
     }
 }

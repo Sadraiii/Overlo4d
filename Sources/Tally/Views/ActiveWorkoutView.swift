@@ -109,7 +109,7 @@ struct ActiveWorkoutView: View {
                 Button("Finish") {
                     rest.stop()
                     if gym.finishWorkout(draft), let saved = gym.summaryWorkout {
-                        Task { await health.save(saved) }
+                        Task { await HealthSync.finished(saved, gym: gym, health: health) }
                     } else {
                         showingNothingDone = true
                     }

@@ -348,8 +348,24 @@ final class GymStore {
         return workouts.filter { $0.linkedHealthID != nil }.compactMap(\.savedHealthID)
     }
 
-    // Replaced in Task 8.
-    func healthCopyDeleted(_ healthID: UUID) {}
+    /// Tally's own copy in Health was deleted because a Watch session covers the workout.
+    func healthCopyDeleted(_ healthID: UUID) {
+        guard let index = workouts.firstIndex(where: { $0.savedHealthID == healthID }) else { return }
+        workouts[index].savedHealthID = nil
+        save()
+    }
+
+    /// Records how a finished workout reached Health: merged with a Watch session, or saved by Tally.
+    func setHealthLink(for workoutID: UUID, linked: UUID?, saved: UUID?) {
+        guard let index = workouts.firstIndex(where: { $0.id == workoutID }) else { return }
+        if let linked {
+            workouts[index].linkedHealthID = linked
+            healthWorkouts.removeAll { $0.id == linked }
+        }
+        if let saved { workouts[index].savedHealthID = saved }
+        save()
+        writeSnapshot()
+    }
 
     // MARK: Plans
 
