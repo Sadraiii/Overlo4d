@@ -4,10 +4,13 @@ import SwiftUI
 /// Shown after finishing a workout.
 struct WorkoutSummaryView: View {
     @Environment(GymStore.self) private var gym
+    @Environment(HealthManager.self) private var health
     let workout: Workout
 
     @State private var appeared = false
     @State private var savedRoutine = false
+    @State private var sharing = false
+    @State private var workoutHealth: HealthManager.WorkoutHealth?
 
     var body: some View {
         let records = workout.exercises.flatMap { exercise in
@@ -33,6 +36,12 @@ struct WorkoutSummaryView: View {
                         .font(Typo.body(15))
                         .foregroundStyle(Theme.ink2)
                         .multilineTextAlignment(.center)
+                    if health.isConnected && health.savesWorkouts {
+                        Label("Added to Apple Health", systemImage: "heart.fill")
+                            .font(Typo.body(12.5, .semibold))
+                            .foregroundStyle(Theme.ink3)
+                            .padding(.top, 2)
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -40,6 +49,7 @@ struct WorkoutSummaryView: View {
                     Tile(value: Fmt.volume(workout.volume), label: "Volume")
                     Tile(value: "\(workout.completedSets.count)", label: "Sets")
                 }
+                WorkoutHealthTiles(workout: workout, stats: $workoutHealth)
 
                 if !records.isEmpty {
                     SectionHead("Records")
@@ -69,12 +79,16 @@ struct WorkoutSummaryView: View {
                 VStack(spacing: 10) {
                     Button("Done") { gym.closeSummary() }
                         .buttonStyle(.bigPrimary)
-                    Button(savedRoutine ? "Saved as routine" : "Save as routine") {
-                        gym.saveRoutine(gym.routine(from: workout))
-                        savedRoutine = true
+                    HStack(spacing: 10) {
+                        Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
+                            .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 50, fullWidth: true))
+                        Button(savedRoutine ? "Saved" : "Save as routine") {
+                            gym.saveRoutine(gym.routine(from: workout))
+                            savedRoutine = true
+                        }
+                        .buttonStyle(OOButtonStyle(kind: savedRoutine ? .done : .outline, shape: .pill, height: 50, fullWidth: true))
+                        .disabled(savedRoutine)
                     }
-                    .buttonStyle(OOButtonStyle(kind: savedRoutine ? .done : .outline, shape: .pill, height: 50, fullWidth: true))
-                    .disabled(savedRoutine)
                 }
                 .padding(.top, 8)
             }
@@ -85,6 +99,9 @@ struct WorkoutSummaryView: View {
         .sensoryFeedback(.success, trigger: appeared)
         .onAppear {
             withAnimation(.spring(duration: 0.6, bounce: 0.35)) { appeared = true }
+        }
+        .sheet(isPresented: $sharing) {
+            ShareSheet(model: .workout(workout, gym: gym, health: workoutHealth))
         }
     }
 }

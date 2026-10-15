@@ -7,6 +7,7 @@ struct ProgressTabView: View {
     @State private var page = Page.overview
     @State private var search = ""
     @State private var showingCreate = false
+    @State private var sharingWeek = false
 
     enum Page: String, CaseIterable, Identifiable {
         case overview = "Overview"
@@ -55,9 +56,12 @@ struct ProgressTabView: View {
             .toolbar {
                 if page == .exercises {
                     Button("New exercise", systemImage: "plus") { showingCreate = true }
+                } else {
+                    Button("Share week", systemImage: "square.and.arrow.up") { sharingWeek = true }
                 }
             }
             .sheet(isPresented: $showingCreate) { CreateExerciseView() }
+            .sheet(isPresented: $sharingWeek) { ShareSheet(model: .week(containing: .now, gym: gym)) }
         }
     }
 }
@@ -214,6 +218,8 @@ struct ProgressOverview: View {
                 .frame(height: 150)
             }
             .card(padding: 14, cornerRadius: 16)
+
+            WeightCard()
 
             if !muscleSets.isEmpty {
                 SectionHead("Muscles")

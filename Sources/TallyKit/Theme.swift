@@ -76,6 +76,9 @@ public enum Accent: String, CaseIterable, Identifiable, Sendable {
     public var ink: Color { Color(light: hex.1, dark: hex.4) }
     public var soft: Color { Color(light: hex.2, dark: hex.5) }
     public var swatch: Color { Color(uiColor: UIColor(hex: hex.6)) }
+    /// Fixed light-mode / dark-mode variants, for images that don't follow the system appearance.
+    public var lightColor: Color { Color(uiColor: UIColor(hex: hex.0)) }
+    public var darkColor: Color { Color(uiColor: UIColor(hex: hex.3)) }
 }
 
 /// Light / dark / follow the phone.

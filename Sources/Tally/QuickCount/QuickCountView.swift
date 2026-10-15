@@ -9,6 +9,7 @@ struct QuickCountView: View {
     @State private var customTarget: QuickExercise?
     @State private var customAmount = ""
     @State private var deleting: QuickExercise?
+    @State private var sharing = false
 
     private static let goals = [50, 100, 150, 200, 300, 500, 1000]
 
@@ -45,6 +46,11 @@ struct QuickCountView: View {
             }
             .screenBackground()
             .navigationTitle("Reps")
+            .toolbar {
+                Button("Share today", systemImage: "square.and.arrow.up") { sharing = true }
+                    .disabled(model.repsToday == 0)
+            }
+            .sheet(isPresented: $sharing) { ShareSheet(model: .reps(model)) }
             .alert("New exercise", isPresented: $showingAddExercise) {
                 TextField("Burpees", text: $newExerciseName)
                 Button("Add") { model.addExercise(named: newExerciseName) }

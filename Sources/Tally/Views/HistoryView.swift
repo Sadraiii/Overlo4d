@@ -75,6 +75,8 @@ struct WorkoutDetailView: View {
     @State private var editing: Workout?
     @State private var confirmingDelete = false
     @State private var savedRoutine = false
+    @State private var sharing = false
+    @State private var workoutHealth: HealthManager.WorkoutHealth?
 
     var body: some View {
         List {
@@ -90,6 +92,7 @@ struct WorkoutDetailView: View {
                         Tile(value: Fmt.volume(workout.volume), label: "Volume")
                         Tile(value: "\(workout.completedSets.count)", label: "Sets")
                     }
+                    WorkoutHealthTiles(workout: workout, stats: $workoutHealth)
                     if !workout.notes.isEmpty {
                         Text(workout.notes)
                             .font(Typo.body(15))
@@ -144,6 +147,7 @@ struct WorkoutDetailView: View {
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
             Menu {
                 Button("Edit", systemImage: "pencil") { editing = workout }
                 Button("Save as routine", systemImage: "square.and.arrow.down") {
@@ -156,6 +160,9 @@ struct WorkoutDetailView: View {
             }
         }
         .sheet(item: $editing) { EditWorkoutView(workout: $0) }
+        .sheet(isPresented: $sharing) {
+            ShareSheet(model: .workout(workout, gym: gym, health: workoutHealth))
+        }
         .confirmationDialog("Delete this workout?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 dismiss()
