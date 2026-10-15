@@ -1,0 +1,4 @@
+# Keep LF everywhere: the project is built from WSL (bash scripts, xtool).
+* text=auto eol=lf
+*.png binary
+*.ttf binary
