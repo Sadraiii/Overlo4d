@@ -12,13 +12,7 @@ struct NumberField<Value: Numeric & LosslessStringConvertible & Equatable>: View
     var body: some View {
         TextField(placeholder, text: $text)
             .keyboardType(decimal ? .decimalPad : .numberPad)
-            .multilineTextAlignment(.center)
-            .font(Typo.display(22))
-            .monospacedDigit()
-            .foregroundStyle(Theme.ink)
-            .frame(height: 40)
-            .background(Theme.paper, in: .rect(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
+            .setField()
             .onAppear { text = Self.format(value) }
             .onChange(of: text) { _, newText in
                 let parsed = Value(newText.replacingOccurrences(of: ",", with: "."))
@@ -37,6 +31,19 @@ struct NumberField<Value: Numeric & LosslessStringConvertible & Equatable>: View
     }
 }
 
+extension View {
+    /// Look of the number and time inputs in set rows.
+    func setField() -> some View {
+        multilineTextAlignment(.center)
+            .font(Typo.display(22))
+            .monospacedDigit()
+            .foregroundStyle(Theme.ink)
+            .frame(height: 40)
+            .background(Theme.paper, in: .rect(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
+    }
+}
+
 /// Column headers above the set rows.
 struct SetHeader: View {
     let kind: ExerciseKind
@@ -48,13 +55,16 @@ struct SetHeader: View {
             Text("Set").frame(width: 32)
             if showsPrevious { Text("Previous").frame(maxWidth: .infinity) }
             switch kind {
-            case .weightReps:
-                Text("Kg").frame(width: 66)
+            case .weightReps, .weightedBodyweight, .assistedBodyweight:
+                Text(kind == .weightedBodyweight ? "+Kg" : kind == .assistedBodyweight ? "−Kg" : "Kg").frame(width: 66)
                 Text("Reps").frame(width: 58)
             case .repsOnly:
                 Text("Reps").frame(width: 76)
             case .duration:
-                Text("Sec").frame(width: 76)
+                Text("Time").frame(width: 76)
+            case .distanceDuration:
+                Text("Km").frame(width: 66)
+                Text("Time").frame(width: 70)
             }
             if !showsPrevious { Spacer() }
             if showsCheck { Image(systemName: "checkmark").frame(width: 38) }
@@ -105,8 +115,13 @@ struct SetRow: View {
             }
 
             switch kind {
-            case .weightReps:
+            case .weightReps, .weightedBodyweight:
                 NumberField(value: $set.weight, placeholder: previous?.weight.map(Fmt.weight) ?? "0", decimal: true)
+                    .frame(width: 66)
+                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0")
+                    .frame(width: 58)
+            case .assistedBodyweight:
+                NumberField(value: $set.assistance, placeholder: previous?.assistance.map(Fmt.weight) ?? "0", decimal: true)
                     .frame(width: 66)
                 NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0")
                     .frame(width: 58)
@@ -114,8 +129,13 @@ struct SetRow: View {
                 NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0")
                     .frame(width: 76)
             case .duration:
-                NumberField(value: $set.seconds, placeholder: previous?.seconds.map(String.init) ?? "0")
+                TimeField(seconds: $set.seconds, placeholder: previous?.seconds.map(Fmt.seconds) ?? "0:00")
                     .frame(width: 76)
+            case .distanceDuration:
+                NumberField(value: kilometres, placeholder: previous?.meters.map { Fmt.weight($0 / 1000) } ?? "0", decimal: true)
+                    .frame(width: 66)
+                TimeField(seconds: $set.seconds, placeholder: previous?.seconds.map(Fmt.seconds) ?? "0:00")
+                    .frame(width: 70)
             }
 
             if !showsCheck { Spacer() }
@@ -156,10 +176,17 @@ struct SetRow: View {
         }
     }
 
+    /// Distance is typed in km and stored in metres.
+    private var kilometres: Binding<Double?> {
+        Binding(get: { set.meters.map { $0 / 1000 } }, set: { set.meters = $0.map { $0 * 1000 } })
+    }
+
     private func fill(from source: WorkoutSet) {
         if set.weight == nil { set.weight = source.weight }
         if set.reps == nil { set.reps = source.reps }
         if set.seconds == nil { set.seconds = source.seconds }
+        if set.assistance == nil { set.assistance = source.assistance }
+        if set.meters == nil { set.meters = source.meters }
     }
 
     private func toggleDone() {

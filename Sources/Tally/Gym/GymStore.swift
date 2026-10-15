@@ -38,7 +38,8 @@ final class GymStore {
         workouts = data.workouts.sorted { $0.startedAt > $1.startedAt }
         plans = data.plans
         activeWorkout = data.activeWorkout
-        if exercises != data.exercises { save() }
+        let migrated = migrateAssistedSets()
+        if exercises != data.exercises || migrated { save() }
         recomputeRecords()
         writeSnapshot()
         if let activeWorkout {
@@ -67,6 +68,27 @@ final class GymStore {
     func addExercise(_ exercise: ExerciseDef) {
         exercises.append(exercise)
         save()
+    }
+
+    /// Sets of assisted exercises saved before 0.6 hold the assistance in `weight`. Moves it to
+    /// `assistance` so it isn't counted as volume. Does nothing once moved. Returns whether anything changed.
+    private func migrateAssistedSets() -> Bool {
+        let assisted = Set(exercises.filter { $0.kind == .assistedBodyweight }.map(\.id))
+        guard !assisted.isEmpty else { return false }
+        var changed = false
+        func fix(_ list: inout [WorkoutExercise]) {
+            for e in list.indices where assisted.contains(list[e].exerciseID) {
+                for s in list[e].sets.indices where list[e].sets[s].weight != nil && list[e].sets[s].assistance == nil {
+                    list[e].sets[s].assistance = list[e].sets[s].weight
+                    list[e].sets[s].weight = nil
+                    changed = true
+                }
+            }
+        }
+        for w in workouts.indices { fix(&workouts[w].exercises) }
+        for p in plans.indices { fix(&plans[p].exercises) }
+        if activeWorkout != nil { fix(&activeWorkout!.exercises) }
+        return changed
     }
 
     func updateExercise(_ exercise: ExerciseDef) {
@@ -140,7 +162,8 @@ final class GymStore {
         // Same number of sets as last time (values come from the "Previous" column).
         let previousCount = previousSets(for: exercise.id).count
         let sets = (0..<max(previousCount, 1)).map { _ in WorkoutSet() }
-        return WorkoutExercise(exerciseID: exercise.id, sets: sets, restSeconds: exercise.kind == .duration ? 60 : defaultRestSeconds)
+        let timed = exercise.kind == .duration || exercise.kind == .distanceDuration
+        return WorkoutExercise(exerciseID: exercise.id, sets: sets, restSeconds: timed ? 60 : defaultRestSeconds)
     }
 
     /// Saves the workout to history, keeping only completed sets. Returns false if nothing was completed.
@@ -253,8 +276,8 @@ final class GymStore {
             var best: (value: Double, date: Date)?
             for session in sessions {
                 for set in session.sets where set.type != .warmup {
-                    let value = kind.value(of: set)
-                    if value > 0, value > (best?.value ?? 0) { best = (value, session.date) }
+                    guard let value = kind.value(of: set) else { continue }
+                    if best.map({ kind.isBetter(value, than: $0.value) }) ?? true { best = (value, session.date) }
                 }
             }
             return best.map { (kind, $0.value, $0.date) }
@@ -276,13 +299,17 @@ final class GymStore {
                 let previous = bests[exercise.exerciseID]
                 let workingSets = exercise.sets.filter { $0.type != .warmup }
                 for kind in RecordKind.kinds(for: def.kind) {
-                    guard let best = workingSets.max(by: { kind.value(of: $0) < kind.value(of: $1) }) else { continue }
-                    let value = kind.value(of: best)
-                    guard value > 0 else { continue }
-                    if let previous, value > (previous[kind] ?? 0) {
-                        result[best.id, default: []].append(kind)
+                    let scored = workingSets.compactMap { set in kind.value(of: set).map { (set: set, value: $0) } }
+                    guard let best = scored.max(by: { kind.isBetter($1.value, than: $0.value) }) else { continue }
+                    let earlier = previous?[kind]
+                    let beatsEarlier = earlier.map { kind.isBetter(best.value, than: $0) } ?? true
+                    // The first session of an exercise doesn't count as a record.
+                    if previous != nil && beatsEarlier {
+                        result[best.set.id, default: []].append(kind)
                     }
-                    bests[exercise.exerciseID, default: [:]][kind] = max(value, previous?[kind] ?? 0)
+                    if beatsEarlier {
+                        bests[exercise.exerciseID, default: [:]][kind] = best.value
+                    }
                 }
             }
         }

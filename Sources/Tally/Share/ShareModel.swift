@@ -61,9 +61,11 @@ extension ShareModel {
             let kind = def?.kind ?? .weightReps
             let best = exercise.sets.filter { $0.type != .warmup }.max {
                 switch kind {
-                case .weightReps: ($0.weight ?? 0, $0.reps ?? 0) < ($1.weight ?? 0, $1.reps ?? 0)
+                case .weightReps, .weightedBodyweight: ($0.weight ?? 0, $0.reps ?? 0) < ($1.weight ?? 0, $1.reps ?? 0)
+                case .assistedBodyweight: (-($0.assistance ?? 0), $0.reps ?? 0) < (-($1.assistance ?? 0), $1.reps ?? 0)
                 case .repsOnly: ($0.reps ?? 0) < ($1.reps ?? 0)
                 case .duration: ($0.seconds ?? 0) < ($1.seconds ?? 0)
+                case .distanceDuration: ($0.meters ?? 0, $0.seconds ?? 0) < ($1.meters ?? 0, $1.seconds ?? 0)
                 }
             }
             return Line(lead: "\(exercise.sets.count)×", text: def?.name ?? "Exercise", detail: best.map { Fmt.set($0, kind: kind) })

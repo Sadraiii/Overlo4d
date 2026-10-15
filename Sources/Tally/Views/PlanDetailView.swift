@@ -1,5 +1,6 @@
 import Charts
 import SwiftUI
+import TallyCore
 import TallyKit
 
 /// A plan's progress: last session against the one before, volume over time, and every session.
@@ -204,7 +205,7 @@ struct SetChange {
         let dr = (set.reps ?? 0) - (previous.reps ?? 0)
         let reps = dr == 0 ? nil : "\(dr > 0 ? "+" : "−")\(abs(dr)) \(abs(dr) == 1 ? "rep" : "reps")"
         switch kind {
-        case .weightReps:
+        case .weightReps, .weightedBodyweight:
             let dw = (set.weight ?? 0) - (previous.weight ?? 0)
             if abs(dw) >= 0.01 {
                 text = "\(dw > 0 ? "+" : "−")\(Fmt.weight(abs(dw))) kg"
@@ -219,6 +220,33 @@ struct SetChange {
         case .repsOnly:
             text = reps ?? "Same"
             color = dr > 0 ? Theme.good : dr < 0 ? Theme.danger : Theme.ink3
+        case .assistedBodyweight:
+            let da = (set.assistance ?? 0) - (previous.assistance ?? 0)
+            if abs(da) >= 0.01 {
+                text = "\(da > 0 ? "+" : "−")\(Fmt.weight(abs(da))) kg"
+                color = da < 0 ? Theme.good : Theme.danger
+            } else if let reps {
+                text = reps
+                color = dr > 0 ? Theme.good : Theme.danger
+            } else {
+                text = "Same"
+                color = Theme.ink3
+            }
+        case .distanceDuration:
+            let now = Pace.secondsPerKm(meters: set.meters, seconds: set.seconds)
+            let before = Pace.secondsPerKm(meters: previous.meters, seconds: previous.seconds)
+            let dm = (set.meters ?? 0) - (previous.meters ?? 0)
+            if let now, let before, abs(now - before) >= 1 {
+                let change = Int((now - before).rounded())
+                text = "\(change > 0 ? "+" : "−")\(Fmt.seconds(abs(change))) /km"
+                color = change < 0 ? Theme.good : Theme.danger
+            } else if abs(dm) >= 1 {
+                text = "\(dm > 0 ? "+" : "−")\(Pace.distance(abs(dm)))"
+                color = dm > 0 ? Theme.good : Theme.danger
+            } else {
+                text = "Same"
+                color = Theme.ink3
+            }
         case .duration:
             let ds = (set.seconds ?? 0) - (previous.seconds ?? 0)
             text = ds == 0 ? "Same" : "\(ds > 0 ? "+" : "−")\(abs(ds))s"

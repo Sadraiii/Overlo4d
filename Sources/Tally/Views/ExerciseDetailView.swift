@@ -1,4 +1,5 @@
 import Charts
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -15,6 +16,9 @@ struct ExerciseDetailView: View {
         case volume = "Volume"
         case reps = "Reps"
         case time = "Time"
+        case assistance = "Assistance"
+        case distance = "Distance"
+        case pace = "Pace"
 
         var id: String { rawValue }
 
@@ -23,6 +27,9 @@ struct ExerciseDetailView: View {
             case .weightReps: [.heaviest, .oneRepMax, .volume]
             case .repsOnly: [.reps]
             case .duration: [.time]
+            case .weightedBodyweight: [.heaviest, .reps]
+            case .assistedBodyweight: [.assistance, .reps]
+            case .distanceDuration: [.distance, .time, .pace]
             }
         }
 
@@ -34,14 +41,30 @@ struct ExerciseDetailView: View {
             case .volume: return sets.reduce(0) { $0 + $1.volume }
             case .reps: return Double(sets.reduce(0) { $0 + ($1.reps ?? 0) })
             case .time: return Double(sets.reduce(0) { $0 + ($1.seconds ?? 0) })
+            case .assistance: return sets.filter { ($0.reps ?? 0) > 0 }.compactMap(\.assistance).min() ?? 0
+            case .distance: return sets.reduce(0) { $0 + ($1.meters ?? 0) } / 1000
+            case .pace:
+                let timed = sets.filter { ($0.meters ?? 0) > 0 && ($0.seconds ?? 0) > 0 }
+                let km = timed.reduce(0) { $0 + ($1.meters ?? 0) } / 1000
+                let seconds = Double(timed.reduce(0) { $0 + ($1.seconds ?? 0) })
+                return km > 0 ? seconds / km : 0
             }
         }
 
         var unit: String {
             switch self {
-            case .heaviest, .oneRepMax, .volume: "kg"
+            case .heaviest, .oneRepMax, .volume, .assistance: "kg"
             case .reps: "reps"
-            case .time: "sec"
+            case .time: ""
+            case .distance: "km"
+            case .pace: "/km"
+            }
+        }
+
+        func format(_ value: Double) -> String {
+            switch self {
+            case .time, .pace: Fmt.seconds(Int(value.rounded()))
+            default: Fmt.weight(value)
             }
         }
     }
@@ -87,7 +110,7 @@ struct ExerciseDetailView: View {
                 } else {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
                         ForEach(gym.bests(for: exercise), id: \.kind) { best in
-                            Tile(value: Fmt.record(best.value, kind: best.kind), label: best.kind.label)
+                            Tile(value: Fmt.record(best.value, kind: best.kind, exercise: exercise.kind), label: best.kind.label)
                         }
                         Tile(value: "\(sessions.count)", label: "Sessions")
                     }
@@ -110,11 +133,11 @@ struct ExerciseDetailView: View {
                         }
                         if let latest = points.last {
                             HStack(alignment: .lastTextBaseline, spacing: 6) {
-                                Text(Fmt.weight(latest.value))
+                                Text(selected.format(latest.value))
                                     .font(Typo.display(54))
                                     .monospacedDigit()
                                     .contentTransition(.numericText())
-                                Text(selected.unit).eyebrow(12)
+                                if !selected.unit.isEmpty { Text(selected.unit).eyebrow(12) }
                             }
                         }
                         Chart(points, id: \.date) { point in

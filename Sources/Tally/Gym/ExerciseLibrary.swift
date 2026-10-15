@@ -36,13 +36,16 @@ enum ExerciseLibrary {
         e("Cable Crossover", .chest, .cable, [.chest], [.frontDelts]),
         e("Push-ups", .chest, .bodyweight, [.chest], [.frontDelts, .triceps, .abs], kind: .repsOnly),
         e("Dips", .chest, .bodyweight, [.chest, .triceps], [.frontDelts], kind: .repsOnly),
-        e("Assisted Dip (Machine)", .chest, .machine, [.chest, .triceps], [.frontDelts]),
+        e("Dips (Weighted)", .chest, .bodyweight, [.chest, .triceps], [.frontDelts], kind: .weightedBodyweight),
+        e("Assisted Dip (Machine)", .chest, .machine, [.chest, .triceps], [.frontDelts], kind: .assistedBodyweight),
 
         // Back
         e("Deadlift (Barbell)", .back, .barbell, [.lowerBack, .glutes, .hamstrings], [.traps, .quads, .lats, .forearms]),
         e("Pull-ups", .back, .bodyweight, [.lats], [.biceps, .upperBack, .forearms], kind: .repsOnly),
         e("Chin-ups", .back, .bodyweight, [.lats, .biceps], [.upperBack, .forearms], kind: .repsOnly),
-        e("Assisted Pull-up (Machine)", .back, .machine, [.lats], [.biceps, .upperBack]),
+        e("Pull-ups (Weighted)", .back, .bodyweight, [.lats], [.biceps, .upperBack, .forearms], kind: .weightedBodyweight),
+        e("Chin-ups (Weighted)", .back, .bodyweight, [.lats, .biceps], [.upperBack, .forearms], kind: .weightedBodyweight),
+        e("Assisted Pull-up (Machine)", .back, .machine, [.lats], [.biceps, .upperBack], kind: .assistedBodyweight),
         e("Lat Pulldown (Cable)", .back, .cable, [.lats], [.biceps, .upperBack]),
         e("Close Grip Lat Pulldown (Cable)", .back, .cable, [.lats], [.biceps, .upperBack]),
         e("Lat Pulldown (Machine)", .back, .machine, [.lats], [.biceps, .upperBack]),
@@ -150,10 +153,10 @@ enum ExerciseLibrary {
         e("Pallof Press (Cable)", .core, .cable, [.obliques, .abs]),
 
         // Cardio
-        e("Running", .cardio, nil, [.quads, .hamstrings, .calves], [.glutes], kind: .duration),
-        e("Walking", .cardio, nil, [.quads, .calves], [.hamstrings, .glutes], kind: .duration),
-        e("Cycling", .cardio, nil, [.quads], [.hamstrings, .glutes, .calves], kind: .duration),
-        e("Rowing Machine", .cardio, .machine, [.upperBack, .lats, .quads], [.biceps, .hamstrings, .glutes], kind: .duration),
+        e("Running", .cardio, nil, [.quads, .hamstrings, .calves], [.glutes], kind: .distanceDuration),
+        e("Walking", .cardio, nil, [.quads, .calves], [.hamstrings, .glutes], kind: .distanceDuration),
+        e("Cycling", .cardio, nil, [.quads], [.hamstrings, .glutes, .calves], kind: .distanceDuration),
+        e("Rowing Machine", .cardio, .machine, [.upperBack, .lats, .quads], [.biceps, .hamstrings, .glutes], kind: .distanceDuration),
         e("Elliptical", .cardio, .machine, [.quads], [.glutes, .hamstrings, .calves], kind: .duration),
         e("Stair Climber", .cardio, .machine, [.quads, .glutes], [.calves, .hamstrings], kind: .duration),
         e("Jump Rope", .cardio, nil, [.calves], [.quads, .forearms], kind: .duration),
@@ -167,6 +170,11 @@ enum ExerciseLibrary {
         e("Farmer's Walk", .fullBody, .dumbbell, [.forearms, .traps], [.abs, .quads], kind: .duration),
     ]
 
+    /// Kind changes that keep stored sets meaningful. (Weight → assistance is moved by `GymStore` on load.)
+    static func canChangeKind(from old: ExerciseKind, to new: ExerciseKind) -> Bool {
+        (old == .duration && new == .distanceDuration) || (old == .weightReps && new == .assistedBodyweight)
+    }
+
     /// Adds library exercises missing from saved data and refreshes equipment and muscles on built-in ones.
     /// Matching is by name so exercises saved by earlier versions keep their IDs (and their history).
     static func merge(into saved: [ExerciseDef]) -> [ExerciseDef] {
@@ -178,6 +186,9 @@ enum ExerciseLibrary {
                 result[index].equipment = builtIn.equipment
                 result[index].primaryMuscles = builtIn.primaryMuscles
                 result[index].secondaryMuscles = builtIn.secondaryMuscles
+                if canChangeKind(from: result[index].kind, to: builtIn.kind) {
+                    result[index].kind = builtIn.kind
+                }
             } else {
                 result.append(builtIn)
             }

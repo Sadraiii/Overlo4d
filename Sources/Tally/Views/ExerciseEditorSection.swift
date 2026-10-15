@@ -168,6 +168,7 @@ struct LastTimeRow: View {
         case .weightReps: "\(Fmt.weight(set.weight ?? 0))×\(set.reps ?? 0)"
         case .repsOnly: "\(set.reps ?? 0)"
         case .duration: Fmt.seconds(set.seconds ?? 0)
+        case .weightedBodyweight, .assistedBodyweight, .distanceDuration: Fmt.set(set, kind: kind)
         }
     }
 

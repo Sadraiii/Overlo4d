@@ -1,4 +1,5 @@
 import Foundation
+import TallyCore
 
 enum MuscleGroup: String, Codable, CaseIterable, Identifiable, Sendable {
     case chest, back, shoulders, biceps, triceps, legs, glutes, core, cardio, fullBody, other
@@ -29,6 +30,12 @@ enum ExerciseKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case repsOnly
     /// Time only, e.g. plank.
     case duration
+    /// Added weight × reps, e.g. weighted pull-ups.
+    case weightedBodyweight
+    /// Assistance × reps, e.g. machine-assisted pull-ups. Less assistance is better.
+    case assistedBodyweight
+    /// Distance and time, e.g. running.
+    case distanceDuration
 
     var id: String { rawValue }
 
@@ -37,6 +44,9 @@ enum ExerciseKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .weightReps: "Weight & Reps"
         case .repsOnly: "Reps Only"
         case .duration: "Duration"
+        case .weightedBodyweight: "Weighted Bodyweight"
+        case .assistedBodyweight: "Assisted Bodyweight"
+        case .distanceDuration: "Distance & Time"
         }
     }
 }
@@ -93,11 +103,14 @@ struct WorkoutSet: Codable, Identifiable, Hashable, Sendable {
     var weight: Double?
     var reps: Int?
     var seconds: Int?
+    /// Assistance in kg for assisted exercises. Kept apart from `weight` so it never counts as volume.
+    var assistance: Double?
+    var meters: Double?
     var isDone = false
 
     /// A fresh, not-done copy (new ID) used when adding sets or starting from a plan.
     func copyForNewSet() -> WorkoutSet {
-        WorkoutSet(type: type, weight: weight, reps: reps, seconds: seconds)
+        WorkoutSet(type: type, weight: weight, reps: reps, seconds: seconds, assistance: assistance, meters: meters)
     }
 
     var volume: Double { (weight ?? 0) * Double(reps ?? 0) }
@@ -108,7 +121,7 @@ struct WorkoutSet: Codable, Identifiable, Hashable, Sendable {
         return reps == 1 ? weight : weight * (1 + Double(reps) / 30)
     }
 
-    var hasValues: Bool { weight != nil || reps != nil || seconds != nil }
+    var hasValues: Bool { weight != nil || reps != nil || seconds != nil || assistance != nil || meters != nil }
 }
 
 struct WorkoutExercise: Codable, Identifiable, Hashable, Sendable {
@@ -161,6 +174,7 @@ struct GymData: Codable, Sendable {
 
 enum RecordKind: String, CaseIterable, Sendable {
     case heaviestWeight, bestOneRepMax, bestSetVolume, mostReps, longestDuration
+    case leastAssistance, longestDistance, bestPace
 
     var label: String {
         switch self {
@@ -169,24 +183,44 @@ enum RecordKind: String, CaseIterable, Sendable {
         case .bestSetVolume: "Best Set Volume"
         case .mostReps: "Most Reps"
         case .longestDuration: "Longest Time"
+        case .leastAssistance: "Least Assistance"
+        case .longestDistance: "Longest Distance"
+        case .bestPace: "Best Pace"
         }
     }
+
+    /// Less assistance and a lower pace (seconds per km) are better.
+    var lowerIsBetter: Bool { self == .leastAssistance || self == .bestPace }
 
     static func kinds(for kind: ExerciseKind) -> [RecordKind] {
         switch kind {
         case .weightReps: [.heaviestWeight, .bestOneRepMax, .bestSetVolume, .mostReps]
         case .repsOnly: [.mostReps]
         case .duration: [.longestDuration]
+        case .weightedBodyweight: [.heaviestWeight, .mostReps]
+        case .assistedBodyweight: [.leastAssistance, .mostReps]
+        case .distanceDuration: [.longestDistance, .longestDuration, .bestPace]
         }
     }
 
-    func value(of set: WorkoutSet) -> Double {
-        switch self {
-        case .heaviestWeight: set.weight ?? 0
+    /// The set's value for this record, or nil when the set doesn't count for it.
+    func value(of set: WorkoutSet) -> Double? {
+        let value: Double? = switch self {
+        case .heaviestWeight: set.weight
         case .bestOneRepMax: set.estimatedOneRepMax
         case .bestSetVolume: set.volume
-        case .mostReps: Double(set.reps ?? 0)
-        case .longestDuration: Double(set.seconds ?? 0)
+        case .mostReps: set.reps.map(Double.init)
+        case .longestDuration: set.seconds.map(Double.init)
+        case .longestDistance: set.meters
+        case .leastAssistance: (set.reps ?? 0) > 0 ? set.assistance : nil
+        case .bestPace: (set.meters ?? 0) >= 1000 ? Pace.secondsPerKm(meters: set.meters, seconds: set.seconds) : nil
         }
+        guard let value else { return nil }
+        // No assistance at all (0 kg) is the best possible; every other record needs a positive value.
+        return self == .leastAssistance ? (value >= 0 ? value : nil) : (value > 0 ? value : nil)
+    }
+
+    func isBetter(_ value: Double, than other: Double) -> Bool {
+        lowerIsBetter ? value < other : value > other
     }
 }
