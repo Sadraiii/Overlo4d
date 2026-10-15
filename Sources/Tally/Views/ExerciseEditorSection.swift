@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -7,6 +8,12 @@ struct ExerciseEditorSection: View {
     @Binding var exercise: WorkoutExercise
     /// true in an active workout (previous column + checkmarks); false when editing a plan or past workout.
     let isLive: Bool
+    /// Where this exercise sits in a superset (drawn as a bar on the header row).
+    var supersetPosition: Supersets.Position = .none
+    /// Exercises this one can be put in a superset with.
+    var supersetCandidates: [(id: UUID, name: String)] = []
+    var onSuperset: (UUID) -> Void = { _ in }
+    var onLeaveSuperset: () -> Void = {}
     var onRemove: () -> Void
     var onMove: (Int) -> Void = { _ in }
     var onSetCompleted: (WorkoutExercise) -> Void = { _ in }
@@ -23,15 +30,28 @@ struct ExerciseEditorSection: View {
 
         Section {
             HStack(spacing: 12) {
+                if supersetPosition != .none {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Theme.accent)
+                        .frame(width: 4, height: 40)
+                }
                 ExerciseBadge(exercise: def, size: 42)
                 if let def {
                     NavigationLink(value: def) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(def.name).display(22).foregroundStyle(Theme.ink).lineLimit(2)
-                            if exercise.restSeconds > 0 {
-                                Label("Rest \(Fmt.rest(exercise.restSeconds))", systemImage: "timer")
-                                    .font(Typo.body(12, .semibold))
-                                    .foregroundStyle(Theme.ink3)
+                            HStack(spacing: 8) {
+                                if supersetPosition != .none {
+                                    Label("Superset", systemImage: "link")
+                                        .font(Typo.body(12, .semibold))
+                                        .foregroundStyle(Theme.accent)
+                                }
+                                // Only the last exercise of a superset starts the rest timer.
+                                if exercise.restSeconds > 0 && (supersetPosition == .none || supersetPosition == .last) {
+                                    Label("Rest \(Fmt.rest(exercise.restSeconds))", systemImage: "timer")
+                                        .font(Typo.body(12, .semibold))
+                                        .foregroundStyle(Theme.ink3)
+                                }
                             }
                         }
                     }
@@ -45,6 +65,18 @@ struct ExerciseEditorSection: View {
                         Label("Rest timer: \(Fmt.rest(exercise.restSeconds))", systemImage: "timer")
                     }
                     .pickerStyle(.menu)
+                    if !supersetCandidates.isEmpty {
+                        Menu {
+                            ForEach(supersetCandidates, id: \.id) { candidate in
+                                Button(candidate.name) { onSuperset(candidate.id) }
+                            }
+                        } label: {
+                            Label("Superset with", systemImage: "link")
+                        }
+                    }
+                    if supersetPosition != .none {
+                        Button("Remove from superset", systemImage: "minus.circle", action: onLeaveSuperset)
+                    }
                     if exercise.notes.isEmpty && !addingNote {
                         Button("Add note", systemImage: "note.text") { addingNote = true }
                     }

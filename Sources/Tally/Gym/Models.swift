@@ -118,6 +118,8 @@ struct WorkoutExercise: Codable, Identifiable, Hashable, Sendable {
     /// Rest timer after completing a set; 0 = off.
     var restSeconds = 90
     var notes = ""
+    /// Neighbouring exercises with the same ID form a superset.
+    var supersetID: UUID?
 }
 
 struct Workout: Codable, Identifiable, Hashable, Sendable {

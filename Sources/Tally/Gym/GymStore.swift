@@ -105,9 +105,11 @@ final class GymStore {
                 exerciseID: template.exerciseID,
                 sets: template.sets.map { $0.copyForNewSet() },
                 restSeconds: restSeconds ?? template.restSeconds,
-                notes: template.notes
+                notes: template.notes,
+                supersetID: template.supersetID
             )
         }
+        .withRenewedSupersets()
         begin(Workout(name: name, startedAt: .now, exercises: exercises, planID: planID))
     }
 
@@ -319,6 +321,7 @@ final class GymStore {
                 copy.sets = exercise.sets.map { $0.copyForNewSet() }
                 return copy
             }
+            .withRenewedSupersets()
         )
     }
 

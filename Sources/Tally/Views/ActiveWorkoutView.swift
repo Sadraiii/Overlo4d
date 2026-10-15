@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -32,9 +33,20 @@ struct ActiveWorkoutView: View {
                     ExerciseEditorSection(
                         exercise: $exercise,
                         isLive: true,
-                        onRemove: { draft.exercises.removeAll { $0.id == exercise.id } },
-                        onMove: { draft.exercises.move(id: exercise.id, by: $0) },
-                        onSetCompleted: { if rest.autoStart { rest.start(seconds: $0.restSeconds) } }
+                        supersetPosition: draft.exercises.supersetPosition(of: exercise.id),
+                        supersetCandidates: draft.exercises.supersetCandidates(for: exercise.id)
+                            .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
+                        onSuperset: { draft.exercises.linkSuperset(exercise.id, with: $0) },
+                        onLeaveSuperset: { draft.exercises.unlinkSuperset(exercise.id) },
+                        onRemove: {
+                            draft.exercises.removeAll { $0.id == exercise.id }
+                            draft.exercises.normalizeSupersets()
+                        },
+                        onMove: {
+                            draft.exercises.move(id: exercise.id, by: $0)
+                            draft.exercises.normalizeSupersets()
+                        },
+                        onSetCompleted: { startRestIfNeeded(after: $0) }
                     )
                 }
 
@@ -121,6 +133,14 @@ struct ActiveWorkoutView: View {
             .onChange(of: draft) { gym.updateActive(draft, restEndsAt: rest.endDate) }
             .onChange(of: rest.endDate) { gym.updateActive(draft, restEndsAt: rest.endDate) }
         }
+    }
+
+    /// Starts the rest timer after a set, except between exercises of the same superset.
+    private func startRestIfNeeded(after exercise: WorkoutExercise) {
+        guard rest.autoStart,
+              let index = draft.exercises.firstIndex(where: { $0.id == exercise.id }),
+              Supersets.restsAfter(index: index, in: draft.exercises.supersetIDs) else { return }
+        rest.start(seconds: exercise.restSeconds)
     }
 }
 

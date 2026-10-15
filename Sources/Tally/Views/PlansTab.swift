@@ -1,4 +1,5 @@
 import SwiftUI
+import TallyCore
 import TallyKit
 
 struct PlansTab: View {
@@ -155,8 +156,19 @@ struct PlanEditor: View {
                     ExerciseEditorSection(
                         exercise: $exercise,
                         isLive: false,
-                        onRemove: { plan.exercises.removeAll { $0.id == exercise.id } },
-                        onMove: { plan.exercises.move(id: exercise.id, by: $0) }
+                        supersetPosition: plan.exercises.supersetPosition(of: exercise.id),
+                        supersetCandidates: plan.exercises.supersetCandidates(for: exercise.id)
+                            .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
+                        onSuperset: { plan.exercises.linkSuperset(exercise.id, with: $0) },
+                        onLeaveSuperset: { plan.exercises.unlinkSuperset(exercise.id) },
+                        onRemove: {
+                            plan.exercises.removeAll { $0.id == exercise.id }
+                            plan.exercises.normalizeSupersets()
+                        },
+                        onMove: {
+                            plan.exercises.move(id: exercise.id, by: $0)
+                            plan.exercises.normalizeSupersets()
+                        }
                     )
                 }
 

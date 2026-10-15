@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -124,6 +125,11 @@ struct WorkoutDetailView: View {
                         } else {
                             Text("Deleted exercise").display(22)
                         }
+                        if workout.exercises.supersetPosition(of: exercise.id) != .none {
+                            Label("Superset", systemImage: "link")
+                                .font(Typo.body(12, .semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
                     }
                     if !exercise.notes.isEmpty {
                         Text(exercise.notes).font(Typo.body(14)).foregroundStyle(Theme.ink2)
@@ -211,8 +217,19 @@ struct EditWorkoutView: View {
                     ExerciseEditorSection(
                         exercise: $exercise,
                         isLive: false,
-                        onRemove: { workout.exercises.removeAll { $0.id == exercise.id } },
-                        onMove: { workout.exercises.move(id: exercise.id, by: $0) }
+                        supersetPosition: workout.exercises.supersetPosition(of: exercise.id),
+                        supersetCandidates: workout.exercises.supersetCandidates(for: exercise.id)
+                            .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
+                        onSuperset: { workout.exercises.linkSuperset(exercise.id, with: $0) },
+                        onLeaveSuperset: { workout.exercises.unlinkSuperset(exercise.id) },
+                        onRemove: {
+                            workout.exercises.removeAll { $0.id == exercise.id }
+                            workout.exercises.normalizeSupersets()
+                        },
+                        onMove: {
+                            workout.exercises.move(id: exercise.id, by: $0)
+                            workout.exercises.normalizeSupersets()
+                        }
                     )
                 }
 
