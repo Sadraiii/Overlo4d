@@ -13,6 +13,7 @@ struct ActiveWorkoutView: View {
     @State private var confirmingFinish = false
     @State private var confirmingDiscard = false
     @State private var showingNothingDone = false
+    @State private var showingTimer = false
 
     init(initial: Workout) {
         _draft = State(initialValue: initial)
@@ -33,7 +34,7 @@ struct ActiveWorkoutView: View {
                         isLive: true,
                         onRemove: { draft.exercises.removeAll { $0.id == exercise.id } },
                         onMove: { draft.exercises.move(id: exercise.id, by: $0) },
-                        onSetCompleted: { rest.start(seconds: $0.restSeconds) }
+                        onSetCompleted: { if rest.autoStart { rest.start(seconds: $0.restSeconds) } }
                     )
                 }
 
@@ -70,6 +71,9 @@ struct ActiveWorkoutView: View {
                         gym.isPresentingWorkout = false
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Timer", systemImage: "stopwatch") { showingTimer = true }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Finish") { confirmingFinish = true }
                         .font(Typo.body(15, .bold))
@@ -88,6 +92,7 @@ struct ActiveWorkoutView: View {
                     draft.exercises += exercises.map(gym.newWorkoutExercise)
                 }
             }
+            .sheet(isPresented: $showingTimer) { TimerSheet() }
             .confirmationDialog("Finish workout?", isPresented: $confirmingFinish, titleVisibility: .visible) {
                 Button("Finish") {
                     rest.stop()
@@ -183,9 +188,8 @@ struct RestDock: View {
             .task(id: end) {
                 // Hide the dock when the countdown reaches zero.
                 try? await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow)))
-                if !Task.isCancelled, rest.endDate == end { rest.stop() }
+                if !Task.isCancelled, rest.endDate == end { rest.finish() }
             }
-            .sensoryFeedback(.warning, trigger: rest.endDate == nil)
         }
     }
 }

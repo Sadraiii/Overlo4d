@@ -14,6 +14,12 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !gym.workouts.isEmpty {
+                    MonthCalendar()
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
                 ForEach(byMonth, id: \.month) { group in
                     Section {
                         ForEach(group.workouts) { workout in
@@ -74,7 +80,7 @@ struct WorkoutDetailView: View {
 
     @State private var editing: Workout?
     @State private var confirmingDelete = false
-    @State private var savedRoutine = false
+    @State private var savedPlan = false
     @State private var sharing = false
     @State private var workoutHealth: HealthManager.WorkoutHealth?
 
@@ -150,9 +156,9 @@ struct WorkoutDetailView: View {
             Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
             Menu {
                 Button("Edit", systemImage: "pencil") { editing = workout }
-                Button("Save as routine", systemImage: "square.and.arrow.down") {
-                    gym.saveRoutine(gym.routine(from: workout))
-                    savedRoutine = true
+                Button("Save as plan", systemImage: "square.and.arrow.down") {
+                    gym.savePlan(gym.plan(from: workout))
+                    savedPlan = true
                 }
                 Button("Delete", systemImage: "trash", role: .destructive) { confirmingDelete = true }
             } label: {
@@ -169,10 +175,10 @@ struct WorkoutDetailView: View {
                 gym.deleteWorkout(workout)
             }
         }
-        .alert("Saved as routine", isPresented: $savedRoutine) {
+        .alert("Saved as plan", isPresented: $savedPlan) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("\"\(workout.name)\" is under Routines on the Train tab.")
+            Text("\"\(workout.name)\" is under Plans on the Train tab.")
         }
     }
 }

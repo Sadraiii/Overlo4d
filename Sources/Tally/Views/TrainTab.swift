@@ -6,8 +6,11 @@ struct TrainTab: View {
     @Environment(AppUI.self) private var ui
     let onStart: () -> Void
 
-    @State private var editingRoutine: Routine?
-    @State private var deletingRoutine: Routine?
+    @State private var editingPlan: Plan?
+    @State private var deletingPlan: Plan?
+    @State private var openedPlan: UUID?
+    @State private var showingTimer = false
+    @State private var showingPlates = false
 
     var body: some View {
         NavigationStack {
@@ -37,18 +40,23 @@ struct TrainTab: View {
 
                     HealthCard()
 
-                    SectionHead("Routines") {
-                        Button("New") { editingRoutine = Routine(name: "", exercises: []) }
+                    HStack(spacing: 8) {
+                        ToolButton(title: "Timer", symbol: "stopwatch") { showingTimer = true }
+                        ToolButton(title: "Plates", symbol: "circle.grid.2x1") { showingPlates = true }
                     }
 
-                    if gym.routines.isEmpty {
+                    SectionHead("Plans") {
+                        Button("New") { editingPlan = Plan(name: "", exercises: []) }
+                    }
+
+                    if gym.plans.isEmpty {
                         VStack(spacing: 10) {
-                            Text("No routines").display(20)
+                            Text("No plans").display(20)
                             Text("Save workouts you repeat and start them in one tap.")
                                 .font(Typo.body(14))
                                 .foregroundStyle(Theme.ink2)
                                 .multilineTextAlignment(.center)
-                            Button("New routine") { editingRoutine = Routine(name: "", exercises: []) }
+                            Button("New plan") { editingPlan = Plan(name: "", exercises: []) }
                                 .buttonStyle(.smallOutline)
                         }
                         .frame(maxWidth: .infinity)
@@ -57,11 +65,12 @@ struct TrainTab: View {
                         .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                     }
 
-                    ForEach(gym.routines) { routine in
-                        RoutineCard(
-                            routine: routine,
-                            onEdit: { editingRoutine = routine },
-                            onDelete: { deletingRoutine = routine }
+                    ForEach(gym.plans) { plan in
+                        PlanCard(
+                            plan: plan,
+                            onOpen: { openedPlan = plan.id },
+                            onEdit: { editingPlan = plan },
+                            onDelete: { deletingPlan = plan }
                         )
                     }
 
@@ -84,14 +93,17 @@ struct TrainTab: View {
                 }
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
-            .sheet(item: $editingRoutine) { RoutineEditor(routine: $0) }
+            .navigationDestination(item: $openedPlan) { PlanDetailView(planID: $0) }
+            .sheet(item: $editingPlan) { PlanEditor(plan: $0) }
+            .sheet(isPresented: $showingTimer) { TimerSheet() }
+            .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }
             .confirmationDialog(
-                "Delete \(deletingRoutine?.name ?? "routine")?",
-                isPresented: Binding(get: { deletingRoutine != nil }, set: { if !$0 { deletingRoutine = nil } }),
+                "Delete \(deletingPlan?.name ?? "plan")?",
+                isPresented: Binding(get: { deletingPlan != nil }, set: { if !$0 { deletingPlan = nil } }),
                 titleVisibility: .visible
             ) {
                 Button("Delete", role: .destructive) {
-                    if let deletingRoutine { gym.deleteRoutine(deletingRoutine) }
+                    if let deletingPlan { gym.deletePlan(deletingPlan) }
                 }
             }
         }
@@ -159,22 +171,55 @@ struct WeekCard: View {
     }
 }
 
-/// Routine card in the style of Outdoor Office's schedule slots.
-struct RoutineCard: View {
+/// Small square shortcut on the Train tab (Timer, Plates).
+struct ToolButton: View {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .background(Theme.line, in: .rect(cornerRadius: 10))
+                Text(title).font(Typo.body(15, .semibold))
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(10)
+            .background(Theme.card, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Plan card in the style of Outdoor Office's schedule slots.
+struct PlanCard: View {
     @Environment(GymStore.self) private var gym
-    let routine: Routine
+    let plan: Plan
+    let onOpen: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        let defs = routine.exercises.compactMap { gym.exercise($0.exerciseID) }
-        let setCount = routine.exercises.reduce(0) { $0 + $1.sets.count }
+        let defs = plan.exercises.compactMap { gym.exercise($0.exerciseID) }
+        let setCount = plan.exercises.reduce(0) { $0 + $1.sets.count }
+        let last = gym.sessions(of: plan).first
 
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(routine.exercises.count) exercises · \(setCount) sets").eyebrow(11)
-                    Text(routine.name).display(27).lineLimit(2)
+                    Text("\(plan.exercises.count) exercises · \(setCount) sets").eyebrow(11)
+                    Text(plan.name).display(27).lineLimit(2)
+                    if let last {
+                        Text("Last \(last.startedAt.formatted(.dateTime.weekday(.abbreviated).day().month())) · \(Fmt.volume(last.volume))")
+                            .font(Typo.body(13, .semibold))
+                            .foregroundStyle(Theme.ink)
+                    }
                     Text(defs.map(\.name).joined(separator: " · "))
                         .font(Typo.body(14))
                         .foregroundStyle(Theme.ink2)
@@ -183,7 +228,7 @@ struct RoutineCard: View {
                 Spacer(minLength: 0)
                 Menu {
                     Button("Edit", systemImage: "pencil", action: onEdit)
-                    Button("Duplicate", systemImage: "plus.square.on.square") { gym.duplicateRoutine(routine) }
+                    Button("Duplicate", systemImage: "plus.square.on.square") { gym.duplicatePlan(plan) }
                     Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
                 } label: {
                     Image(systemName: "ellipsis")
@@ -204,7 +249,7 @@ struct RoutineCard: View {
                 }
                 Spacer()
                 Button {
-                    gym.startWorkout(from: routine)
+                    gym.startWorkout(from: plan)
                 } label: {
                     Label("Start", systemImage: "play.fill")
                 }
@@ -218,7 +263,7 @@ struct RoutineCard: View {
         .background(Theme.card, in: .rect(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
         .contentShape(.rect)
-        .onTapGesture(perform: onEdit)
+        .onTapGesture(perform: onOpen)
     }
 }
 
@@ -266,10 +311,10 @@ struct WorkoutCard: View {
     }
 }
 
-struct RoutineEditor: View {
+struct PlanEditor: View {
     @Environment(GymStore.self) private var gym
     @Environment(\.dismiss) private var dismiss
-    @State var routine: Routine
+    @State var plan: Plan
     @State private var showingPicker = false
 
     var body: some View {
@@ -278,18 +323,18 @@ struct RoutineEditor: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Name").eyebrow(11.5)
-                        TextField("Push day", text: $routine.name)
+                        TextField("Push day", text: $plan.name)
                             .font(Typo.display(30))
                     }
                 }
                 .cardRow()
 
-                ForEach($routine.exercises) { $exercise in
+                ForEach($plan.exercises) { $exercise in
                     ExerciseEditorSection(
                         exercise: $exercise,
                         isLive: false,
-                        onRemove: { routine.exercises.removeAll { $0.id == exercise.id } },
-                        onMove: { routine.exercises.move(id: exercise.id, by: $0) }
+                        onRemove: { plan.exercises.removeAll { $0.id == exercise.id } },
+                        onMove: { plan.exercises.move(id: exercise.id, by: $0) }
                     )
                 }
 
@@ -301,7 +346,7 @@ struct RoutineEditor: View {
             }
             .screenBackground()
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle(gym.routines.contains { $0.id == routine.id } ? "Edit routine" : "New routine")
+            .navigationTitle(gym.plans.contains { $0.id == plan.id } ? "Edit plan" : "New plan")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
             .toolbar {
@@ -310,18 +355,18 @@ struct RoutineEditor: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", systemImage: "checkmark") {
-                        if routine.name.trimmingCharacters(in: .whitespaces).isEmpty { routine.name = "Routine" }
-                        gym.saveRoutine(routine)
+                        if plan.name.trimmingCharacters(in: .whitespaces).isEmpty { plan.name = "Plan" }
+                        gym.savePlan(plan)
                         dismiss()
                     }
-                    .disabled(routine.exercises.isEmpty)
+                    .disabled(plan.exercises.isEmpty)
                 }
             }
             .sheet(isPresented: $showingPicker) {
                 ExercisePicker { exercises in
-                    routine.exercises += exercises.map { def in
+                    plan.exercises += exercises.map { def in
                         var exercise = gym.newWorkoutExercise(for: def)
-                        // Prefill routine targets from last time.
+                        // Prefill plan targets from last time.
                         let previous = gym.previousSets(for: def.id)
                         if !previous.isEmpty { exercise.sets = previous.map { $0.copyForNewSet() } }
                         return exercise

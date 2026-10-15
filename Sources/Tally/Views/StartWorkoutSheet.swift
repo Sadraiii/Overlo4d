@@ -7,16 +7,17 @@ struct StartRequest {
     let name: String
     let exercises: [WorkoutExercise]
     let restSeconds: Int?
+    var planID: UUID?
 }
 
-/// Start a workout: empty, a repeat of the last one, or a routine.
+/// Start a workout: empty, a repeat of the last one, or a plan.
 struct StartWorkoutSheet: View {
     @Environment(GymStore.self) private var gym
     @Environment(\.dismiss) private var dismiss
     let onStart: (StartRequest) -> Void
 
     enum Choice: Hashable {
-        case empty, last, routine(UUID)
+        case empty, last, plan(UUID)
     }
 
     @State private var choice = Choice.empty
@@ -52,13 +53,13 @@ struct StartWorkoutSheet: View {
                                     detail: "\(last.name) · \(last.startedAt.formatted(.dateTime.weekday(.abbreviated).day().month()))"
                                 )
                             }
-                            ForEach(gym.routines) { routine in
+                            ForEach(gym.plans) { plan in
                                 Divider().overlay(Theme.line)
                                 option(
-                                    .routine(routine.id),
+                                    .plan(plan.id),
                                     symbol: "list.bullet",
-                                    title: routine.name,
-                                    detail: "\(routine.exercises.count) exercises · \(routine.exercises.reduce(0) { $0 + $1.sets.count }) sets"
+                                    title: plan.name,
+                                    detail: "\(plan.exercises.count) exercises · \(plan.exercises.reduce(0) { $0 + $1.sets.count }) sets"
                                 )
                             }
                         }
@@ -110,7 +111,7 @@ struct StartWorkoutSheet: View {
         switch choice {
         case .empty: gym.defaultWorkoutName()
         case .last: gym.workouts.first?.name ?? gym.defaultWorkoutName()
-        case .routine(let id): gym.routines.first { $0.id == id }?.name ?? gym.defaultWorkoutName()
+        case .plan(let id): gym.plans.first { $0.id == id }?.name ?? gym.defaultWorkoutName()
         }
     }
 
@@ -145,11 +146,16 @@ struct StartWorkoutSheet: View {
         let exercises: [WorkoutExercise] = switch choice {
         case .empty: []
         case .last: gym.workouts.first?.exercises ?? []
-        case .routine(let id): gym.routines.first { $0.id == id }?.exercises ?? []
+        case .plan(let id): gym.plans.first { $0.id == id }?.exercises ?? []
+        }
+        let planID: UUID? = switch choice {
+        case .empty: nil
+        case .last: gym.workouts.first?.planID
+        case .plan(let id): id
         }
         if let restSeconds { gym.defaultRestSeconds = restSeconds }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        onStart(StartRequest(name: trimmed.isEmpty ? suggestedName : trimmed, exercises: exercises, restSeconds: restSeconds))
+        onStart(StartRequest(name: trimmed.isEmpty ? suggestedName : trimmed, exercises: exercises, restSeconds: restSeconds, planID: planID))
     }
 }
 
@@ -208,6 +214,8 @@ struct SettingsSheet: View {
                         .background(Theme.line, in: .rect(cornerRadius: 15))
                     }
 
+                    RestSettingsSection()
+
                     HealthSettingsSection()
                 }
                 .padding(16)
@@ -222,7 +230,39 @@ struct SettingsSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .onChange(of: appearance) { WidgetCenter.shared.reloadAllTimelines() }
+    }
+}
+
+/// Rest timer defaults: start automatically after each set, and how long.
+struct RestSettingsSection: View {
+    @AppStorage("rest.autoStart") private var autoStart = true
+    @AppStorage("defaultRestSeconds") private var defaultRest = 90
+
+    private static let options = [30, 45, 60, 90, 120, 150, 180, 240, 300]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Rest timer").eyebrow(11.5)
+            VStack(spacing: 0) {
+                Toggle("Start after each set", isOn: $autoStart)
+                    .font(Typo.body(15, .semibold))
+                    .padding(14)
+                Rectangle().fill(Theme.line).frame(height: 1)
+                HStack {
+                    Text("Default").font(Typo.body(15, .semibold))
+                    Spacer()
+                    Picker("Default", selection: $defaultRest) {
+                        ForEach(Self.options, id: \.self) { Text(Fmt.rest($0)).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+            }
+            .background(Theme.card, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+        }
     }
 }

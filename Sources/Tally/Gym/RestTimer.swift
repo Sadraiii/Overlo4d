@@ -1,5 +1,7 @@
+import AudioToolbox
 import Foundation
 import Observation
+import UIKit
 import UserNotifications
 
 /// Countdown between sets. Schedules a local notification so it also fires while the app is in the background.
@@ -12,6 +14,18 @@ final class RestTimer {
     private static let notificationID = "rest-timer"
 
     var isRunning: Bool { endDate != nil }
+
+    /// Start the rest countdown automatically when a set is ticked off.
+    /// Set in Settings.
+    var autoStart: Bool { UserDefaults.standard.object(forKey: "rest.autoStart") as? Bool ?? true }
+
+    /// Called when the countdown reaches zero while the app is open: sound and haptic, then hide.
+    func finish() {
+        guard endDate != nil else { return }
+        AudioServicesPlaySystemSound(1005)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        stop()
+    }
 
     func requestPermission() {
         Task {

@@ -83,7 +83,7 @@ struct WorkoutSet: Codable, Identifiable, Hashable, Sendable {
     var seconds: Int?
     var isDone = false
 
-    /// A fresh, not-done copy (new ID) used when adding sets or starting from a routine.
+    /// A fresh, not-done copy (new ID) used when adding sets or starting from a plan.
     func copyForNewSet() -> WorkoutSet {
         WorkoutSet(type: type, weight: weight, reps: reps, seconds: seconds)
     }
@@ -115,6 +115,8 @@ struct Workout: Codable, Identifiable, Hashable, Sendable {
     var endedAt: Date?
     var exercises: [WorkoutExercise]
     var notes = ""
+    /// The plan this workout was started from, if any.
+    var planID: UUID?
 
     var duration: TimeInterval { (endedAt ?? .now).timeIntervalSince(startedAt) }
     var allSets: [WorkoutSet] { exercises.flatMap(\.sets) }
@@ -122,7 +124,7 @@ struct Workout: Codable, Identifiable, Hashable, Sendable {
     var volume: Double { completedSets.reduce(0) { $0 + $1.volume } }
 }
 
-struct Routine: Codable, Identifiable, Hashable, Sendable {
+struct Plan: Codable, Identifiable, Hashable, Sendable {
     var id = UUID()
     var name: String
     /// Template exercises; set weights/reps are the targets.
@@ -132,9 +134,15 @@ struct Routine: Codable, Identifiable, Hashable, Sendable {
 struct GymData: Codable, Sendable {
     var exercises: [ExerciseDef] = ExerciseLibrary.defaults
     var workouts: [Workout] = []
-    var routines: [Routine] = []
+    var plans: [Plan] = []
     /// The workout currently in progress, kept on disk so it survives the app being closed.
     var activeWorkout: Workout?
+
+    // Plans were called routines in earlier versions; keep the stored key.
+    enum CodingKeys: String, CodingKey {
+        case exercises, workouts, activeWorkout
+        case plans = "routines"
+    }
 }
 
 enum RecordKind: String, CaseIterable, Sendable {

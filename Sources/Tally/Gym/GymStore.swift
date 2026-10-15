@@ -18,7 +18,7 @@ final class GymStore {
     private(set) var exercises: [ExerciseDef]
     /// Finished workouts, newest first.
     private(set) var workouts: [Workout]
-    private(set) var routines: [Routine]
+    private(set) var plans: [Plan]
     /// The workout in progress. The workout screen edits its own copy and pushes changes via `updateActive`.
     private(set) var activeWorkout: Workout?
     /// Whether the workout screen is shown (vs. minimized to the bottom bar).
@@ -35,7 +35,7 @@ final class GymStore {
             .flatMap { try? JSONDecoder().decode(GymData.self, from: $0) } ?? GymData()
         exercises = data.exercises
         workouts = data.workouts.sorted { $0.startedAt > $1.startedAt }
-        routines = data.routines
+        plans = data.plans
         activeWorkout = data.activeWorkout
         recomputeRecords()
         writeSnapshot()
@@ -47,7 +47,7 @@ final class GymStore {
     }
 
     func save() {
-        let data = GymData(exercises: exercises, workouts: workouts, routines: routines, activeWorkout: activeWorkout)
+        let data = GymData(exercises: exercises, workouts: workouts, plans: plans, activeWorkout: activeWorkout)
         guard let encoded = try? JSONEncoder().encode(data) else { return }
         try? encoded.write(to: fileURL, options: .atomic)
     }
@@ -69,7 +69,7 @@ final class GymStore {
 
     func isUsed(_ exercise: ExerciseDef) -> Bool {
         workouts.contains { $0.exercises.contains { $0.exerciseID == exercise.id } }
-            || routines.contains { $0.exercises.contains { $0.exerciseID == exercise.id } }
+            || plans.contains { $0.exercises.contains { $0.exerciseID == exercise.id } }
     }
 
     func deleteExercise(_ exercise: ExerciseDef) {
@@ -84,12 +84,12 @@ final class GymStore {
         begin(Workout(name: defaultWorkoutName(), startedAt: .now, exercises: []))
     }
 
-    func startWorkout(from routine: Routine) {
-        start(name: routine.name, exercises: routine.exercises)
+    func startWorkout(from plan: Plan) {
+        start(name: plan.name, exercises: plan.exercises, planID: plan.id)
     }
 
-    /// Starts a workout from template exercises (an empty list, a routine or a past workout).
-    func start(name: String, exercises templates: [WorkoutExercise], restSeconds: Int? = nil) {
+    /// Starts a workout from template exercises (an empty list, a plan or a past workout).
+    func start(name: String, exercises templates: [WorkoutExercise], restSeconds: Int? = nil, planID: UUID? = nil) {
         guard activeWorkout == nil else { isPresentingWorkout = true; return }
         let exercises = templates.map { template in
             WorkoutExercise(
@@ -99,7 +99,7 @@ final class GymStore {
                 notes: template.notes
             )
         }
-        begin(Workout(name: name, startedAt: .now, exercises: exercises))
+        begin(Workout(name: name, startedAt: .now, exercises: exercises, planID: planID))
     }
 
     /// Rest timer used for exercises added to a workout (set on the start sheet).
@@ -195,6 +195,27 @@ final class GymStore {
         writeSnapshot()
     }
 
+    /// Finished workouts done from a plan, newest first. Workouts from before plans were linked are matched by name.
+    func sessions(of plan: Plan) -> [Workout] {
+        workouts.filter { $0.planID == plan.id || ($0.planID == nil && $0.name == plan.name) }
+    }
+
+    /// When the exercise was last done, with its sets.
+    func lastSession(for exerciseID: UUID) -> ExerciseSession? {
+        sessions(for: exerciseID).first
+    }
+
+    /// Weight to try next time: 2.5 kg more when every working set at last time's top weight reached
+    /// `targetReps` (or the reps of the first working set, if no target), otherwise the same weight.
+    func suggestedWeight(for exerciseID: UUID, targetReps: Int?) -> (weight: Double, increase: Bool)? {
+        let working = previousSets(for: exerciseID).filter { $0.type == .normal && ($0.weight ?? 0) > 0 }
+        guard let top = working.compactMap(\.weight).max() else { return nil }
+        let atTop = working.filter { $0.weight == top }
+        let target = targetReps ?? working.first?.reps ?? 0
+        let hitAll = target > 0 && atTop.allSatisfy { ($0.reps ?? 0) >= target }
+        return hitAll ? (top + 2.5, true) : (top, false)
+    }
+
     /// Completed sets from the most recent finished workout containing the exercise.
     func previousSets(for exerciseID: UUID) -> [WorkoutSet] {
         for workout in workouts {
@@ -257,31 +278,31 @@ final class GymStore {
         records = result
     }
 
-    // MARK: Routines
+    // MARK: Plans
 
-    func saveRoutine(_ routine: Routine) {
-        if let index = routines.firstIndex(where: { $0.id == routine.id }) {
-            routines[index] = routine
+    func savePlan(_ plan: Plan) {
+        if let index = plans.firstIndex(where: { $0.id == plan.id }) {
+            plans[index] = plan
         } else {
-            routines.append(routine)
+            plans.append(plan)
         }
         save()
     }
 
-    func deleteRoutine(_ routine: Routine) {
-        routines.removeAll { $0.id == routine.id }
+    func deletePlan(_ plan: Plan) {
+        plans.removeAll { $0.id == plan.id }
         save()
     }
 
-    func duplicateRoutine(_ routine: Routine) {
-        var copy = routine
+    func duplicatePlan(_ plan: Plan) {
+        var copy = plan
         copy.id = UUID()
         copy.name += " Copy"
-        saveRoutine(copy)
+        savePlan(copy)
     }
 
-    func routine(from workout: Workout) -> Routine {
-        Routine(
+    func plan(from workout: Workout) -> Plan {
+        Plan(
             name: workout.name,
             exercises: workout.exercises.map { exercise in
                 var copy = exercise

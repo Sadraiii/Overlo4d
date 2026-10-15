@@ -92,9 +92,11 @@ struct SetRow: View {
                 Button {
                     if let previous { fill(from: previous) }
                 } label: {
-                    Text(previous.map { Fmt.set($0, kind: kind) } ?? "–")
-                        .font(Typo.body(13, .medium))
-                        .foregroundStyle(Theme.ink3)
+                    // Once a set is done, show how it compares with the same set last time.
+                    let change = set.isDone ? previous.map { SetChange(from: $0, to: set, kind: kind) } : nil
+                    Text(change?.text ?? previous.map { Fmt.set($0, kind: kind) } ?? "–")
+                        .font(Typo.body(13, change == nil ? .medium : .bold))
+                        .foregroundStyle(change?.color ?? Theme.ink3)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)

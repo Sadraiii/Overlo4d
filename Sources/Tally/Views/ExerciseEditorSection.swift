@@ -1,15 +1,17 @@
 import TallyKit
 import SwiftUI
 
-/// List section for one exercise inside a workout or routine: header menu, notes, set rows, "Add set".
+/// List section for one exercise inside a workout or plan: header menu, notes, set rows, "Add set".
 struct ExerciseEditorSection: View {
     @Environment(GymStore.self) private var gym
     @Binding var exercise: WorkoutExercise
-    /// true in an active workout (previous column + checkmarks); false when editing a routine or past workout.
+    /// true in an active workout (previous column + checkmarks); false when editing a plan or past workout.
     let isLive: Bool
     var onRemove: () -> Void
     var onMove: (Int) -> Void = { _ in }
     var onSetCompleted: (WorkoutExercise) -> Void = { _ in }
+
+    @State private var showingPlates = false
 
     private static let restOptions = [0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
 
@@ -42,6 +44,9 @@ struct ExerciseEditorSection: View {
                         Label("Rest timer: \(Fmt.rest(exercise.restSeconds))", systemImage: "timer")
                     }
                     .pickerStyle(.menu)
+                    if kind == .weightReps {
+                        Button("Plate calculator", systemImage: "circle.grid.2x1") { showingPlates = true }
+                    }
                     Button("Move up", systemImage: "arrow.up") { onMove(-1) }
                     Button("Move down", systemImage: "arrow.down") { onMove(1) }
                     Button("Remove", systemImage: "trash", role: .destructive, action: onRemove)
@@ -54,6 +59,24 @@ struct ExerciseEditorSection: View {
                 }
             }
             .cardRow()
+            .sheet(isPresented: $showingPlates) {
+                PlateCalculatorSheet(target: exercise.sets.compactMap(\.weight).max())
+            }
+
+            if isLive, let last = gym.lastSession(for: exercise.exerciseID) {
+                LastTimeRow(
+                    session: last,
+                    kind: kind,
+                    suggestion: kind == .weightReps
+                        ? gym.suggestedWeight(for: exercise.exerciseID, targetReps: exercise.sets.first { $0.type == .normal }?.reps)
+                        : nil
+                ) { weight in
+                    for index in exercise.sets.indices where !exercise.sets[index].isDone && exercise.sets[index].type == .normal {
+                        exercise.sets[index].weight = weight
+                    }
+                }
+                .cardRow()
+            }
 
             TextField("Note", text: $exercise.notes, axis: .vertical)
                 .font(Typo.body(14))
@@ -91,6 +114,49 @@ struct ExerciseEditorSection: View {
             }
             .buttonStyle(.plain)
             .cardRow()
+        }
+    }
+}
+
+/// What was done last time, and the weight to try next.
+struct LastTimeRow: View {
+    let session: ExerciseSession
+    let kind: ExerciseKind
+    let suggestion: (weight: Double, increase: Bool)?
+    let apply: (Double) -> Void
+
+    private func compact(_ set: WorkoutSet) -> String {
+        switch kind {
+        case .weightReps: "\(Fmt.weight(set.weight ?? 0))×\(set.reps ?? 0)"
+        case .repsOnly: "\(set.reps ?? 0)"
+        case .duration: Fmt.seconds(set.seconds ?? 0)
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Last time · \(session.date.formatted(.dateTime.weekday(.abbreviated).day().month()))").eyebrow(10.5)
+                Text(session.sets.filter { $0.type != .warmup }.map(compact).joined(separator: "  ·  "))
+                    .font(Typo.body(13.5, .medium))
+                    .foregroundStyle(Theme.ink2)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 4)
+            if let suggestion {
+                Button {
+                    apply(suggestion.weight)
+                } label: {
+                    Label("\(Fmt.weight(suggestion.weight)) kg", systemImage: suggestion.increase ? "arrow.up" : "equal")
+                        .font(Typo.body(13, .bold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 32)
+                        .background(Theme.accentSoft, in: .capsule)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(suggestion.increase ? "Use \(Fmt.weight(suggestion.weight)) kg, up from last time" : "Use \(Fmt.weight(suggestion.weight)) kg, same as last time")
+            }
         }
     }
 }

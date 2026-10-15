@@ -8,7 +8,7 @@ struct WorkoutSummaryView: View {
     let workout: Workout
 
     @State private var appeared = false
-    @State private var savedRoutine = false
+    @State private var savedPlan = false
     @State private var sharing = false
     @State private var workoutHealth: HealthManager.WorkoutHealth?
 
@@ -82,12 +82,12 @@ struct WorkoutSummaryView: View {
                     HStack(spacing: 10) {
                         Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
                             .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 50, fullWidth: true))
-                        Button(savedRoutine ? "Saved" : "Save as routine") {
-                            gym.saveRoutine(gym.routine(from: workout))
-                            savedRoutine = true
+                        Button(savedPlan ? "Saved" : "Save as plan") {
+                            gym.savePlan(gym.plan(from: workout))
+                            savedPlan = true
                         }
-                        .buttonStyle(OOButtonStyle(kind: savedRoutine ? .done : .outline, shape: .pill, height: 50, fullWidth: true))
-                        .disabled(savedRoutine)
+                        .buttonStyle(OOButtonStyle(kind: savedPlan ? .done : .outline, shape: .pill, height: 50, fullWidth: true))
+                        .disabled(savedPlan)
                     }
                 }
                 .padding(.top, 8)

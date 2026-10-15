@@ -21,6 +21,7 @@ struct TallyApp: App {
     @State private var rest = RestTimer()
     @State private var ui = AppUI()
     @State private var health = HealthManager()
+    @State private var clock = IntervalClock()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -38,6 +39,7 @@ struct TallyApp: App {
                 .environment(rest)
                 .environment(ui)
                 .environment(health)
+                .environment(clock)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
@@ -99,7 +101,7 @@ struct RootView: View {
         .sheet(isPresented: $showingStart, onDismiss: {
             guard let request = pendingStart else { return }
             pendingStart = nil
-            gym.start(name: request.name, exercises: request.exercises, restSeconds: request.restSeconds)
+            gym.start(name: request.name, exercises: request.exercises, restSeconds: request.restSeconds, planID: request.planID)
         }) {
             StartWorkoutSheet { request in
                 pendingStart = request
