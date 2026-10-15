@@ -74,14 +74,10 @@ struct PlanDetailView: View {
                         .buttonStyle(.plain)
                     }
                 } else {
-                    VStack(spacing: 8) {
-                        Text("No sessions yet").display(20)
-                        Text("Start this plan to see your sets and progress here.")
-                            .font(Typo.body(14))
-                            .foregroundStyle(Theme.ink2)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
+                    Text("No sessions yet")
+                        .display(20)
+                        .foregroundStyle(Theme.ink2)
+                        .frame(maxWidth: .infinity)
                     .padding(.vertical, 28)
                     .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                 }

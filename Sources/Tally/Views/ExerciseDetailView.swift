@@ -7,6 +7,7 @@ struct ExerciseDetailView: View {
     let exercise: ExerciseDef
 
     @State private var metric: ChartMetric?
+    @State private var editing = false
 
     enum ChartMetric: String, CaseIterable, Identifiable {
         case heaviest = "Heaviest"
@@ -46,31 +47,42 @@ struct ExerciseDetailView: View {
     }
 
     var body: some View {
+        // Look the exercise up again so edits show straight away.
+        if let current = gym.exercise(exercise.id) {
+            content(current)
+        } else {
+            ContentUnavailableView("Exercise deleted", systemImage: "trash")
+                .screenBackground()
+        }
+    }
+
+    private func content(_ exercise: ExerciseDef) -> some View {
         let sessions = gym.sessions(for: exercise.id)
         let metrics = ChartMetric.metrics(for: exercise.kind)
         let selected = metric ?? metrics[0]
         let points = sessions.reversed().map { (date: $0.date, value: selected.value($0)) }
 
-        ScrollView {
+        return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 14) {
-                    ExerciseBadge(exercise: exercise, size: 52)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(exercise.muscle.label) · \(exercise.kind.label)").eyebrow(11)
-                        Text(exercise.name).display(34).lineLimit(2)
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exercise.isCustom ? "\(exercise.muscle.label) · Custom" : exercise.muscle.label).eyebrow(11)
+                    Text(exercise.name).display(34).lineLimit(2)
                 }
 
+                HStack(alignment: .center, spacing: 18) {
+                    AnatomyFigure(primary: Set(exercise.primary), secondary: Set(exercise.secondary))
+                        .frame(height: 200)
+                    MuscleLegend(primary: exercise.primary, secondary: exercise.secondary)
+                    Spacer(minLength: 0)
+                }
+                .card()
+
                 if sessions.isEmpty {
-                    VStack(spacing: 8) {
-                        Text("No history").display(20)
-                        Text("Log this exercise in a workout to see progress and records.")
-                            .font(Typo.body(14))
-                            .foregroundStyle(Theme.ink2)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 30)
+                    Text("Not logged yet")
+                        .display(20)
+                        .foregroundStyle(Theme.ink2)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 26)
                     .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                 } else {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
@@ -155,5 +167,11 @@ struct ExerciseDetailView: View {
         }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if exercise.isCustom {
+                Button("Edit", systemImage: "pencil") { editing = true }
+            }
+        }
+        .sheet(isPresented: $editing) { ExerciseEditor(exercise: exercise) }
     }
 }

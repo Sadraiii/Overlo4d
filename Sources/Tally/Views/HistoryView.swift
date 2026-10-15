@@ -178,7 +178,7 @@ struct WorkoutDetailView: View {
         .alert("Saved as plan", isPresented: $savedPlan) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("\"\(workout.name)\" is under Plans on the Train tab.")
+            Text("\(workout.name) is in Plans.")
         }
     }
 }

@@ -14,72 +14,70 @@ struct QuickCountView: View {
     private static let goals = [50, 100, 150, 200, 300, 500, 1000]
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    TodayCard(goals: Self.goals)
-                    WeekRepsCard()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                TodayCard(goals: Self.goals)
+                WeekRepsCard()
 
-                    SectionHead("Exercises") {
-                        Button("Add") {
-                            newExerciseName = ""
-                            showingAddExercise = true
-                        }
+                SectionHead("Exercises") {
+                    Button("Add") {
+                        newExerciseName = ""
+                        showingAddExercise = true
                     }
+                }
 
-                    ForEach(model.exercises) { exercise in
-                        RepCounterCard(exercise: exercise) {
-                            customAmount = ""
-                            customTarget = exercise
-                        }
-                        .contextMenu {
-                            Button("Undo last", systemImage: "arrow.uturn.backward") { withAnimation { model.undoLast(for: exercise) } }
-                            Button("Reset today", systemImage: "arrow.counterclockwise") { withAnimation { model.resetToday(for: exercise) } }
-                            Button("Move up", systemImage: "arrow.up") { model.move(exercise, by: -1) }
-                            Button("Move down", systemImage: "arrow.down") { model.move(exercise, by: 1) }
-                            Button("Delete", systemImage: "trash", role: .destructive) { deleting = exercise }
-                        }
+                ForEach(model.exercises) { exercise in
+                    RepCounterCard(exercise: exercise) {
+                        customAmount = ""
+                        customTarget = exercise
+                    }
+                    .contextMenu {
+                        Button("Undo last", systemImage: "arrow.uturn.backward") { withAnimation { model.undoLast(for: exercise) } }
+                        Button("Reset today", systemImage: "arrow.counterclockwise") { withAnimation { model.resetToday(for: exercise) } }
+                        Button("Move up", systemImage: "arrow.up") { model.move(exercise, by: -1) }
+                        Button("Move down", systemImage: "arrow.down") { model.move(exercise, by: 1) }
+                        Button("Delete", systemImage: "trash", role: .destructive) { deleting = exercise }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
-            .screenBackground()
-            .navigationTitle("Reps")
-            .toolbar {
-                Button("Share today", systemImage: "square.and.arrow.up") { sharing = true }
-                    .disabled(model.repsToday == 0)
-            }
-            .sheet(isPresented: $sharing) { ShareSheet(model: .reps(model)) }
-            .alert("New exercise", isPresented: $showingAddExercise) {
-                TextField("Burpees", text: $newExerciseName)
-                Button("Add") { model.addExercise(named: newExerciseName) }
-                Button("Cancel", role: .cancel) {}
-            }
-            .alert(
-                "Add reps to \(customTarget?.name ?? "")",
-                isPresented: Binding(get: { customTarget != nil }, set: { if !$0 { customTarget = nil } })
-            ) {
-                TextField("Reps", text: $customAmount)
-                    .keyboardType(.numberPad)
-                Button("Add") {
-                    if let exercise = customTarget, let reps = Int(customAmount) {
-                        withAnimation { model.add(reps, to: exercise) }
-                    }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+        }
+        .screenBackground()
+        .navigationTitle("Reps")
+        .toolbar {
+            Button("Share today", systemImage: "square.and.arrow.up") { sharing = true }
+                .disabled(model.repsToday == 0)
+        }
+        .sheet(isPresented: $sharing) { ShareSheet(model: .reps(model)) }
+        .alert("New exercise", isPresented: $showingAddExercise) {
+            TextField("Burpees", text: $newExerciseName)
+            Button("Add") { model.addExercise(named: newExerciseName) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert(
+            "Add reps to \(customTarget?.name ?? "")",
+            isPresented: Binding(get: { customTarget != nil }, set: { if !$0 { customTarget = nil } })
+        ) {
+            TextField("Reps", text: $customAmount)
+                .keyboardType(.numberPad)
+            Button("Add") {
+                if let exercise = customTarget, let reps = Int(customAmount) {
+                    withAnimation { model.add(reps, to: exercise) }
                 }
-                Button("Cancel", role: .cancel) {}
             }
-            .confirmationDialog(
-                "Delete \(deleting?.name ?? "exercise")?",
-                isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let deleting { model.delete(deleting) }
-                }
-            } message: {
-                Text("Its rep history is deleted too.")
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "Delete \(deleting?.name ?? "exercise")?",
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let deleting { model.delete(deleting) }
             }
+        } message: {
+            Text("Its rep history is deleted too.")
         }
     }
 }

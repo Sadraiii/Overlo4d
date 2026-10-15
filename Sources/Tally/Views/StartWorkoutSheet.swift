@@ -43,7 +43,7 @@ struct StartWorkoutSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Start from").eyebrow(11.5)
                         VStack(spacing: 0) {
-                            option(.empty, symbol: "plus", title: "Empty workout", detail: "Add exercises as you go")
+                            option(.empty, symbol: "plus", title: "Empty workout", detail: nil)
                             if let last = gym.workouts.first {
                                 Divider().overlay(Theme.line)
                                 option(
@@ -115,7 +115,7 @@ struct StartWorkoutSheet: View {
         }
     }
 
-    private func option(_ value: Choice, symbol: String, title: String, detail: String) -> some View {
+    private func option(_ value: Choice, symbol: String, title: String, detail: String?) -> some View {
         let selected = choice == value
         return Button {
             choice = value
@@ -128,7 +128,9 @@ struct StartWorkoutSheet: View {
                     .background(selected ? Theme.accent : Theme.line, in: .rect(cornerRadius: 13))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(Typo.body(16, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
-                    Text(detail).font(Typo.body(13)).foregroundStyle(Theme.ink3).lineLimit(1)
+                    if let detail {
+                        Text(detail).font(Typo.body(13)).foregroundStyle(Theme.ink3).lineLimit(1)
+                    }
                 }
                 Spacer()
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -217,6 +219,8 @@ struct SettingsSheet: View {
                     RestSettingsSection()
 
                     HealthSettingsSection()
+
+                    AboutSection()
                 }
                 .padding(16)
             }

@@ -256,18 +256,21 @@ extension MuscleGroup {
     }
 }
 
-/// Coloured circle with the exercise's initial, like Outdoor Office avatars.
+/// Small front and back figure with the exercise's muscles filled in.
 struct ExerciseBadge: View {
     let exercise: ExerciseDef?
     var size: CGFloat = 40
 
     var body: some View {
-        let color = exercise?.muscle.color ?? Theme.ink3
-        Text(String((exercise?.name ?? "?").prefix(1)))
-            .font(Typo.body(size * 0.38, .bold))
-            .foregroundStyle(Theme.card)
-            .frame(width: size, height: size)
-            .background(color, in: .circle)
+        AnatomyFigure(
+            primary: Set(exercise?.primary ?? []),
+            secondary: Set(exercise?.secondary ?? []),
+            gap: Theme.paper
+        )
+        .padding(size * 0.07)
+        .frame(width: size, height: size)
+        .background(Theme.paper, in: .rect(cornerRadius: size * 0.26))
+        .accessibilityHidden(true)
     }
 }
 
@@ -276,13 +279,43 @@ struct ExerciseLabel: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ExerciseBadge(exercise: exercise)
+            ExerciseBadge(exercise: exercise, size: 46)
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name).font(Typo.body(15, .semibold)).foregroundStyle(Theme.ink)
-                Text(exercise.muscle.label + (exercise.isCustom ? " · Custom" : ""))
+                Text(exercise.isCustom ? "Custom · \(exercise.muscleSummary)" : exercise.muscleSummary)
                     .font(Typo.body(13))
                     .foregroundStyle(Theme.ink3)
+                    .lineLimit(1)
             }
+        }
+    }
+}
+
+/// Capsule menu that narrows a list to one value, or shows everything.
+struct FilterMenu<Value: Hashable & Identifiable>: View {
+    let title: String
+    @Binding var selection: Value?
+    let options: [Value]
+    let label: (Value) -> String
+
+    var body: some View {
+        let isOn = selection != nil
+        Menu {
+            Picker(title, selection: $selection) {
+                Text("All").tag(Value?.none)
+                ForEach(options) { Text(label($0)).tag(Optional($0)) }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(selection.map(label) ?? title)
+                Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+            }
+            .font(Typo.body(13.5, .semibold))
+            .foregroundStyle(isOn ? Theme.paper : Theme.ink)
+            .padding(.horizontal, 13)
+            .frame(minHeight: 34)
+            .background(isOn ? Theme.ink : Theme.card, in: .capsule)
+            .overlay(Capsule().strokeBorder(isOn ? .clear : Theme.line2, lineWidth: 1))
         }
     }
 }

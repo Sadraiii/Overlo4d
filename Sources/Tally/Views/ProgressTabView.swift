@@ -60,7 +60,7 @@ struct ProgressTabView: View {
                     Button("Share week", systemImage: "square.and.arrow.up") { sharingWeek = true }
                 }
             }
-            .sheet(isPresented: $showingCreate) { CreateExerciseView() }
+            .sheet(isPresented: $showingCreate) { ExerciseEditor() }
             .sheet(isPresented: $sharingWeek) { ShareSheet(model: .week(containing: .now, gym: gym)) }
         }
     }
@@ -121,6 +121,22 @@ struct ProgressOverview: View {
             }
         }
         return counts.map { ($0.key, $0.value) }.sorted { $0.sets > $1.sets }
+    }
+
+    /// Working sets per muscle over the last 30 days, scaled to 0–1. Secondary muscles count half.
+    private var muscleLevels: [Muscle: Double] {
+        let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
+        var counts: [Muscle: Double] = [:]
+        for workout in gym.workouts where workout.startedAt >= since {
+            for exercise in workout.exercises {
+                guard let def = gym.exercise(exercise.exerciseID) else { continue }
+                let sets = Double(exercise.sets.filter { $0.type != .warmup }.count)
+                for muscle in def.primary { counts[muscle, default: 0] += sets }
+                for muscle in def.secondary { counts[muscle, default: 0] += sets / 2 }
+            }
+        }
+        guard let most = counts.values.max(), most > 0 else { return [:] }
+        return counts.mapValues { $0 / most }
     }
 
     private struct RecordItem: Identifiable {
@@ -225,6 +241,10 @@ struct ProgressOverview: View {
                 SectionHead("Muscles")
                 let most = max(muscleSets.first?.sets ?? 1, 1)
                 VStack(spacing: 12) {
+                    AnatomyFigure(levels: muscleLevels)
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 6)
                     ForEach(muscleSets, id: \.muscle) { item in
                         VStack(spacing: 6) {
                             HStack {

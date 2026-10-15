@@ -62,31 +62,49 @@ struct ExercisePicker: View {
                 }
             }
             .sheet(isPresented: $showingCreate) {
-                CreateExerciseView { exercise in selected.append(exercise.id) }
+                ExerciseEditor { exercise in selected.append(exercise.id) }
             }
         }
     }
 }
 
-/// Exercise list grouped by muscle, filtered by search text. Shared by the picker and the Exercises screen.
+/// Exercise list grouped by muscle, filtered by search text, muscle group and equipment.
+/// Shared by the picker and the Exercises page.
 struct ExerciseList<Row: View>: View {
     @Environment(GymStore.self) private var gym
     let search: String
     @ViewBuilder let row: (ExerciseDef) -> Row
 
+    @State private var group: MuscleGroup?
+    @State private var equipment: Equipment?
+
     private var filtered: [ExerciseDef] {
         let query = search.trimmingCharacters(in: .whitespaces)
         return gym.exercises
-            .filter {
-                query.isEmpty
-                    || $0.name.localizedCaseInsensitiveContains(query)
-                    || $0.muscle.label.localizedCaseInsensitiveContains(query)
+            .filter { exercise in
+                (group == nil || exercise.muscle == group)
+                    && (equipment == nil || exercise.equipment == equipment)
+                    && (query.isEmpty
+                        || exercise.name.localizedCaseInsensitiveContains(query)
+                        || exercise.muscle.label.localizedCaseInsensitiveContains(query)
+                        || exercise.primary.contains { $0.label.localizedCaseInsensitiveContains(query) })
             }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     var body: some View {
+        let filtered = filtered
         List {
+            Section {
+                HStack(spacing: 8) {
+                    FilterMenu(title: "Muscle", selection: $group, options: MuscleGroup.allCases) { $0.label }
+                    FilterMenu(title: "Equipment", selection: $equipment, options: Equipment.allCases) { $0.label }
+                    Spacer(minLength: 0)
+                }
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+
             ForEach(MuscleGroup.allCases) { muscle in
                 let exercises = filtered.filter { $0.muscle == muscle }
                 if !exercises.isEmpty {
@@ -94,8 +112,8 @@ struct ExerciseList<Row: View>: View {
                         ForEach(exercises) { row($0) }
                     } header: {
                         HStack(spacing: 6) {
-                            Circle().fill(muscle.color).frame(width: 8, height: 8)
                             Text(muscle.label).eyebrow(11)
+                            Text("\(exercises.count)").font(Typo.body(11, .semibold)).foregroundStyle(Theme.ink3)
                         }
                     }
                 }
@@ -104,59 +122,12 @@ struct ExerciseList<Row: View>: View {
         .screenBackground()
         .overlay {
             if filtered.isEmpty {
-                ContentUnavailableView.search(text: search)
-            }
-        }
-    }
-}
-
-struct CreateExerciseView: View {
-    @Environment(GymStore.self) private var gym
-    @Environment(\.dismiss) private var dismiss
-    var onCreate: (ExerciseDef) -> Void = { _ in }
-
-    @State private var name = ""
-    @State private var muscle = MuscleGroup.chest
-    @State private var kind = ExerciseKind.weightReps
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                    .cardRow()
-                Picker("Muscle", selection: $muscle) {
-                    ForEach(MuscleGroup.allCases) { Text($0.label).tag($0) }
-                }
-                .cardRow()
-                Picker("Type", selection: $kind) {
-                    ForEach(ExerciseKind.allCases) { Text($0.label).tag($0) }
-                }
-                .cardRow()
-            }
-            .font(Typo.body(16))
-            .screenBackground()
-            .navigationTitle("New exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", systemImage: "xmark") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", systemImage: "checkmark") {
-                        let exercise = ExerciseDef(
-                            name: name.trimmingCharacters(in: .whitespaces),
-                            muscle: muscle,
-                            kind: kind,
-                            isCustom: true
-                        )
-                        gym.addExercise(exercise)
-                        onCreate(exercise)
-                        dismiss()
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                if search.isEmpty {
+                    ContentUnavailableView("No exercises", systemImage: "line.3.horizontal.decrease")
+                } else {
+                    ContentUnavailableView.search(text: search)
                 }
             }
         }
-        .presentationDetents([.medium])
     }
 }

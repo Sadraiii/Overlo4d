@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 import TallyKit
 
-/// Today's steps, energy and exercise minutes on the Train tab, or a prompt to connect.
+/// Today's steps, energy and exercise minutes on Home, or a prompt to connect.
 struct HealthCard: View {
     @Environment(HealthManager.self) private var health
 
@@ -34,7 +34,7 @@ struct HealthCard: View {
                     .background(Theme.line, in: .rect(cornerRadius: 13))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Apple Health").font(Typo.body(15, .semibold))
-                    Text("Show steps, energy and weight, and save workouts to Health.")
+                    Text("Steps, energy and body weight")
                         .font(Typo.body(13))
                         .foregroundStyle(Theme.ink3)
                 }
@@ -142,7 +142,7 @@ struct HealthSettingsSection: View {
                         .font(Typo.body(15, .semibold))
                         .padding(14)
                     Rectangle().fill(Theme.line).frame(height: 1)
-                    Text("To change what Tally can read, open the Health app, then Profile, Apps, Tally.")
+                    Text("Change access in Health › Profile › Apps › Tally.")
                         .font(Typo.body(13))
                         .foregroundStyle(Theme.ink3)
                         .padding(14)

@@ -33,10 +33,11 @@ final class GymStore {
     init() {
         let data = (try? Data(contentsOf: fileURL))
             .flatMap { try? JSONDecoder().decode(GymData.self, from: $0) } ?? GymData()
-        exercises = data.exercises
+        exercises = ExerciseLibrary.merge(into: data.exercises)
         workouts = data.workouts.sorted { $0.startedAt > $1.startedAt }
         plans = data.plans
         activeWorkout = data.activeWorkout
+        if exercises != data.exercises { save() }
         recomputeRecords()
         writeSnapshot()
         if let activeWorkout {
@@ -64,6 +65,13 @@ final class GymStore {
 
     func addExercise(_ exercise: ExerciseDef) {
         exercises.append(exercise)
+        save()
+    }
+
+    func updateExercise(_ exercise: ExerciseDef) {
+        guard let index = exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
+        exercises[index] = exercise
+        recomputeRecords()
         save()
     }
 

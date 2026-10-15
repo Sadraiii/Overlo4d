@@ -47,6 +47,18 @@ struct ExerciseDef: Codable, Identifiable, Hashable, Sendable {
     var muscle: MuscleGroup
     var kind: ExerciseKind
     var isCustom = false
+    // Optional so data saved before these existed still decodes; filled from the library on load.
+    var equipment: Equipment?
+    var primaryMuscles: [Muscle]?
+    var secondaryMuscles: [Muscle]?
+
+    var primary: [Muscle] { primaryMuscles ?? muscle.defaultMuscles }
+    var secondary: [Muscle] { secondaryMuscles ?? [] }
+
+    /// Primary muscles, e.g. "Quads, Glutes", or the group when none are set.
+    var muscleSummary: String {
+        primary.isEmpty ? muscle.label : primary.map(\.label).joined(separator: ", ")
+    }
 }
 
 enum SetType: String, Codable, CaseIterable, Identifiable, Sendable {

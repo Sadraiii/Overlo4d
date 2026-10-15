@@ -1,18 +1,19 @@
 import TallyKit
 import SwiftUI
 
-struct TrainTab: View {
+struct HomeTab: View {
     @Environment(GymStore.self) private var gym
     @Environment(AppUI.self) private var ui
     let onStart: () -> Void
 
-    @State private var editingPlan: Plan?
-    @State private var deletingPlan: Plan?
-    @State private var openedPlan: UUID?
     @State private var showingTimer = false
     @State private var showingPlates = false
+    @State private var showingChangelog = false
+    @AppStorage("changelog.seenVersion") private var seenVersion = ""
 
     var body: some View {
+        @Bindable var ui = ui
+
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
@@ -30,48 +31,26 @@ struct TrainTab: View {
                             .frame(width: 42, height: 42)
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide))).eyebrow()
-                        Text("Training").display(46)
+                    if seenVersion != AppVersion.number {
+                        UpdateBanner(
+                            onOpen: {
+                                seenVersion = AppVersion.number
+                                showingChangelog = true
+                            },
+                            onClose: { withAnimation(.snappy) { seenVersion = AppVersion.number } }
+                        )
+                        .transition(.opacity)
                     }
-                    .padding(.top, 4)
 
                     WeekCard(onStart: onStart)
+
+                    RepsCard { ui.showingReps = true }
 
                     HealthCard()
 
                     HStack(spacing: 8) {
                         ToolButton(title: "Timer", symbol: "stopwatch") { showingTimer = true }
                         ToolButton(title: "Plates", symbol: "circle.grid.2x1") { showingPlates = true }
-                    }
-
-                    SectionHead("Plans") {
-                        Button("New") { editingPlan = Plan(name: "", exercises: []) }
-                    }
-
-                    if gym.plans.isEmpty {
-                        VStack(spacing: 10) {
-                            Text("No plans").display(20)
-                            Text("Save workouts you repeat and start them in one tap.")
-                                .font(Typo.body(14))
-                                .foregroundStyle(Theme.ink2)
-                                .multilineTextAlignment(.center)
-                            Button("New plan") { editingPlan = Plan(name: "", exercises: []) }
-                                .buttonStyle(.smallOutline)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 28)
-                        .padding(.horizontal, 18)
-                        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
-                    }
-
-                    ForEach(gym.plans) { plan in
-                        PlanCard(
-                            plan: plan,
-                            onOpen: { openedPlan = plan.id },
-                            onEdit: { editingPlan = plan },
-                            onDelete: { deletingPlan = plan }
-                        )
                     }
 
                     if let last = gym.workouts.first {
@@ -93,19 +72,10 @@ struct TrainTab: View {
                 }
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
-            .navigationDestination(item: $openedPlan) { PlanDetailView(planID: $0) }
-            .sheet(item: $editingPlan) { PlanEditor(plan: $0) }
+            .navigationDestination(isPresented: $ui.showingReps) { QuickCountView() }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
             .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }
-            .confirmationDialog(
-                "Delete \(deletingPlan?.name ?? "plan")?",
-                isPresented: Binding(get: { deletingPlan != nil }, set: { if !$0 { deletingPlan = nil } }),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let deletingPlan { gym.deletePlan(deletingPlan) }
-                }
-            }
+            .sheet(isPresented: $showingChangelog) { ChangelogSheet() }
         }
     }
 }
@@ -171,7 +141,83 @@ struct WeekCard: View {
     }
 }
 
-/// Small square shortcut on the Train tab (Timer, Plates).
+/// Today's reps against the daily goal. Opens the rep counter.
+struct RepsCard: View {
+    @Environment(RepModel.self) private var model
+    let onOpen: () -> Void
+
+    var body: some View {
+        let progress = model.progress
+        Button(action: onOpen) {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Reps today").eyebrow()
+                    HStack(alignment: .lastTextBaseline, spacing: 6) {
+                        Text("\(model.repsToday)")
+                            .font(Typo.display(40))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        Text("/ \(model.dailyGoal)")
+                            .font(Typo.display(22))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                    Tally(marks: Int(min(progress, 1) * 20), groups: 4, done: progress >= 1, height: 20)
+                        .padding(.top, 2)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.ink3)
+            }
+            .foregroundStyle(Theme.ink)
+            .card(padding: 15)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Shown once after the app is updated; opens the changelog.
+struct UpdateBanner: View {
+    let onOpen: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: onOpen) {
+                HStack(spacing: 12) {
+                    Text(AppVersion.number)
+                        .font(Typo.display(19))
+                        .foregroundStyle(Theme.accentInk)
+                        .padding(.horizontal, 9)
+                        .frame(minWidth: 42, minHeight: 34)
+                        .background(Theme.accent, in: .rect(cornerRadius: 10))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Updated to \(AppVersion.display)")
+                            .font(Typo.body(15, .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text("See what changed")
+                            .font(Typo.body(13, .semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            Button("Dismiss", systemImage: "xmark", action: onClose)
+                .labelStyle(.iconOnly)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Theme.ink3)
+                .frame(width: 34, height: 34)
+                .contentShape(.rect)
+                .buttonStyle(.plain)
+        }
+        .card(padding: 12, cornerRadius: 16)
+    }
+}
+
+/// Small shortcut on Home (Timer, Plates).
 struct ToolButton: View {
     let title: String
     let symbol: String
@@ -194,76 +240,6 @@ struct ToolButton: View {
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
         }
         .buttonStyle(.plain)
-    }
-}
-
-/// Plan card in the style of Outdoor Office's schedule slots.
-struct PlanCard: View {
-    @Environment(GymStore.self) private var gym
-    let plan: Plan
-    let onOpen: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        let defs = plan.exercises.compactMap { gym.exercise($0.exerciseID) }
-        let setCount = plan.exercises.reduce(0) { $0 + $1.sets.count }
-        let last = gym.sessions(of: plan).first
-
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\(plan.exercises.count) exercises · \(setCount) sets").eyebrow(11)
-                    Text(plan.name).display(27).lineLimit(2)
-                    if let last {
-                        Text("Last \(last.startedAt.formatted(.dateTime.weekday(.abbreviated).day().month())) · \(Fmt.volume(last.volume))")
-                            .font(Typo.body(13, .semibold))
-                            .foregroundStyle(Theme.ink)
-                    }
-                    Text(defs.map(\.name).joined(separator: " · "))
-                        .font(Typo.body(14))
-                        .foregroundStyle(Theme.ink2)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 0)
-                Menu {
-                    Button("Edit", systemImage: "pencil", action: onEdit)
-                    Button("Duplicate", systemImage: "plus.square.on.square") { gym.duplicatePlan(plan) }
-                    Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Theme.ink3)
-                        .frame(width: 36, height: 36)
-                        .contentShape(.rect)
-                }
-                SlotBar(color: defs.first?.muscle.color ?? Theme.ink3)
-                    .padding(.top, 4)
-            }
-
-            Rectangle().fill(Theme.line).frame(height: 1)
-
-            HStack(spacing: 6) {
-                ForEach(Array(Set(defs.map(\.muscle))).sorted { $0.rawValue < $1.rawValue }) { muscle in
-                    Circle().fill(muscle.color).frame(width: 8, height: 8)
-                }
-                Spacer()
-                Button {
-                    gym.startWorkout(from: plan)
-                } label: {
-                    Label("Start", systemImage: "play.fill")
-                }
-                .buttonStyle(.smallPrimary)
-                .disabled(gym.activeWorkout != nil)
-            }
-        }
-        .padding(.leading, 16)
-        .padding([.trailing, .top], 14)
-        .padding(.bottom, 12)
-        .background(Theme.card, in: .rect(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
-        .contentShape(.rect)
-        .onTapGesture(perform: onOpen)
     }
 }
 
@@ -308,72 +284,6 @@ struct WorkoutCard: View {
             Spacer(minLength: 0)
         }
         .card(padding: 12, cornerRadius: 16)
-    }
-}
-
-struct PlanEditor: View {
-    @Environment(GymStore.self) private var gym
-    @Environment(\.dismiss) private var dismiss
-    @State var plan: Plan
-    @State private var showingPicker = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Name").eyebrow(11.5)
-                        TextField("Push day", text: $plan.name)
-                            .font(Typo.display(30))
-                    }
-                }
-                .cardRow()
-
-                ForEach($plan.exercises) { $exercise in
-                    ExerciseEditorSection(
-                        exercise: $exercise,
-                        isLive: false,
-                        onRemove: { plan.exercises.removeAll { $0.id == exercise.id } },
-                        onMove: { plan.exercises.move(id: exercise.id, by: $0) }
-                    )
-                }
-
-                Section {
-                    AddExerciseButton { showingPicker = true }
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
-            .screenBackground()
-            .scrollDismissesKeyboard(.interactively)
-            .navigationTitle(gym.plans.contains { $0.id == plan.id } ? "Edit plan" : "New plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", systemImage: "xmark") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", systemImage: "checkmark") {
-                        if plan.name.trimmingCharacters(in: .whitespaces).isEmpty { plan.name = "Plan" }
-                        gym.savePlan(plan)
-                        dismiss()
-                    }
-                    .disabled(plan.exercises.isEmpty)
-                }
-            }
-            .sheet(isPresented: $showingPicker) {
-                ExercisePicker { exercises in
-                    plan.exercises += exercises.map { def in
-                        var exercise = gym.newWorkoutExercise(for: def)
-                        // Prefill plan targets from last time.
-                        let previous = gym.previousSets(for: def.id)
-                        if !previous.isEmpty { exercise.sets = previous.map { $0.copyForNewSet() } }
-                        return exercise
-                    }
-                }
-            }
-        }
     }
 }
 

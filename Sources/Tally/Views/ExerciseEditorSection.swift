@@ -12,6 +12,7 @@ struct ExerciseEditorSection: View {
     var onSetCompleted: (WorkoutExercise) -> Void = { _ in }
 
     @State private var showingPlates = false
+    @State private var addingNote = false
 
     private static let restOptions = [0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
 
@@ -22,7 +23,7 @@ struct ExerciseEditorSection: View {
 
         Section {
             HStack(spacing: 12) {
-                ExerciseBadge(exercise: def, size: 36)
+                ExerciseBadge(exercise: def, size: 42)
                 if let def {
                     NavigationLink(value: def) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -44,6 +45,9 @@ struct ExerciseEditorSection: View {
                         Label("Rest timer: \(Fmt.rest(exercise.restSeconds))", systemImage: "timer")
                     }
                     .pickerStyle(.menu)
+                    if exercise.notes.isEmpty && !addingNote {
+                        Button("Add note", systemImage: "note.text") { addingNote = true }
+                    }
                     if kind == .weightReps {
                         Button("Plate calculator", systemImage: "circle.grid.2x1") { showingPlates = true }
                     }
@@ -78,10 +82,12 @@ struct ExerciseEditorSection: View {
                 .cardRow()
             }
 
-            TextField("Note", text: $exercise.notes, axis: .vertical)
-                .font(Typo.body(14))
-                .foregroundStyle(Theme.ink2)
-                .cardRow()
+            if !exercise.notes.isEmpty || addingNote {
+                TextField("Note", text: $exercise.notes, axis: .vertical)
+                    .font(Typo.body(14))
+                    .foregroundStyle(Theme.ink2)
+                    .cardRow()
+            }
 
             SetHeader(kind: kind, showsPrevious: isLive, showsCheck: isLive)
                 .cardRow()

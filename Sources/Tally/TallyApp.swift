@@ -4,7 +4,7 @@ import UIKit
 import WidgetKit
 
 enum AppTab: Hashable {
-    case train, history, start, progress, reps
+    case home, plans, start, history, progress
 }
 
 /// App-level UI state that lives outside the accent-coloured view tree.
@@ -12,6 +12,8 @@ enum AppTab: Hashable {
 @Observable
 final class AppUI {
     var showingSettings = false
+    /// The rep counter, pushed on Home.
+    var showingReps = false
 }
 
 @main
@@ -70,7 +72,8 @@ struct TallyApp: App {
 
 struct RootView: View {
     @Environment(GymStore.self) private var gym
-    @State private var tab = AppTab.train
+    @Environment(AppUI.self) private var ui
+    @State private var tab = AppTab.home
     @State private var showingStart = false
     /// Chosen on the start sheet; begun once the sheet has closed so the two presentations don't clash.
     @State private var pendingStart: StartRequest?
@@ -79,20 +82,20 @@ struct RootView: View {
         @Bindable var gym = gym
 
         TabView(selection: Binding(get: { tab }, set: select)) {
-            Tab("Train", systemImage: "figure.strengthtraining.traditional", value: AppTab.train) {
-                TrainTab(onStart: { select(.start) })
+            Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                HomeTab(onStart: { select(.start) })
             }
-            Tab("History", systemImage: "calendar", value: AppTab.history) {
-                HistoryView()
+            Tab("Plans", systemImage: "list.bullet.rectangle.portrait.fill", value: AppTab.plans) {
+                PlansTab()
             }
             Tab("Start", systemImage: gym.activeWorkout == nil ? "plus.circle.fill" : "play.circle.fill", value: AppTab.start) {
                 Color.clear
             }
+            Tab("History", systemImage: "calendar", value: AppTab.history) {
+                HistoryView()
+            }
             Tab("Progress", systemImage: "chart.bar.fill", value: AppTab.progress) {
                 ProgressTabView()
-            }
-            Tab("Reps", systemImage: "flame.fill", value: AppTab.reps) {
-                QuickCountView()
             }
         }
         .tabViewBottomAccessory(isEnabled: gym.activeWorkout != nil && !gym.isPresentingWorkout) {
@@ -114,8 +117,11 @@ struct RootView: View {
         .onOpenURL { url in
             // Widgets deep-link with tally://reps and tally://train.
             switch url.host() {
-            case "reps": tab = .reps
-            case "train": tab = .train
+            case "reps":
+                tab = .home
+                ui.showingReps = true
+            case "train":
+                tab = .home
             default: break
             }
         }
