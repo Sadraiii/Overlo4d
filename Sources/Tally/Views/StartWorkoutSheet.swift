@@ -220,6 +220,8 @@ struct SettingsSheet: View {
 
                     HealthSettingsSection()
 
+                    CoachSettingsSection()
+
                     AboutSection()
                 }
                 .padding(16)

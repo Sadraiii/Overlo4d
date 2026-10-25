@@ -10,6 +10,7 @@ struct WorkoutSummaryView: View {
     @State private var appeared = false
     @State private var savedPlan = false
     @State private var sharing = false
+    @State private var coaching = false
     @State private var workoutHealth: HealthManager.WorkoutHealth?
 
     var body: some View {
@@ -79,6 +80,8 @@ struct WorkoutSummaryView: View {
                 VStack(spacing: 10) {
                     Button("Done") { gym.closeSummary() }
                         .buttonStyle(.bigPrimary)
+                    Button("Coach feedback", systemImage: "sparkles") { coaching = true }
+                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 50, fullWidth: true))
                     HStack(spacing: 10) {
                         Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
                             .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 50, fullWidth: true))
@@ -103,5 +106,6 @@ struct WorkoutSummaryView: View {
         .sheet(isPresented: $sharing) {
             ShareSheet(model: .workout(workout, gym: gym, health: workoutHealth))
         }
+        .sheet(isPresented: $coaching) { WorkoutCoachSheet(workout: workout) }
     }
 }

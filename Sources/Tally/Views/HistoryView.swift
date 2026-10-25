@@ -116,6 +116,7 @@ struct WorkoutDetailView: View {
     @State private var confirmingDelete = false
     @State private var savedPlan = false
     @State private var sharing = false
+    @State private var coaching = false
     @State private var workoutHealth: HealthManager.WorkoutHealth?
 
     var body: some View {
@@ -194,6 +195,7 @@ struct WorkoutDetailView: View {
         .toolbar {
             Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
             Menu {
+                Button("Coach feedback", systemImage: "sparkles") { coaching = true }
                 Button("Edit", systemImage: "pencil") { editing = workout }
                 Button("Save as plan", systemImage: "square.and.arrow.down") {
                     gym.savePlan(gym.plan(from: workout))
@@ -205,6 +207,7 @@ struct WorkoutDetailView: View {
             }
         }
         .sheet(item: $editing) { EditWorkoutView(workout: $0) }
+        .sheet(isPresented: $coaching) { WorkoutCoachSheet(workout: workout) }
         .sheet(isPresented: $sharing) {
             ShareSheet(model: .workout(workout, gym: gym, health: workoutHealth))
         }
