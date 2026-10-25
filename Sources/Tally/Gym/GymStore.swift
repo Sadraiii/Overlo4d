@@ -443,7 +443,9 @@ final class GymStore {
     }
 
     /// Working sets per muscle in `interval`, scaled to 0–1. Secondary muscles count half.
-    func muscleLevels(in interval: DateInterval) -> [Muscle: Double] {
+    /// Working sets per muscle per week in `interval`. A set counts fully for its exercise's primary
+    /// muscles and half for its secondary muscles. Intervals shorter than a week aren't scaled up.
+    func weeklyMuscleSets(in interval: DateInterval) -> [Muscle: Double] {
         var counts: [Muscle: Double] = [:]
         for workout in workouts where workout.startedAt >= interval.start && workout.startedAt < interval.end {
             for exercise in workout.exercises {
@@ -453,8 +455,8 @@ final class GymStore {
                 for muscle in def.secondary { counts[muscle, default: 0] += sets / 2 }
             }
         }
-        guard let most = counts.values.max(), most > 0 else { return [:] }
-        return counts.mapValues { $0 / most }
+        let weeks = max(interval.duration / (7 * 24 * 60 * 60), 1)
+        return counts.filter { $0.value > 0 }.mapValues { $0 / weeks }
     }
 
     // MARK: Stats

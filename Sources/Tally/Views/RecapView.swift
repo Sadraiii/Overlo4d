@@ -88,9 +88,7 @@ struct RecapView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Muscles").display(16)
-                    AnatomyFigure(levels: gym.muscleLevels(in: recap.week))
-                        .frame(height: 200)
-                        .frame(maxWidth: .infinity)
+                    MuscleVolumeCard(weeklySets: gym.weeklyMuscleSets(in: recap.week), caption: "Working sets this week")
                 }
                 .card(padding: 14, cornerRadius: 16)
 
@@ -212,7 +210,7 @@ struct LastWeekCard: View {
                                 .foregroundStyle(Theme.ink2)
                         }
                         Spacer(minLength: 0)
-                        AnatomyFigure(levels: gym.muscleLevels(in: recap.week))
+                        AnatomyFigure(weeklySets: gym.weeklyMuscleSets(in: recap.week))
                             .frame(height: 70)
                             .accessibilityHidden(true)
                     }
