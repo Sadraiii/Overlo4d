@@ -4,19 +4,24 @@ Muscle regions are drawn for the viewer's left half of a 200x400 figure and mirr
 produces an SVG preview (for review) and the Swift source with the path strings:
 
     python3 scripts/anatomy.py swift > Sources/Tally/Exercises/AnatomyShapes.swift
+    python3 scripts/anatomy.py js > scripts/mockups/anatomy.js
     python3 scripts/anatomy.py svg chest,triceps frontDelts > preview.svg
 
 Paths use only absolute M, L, C and Z so the Swift parser stays tiny.
 """
+import json
 import re
 import sys
 
 W = 200
 
-# (muscle or None for body parts, path, mirrored?)
+# (muscle or None for body parts, path, mirrored?[, DETAIL])
 # Regions are drawn in order, so a later region can sit on top of an earlier one. Overlaying a
 # muscle head on its own muscle (the rectus femoris on the quads, the gastrocnemius heads on the
-# calves) draws the gap line between the heads without changing what is tapped or filled.
+# calves) draws the line between the heads without changing what is tapped or filled. Those
+# overlays are marked DETAIL and drawn with a finer line than the gaps between muscles.
+DETAIL = True
+
 FRONT = [
     (None, "M100,8 C113,8 121,19 121,33 C121,47 112,57 100,57 C88,57 79,47 79,33 C79,19 87,8 100,8 Z", False),  # head
     (None, "M90,55 L110,55 L112,71 L88,71 Z", False),  # neck
@@ -24,10 +29,10 @@ FRONT = [
     ("sideDelts", "M56,75 C45,76 37,84 33,97 C34,101 36,103 39,103 C42,92 48,84 58,79 Z", True),
     ("frontDelts", "M58,79 C49,85 42,93 39,103 C45,109 52,108 56,104 C59,95 66,87 74,82 C69,80 63,79 58,79 Z", True),
     ("chest", "M75,81 C66,86 59,95 57,105 C59,121 72,131 90,131 C96,131 99,127 99,121 L99,85 C92,81 83,80 75,81 Z", True),
-    ("chest", "M75,81 C67,86 61,93 59,99 C72,98 86,97 99,98 L99,85 C92,81 83,80 75,81 Z", True),  # upper chest
+    ("chest", "M75,81 C67,86 61,93 59,99 C72,98 86,97 99,98 L99,85 C92,81 83,80 75,81 Z", True, DETAIL),  # upper chest
     ("biceps", "M38,106 C33,119 32,136 34,150 C39,156 47,154 50,148 C53,134 54,119 55,106 C50,111 43,111 38,106 Z", True),
     ("forearms", "M34,154 C30,172 28,196 29,221 C33,226 39,226 42,221 C46,199 50,176 51,152 C45,158 38,158 34,154 Z", True),
-    ("forearms", "M34,154 C31,168 30,182 31,196 C35,186 40,172 43,157 C40,157 37,156 34,154 Z", True),  # brachioradialis
+    ("forearms", "M34,154 C31,168 30,182 31,196 C35,186 40,172 43,157 C40,157 37,156 34,154 Z", True, DETAIL),  # brachioradialis
     (None, "M35,225 C28,228 25,238 27,249 C30,257 38,257 41,250 C43,241 42,231 41,226 Z", True),  # hand
     ("abs", "M88,134 C93,133 99,133 99,135 L99,155 L87,156 C86,148 86,141 88,134 Z", True),
     ("abs", "M87,159 L99,158 L99,179 L87,180 C86,173 86,166 87,159 Z", True),
@@ -35,8 +40,8 @@ FRONT = [
     ("obliques", "M73,133 C77,135 82,135 85,136 C84,158 84,184 86,206 C82,208 77,206 74,199 C69,178 69,155 73,133 Z", True),
     (None, "M74,203 C77,212 83,218 88,222 C92,228 96,232 99,233 L99,246 L89,244 C83,236 77,226 73,214 Z", True),  # hip
     ("quads", "M73,218 C64,240 61,268 63,296 C65,318 71,330 80,332 C87,330 91,318 92,300 C94,280 92,262 88,246 C83,236 78,228 73,218 Z", True),
-    ("quads", "M76,226 C83,238 89,254 89,274 C89,292 86,306 82,316 C76,304 72,288 72,270 C72,254 73,238 76,226 Z", True),  # rectus femoris
-    ("quads", "M91,288 C95,302 93,318 87,327 C84,331 80,332 77,330 C78,320 83,308 91,288 Z", True),  # vastus medialis
+    ("quads", "M76,226 C83,238 89,254 89,272 C89,288 86,300 81,310 C76,300 72,286 72,268 C72,252 73,238 76,226 Z", True, DETAIL),  # rectus femoris
+    ("quads", "M91,298 C94,308 92,320 87,327 C84,331 80,332 78,330 C80,320 85,308 91,298 Z", True, DETAIL),  # vastus medialis
     ("adductors", "M89,247 C95,250 99,256 99,266 C99,282 96,296 92,304 C93,284 93,264 89,247 Z", True),
     (None, "M70,333 C74,338 82,340 88,334 C88,341 86,346 82,348 C76,349 71,345 70,333 Z", True),  # knee
     ("calves", "M70,350 C66,362 65,376 68,388 C72,393 79,392 82,388 C85,376 86,362 84,350 C80,353 74,353 70,350 Z", True),
@@ -52,20 +57,20 @@ BACK = [
     ("rearDelts", "M60,80 C50,85 43,94 40,104 C46,109 53,108 57,104 C60,96 66,89 74,85 C69,82 64,80 60,80 Z", True),
     ("upperBack", "M75,86 C69,93 65,102 64,111 C73,114 83,113 92,108 C88,99 82,91 75,86 Z", True),
     ("triceps", "M38,107 C33,120 32,137 34,151 C40,156 47,154 50,147 C53,133 54,119 56,107 C50,112 43,112 38,107 Z", True),
-    ("triceps", "M38,107 C35,116 34,126 35,134 C40,129 43,120 45,110 C42,110 40,109 38,107 Z", True),  # long head
+    ("triceps", "M38,107 C35,116 34,126 35,134 C40,129 43,120 45,110 C42,110 40,109 38,107 Z", True, DETAIL),  # long head
     ("forearms", "M34,154 C30,172 28,196 29,221 C33,226 39,226 42,221 C46,199 50,176 51,152 C45,158 38,158 34,154 Z", True),
     (None, "M35,225 C28,228 25,238 27,249 C30,257 38,257 41,250 C43,241 42,231 41,226 Z", True),  # hand
     ("lats", "M64,114 C61,132 62,152 67,169 C72,184 81,196 92,203 C93,184 93,166 94,150 C93,136 93,123 94,111 C84,116 74,117 64,114 Z", True),
     ("lowerBack", "M96,128 C98,127 99,128 99,130 L99,222 C93,223 86,220 84,213 C83,198 85,180 88,164 C91,150 93,138 96,128 Z", True),
     ("glutes", "M73,212 C65,224 63,241 67,256 C74,268 88,270 99,262 L99,224 C93,217 83,211 73,212 Z", True),
-    ("glutes", "M73,212 C69,217 67,222 66,228 C73,224 80,222 87,221 C83,215 78,212 73,212 Z", True),  # glute medius
+    ("glutes", "M73,212 C69,217 67,222 66,228 C73,224 80,222 87,221 C83,215 78,212 73,212 Z", True, DETAIL),  # glute medius
     ("hamstrings", "M67,262 C63,283 64,305 69,324 C74,332 83,333 88,327 C92,307 94,286 94,268 C86,272 75,271 67,262 Z", True),
-    ("hamstrings", "M82,271 C86,271 90,270 93,269 C93,288 91,308 87,326 C84,330 82,330 80,328 C79,310 79,290 82,271 Z", True),  # semitendinosus
+    ("hamstrings", "M82,271 C86,271 90,270 93,269 C93,288 91,308 87,326 C84,330 82,330 80,328 C79,310 79,290 82,271 Z", True, DETAIL),  # semitendinosus
     ("adductors", "M95,268 C98,281 99,295 97,309 C95,313 92,312 91,308 C93,294 94,281 95,268 Z", True),
     (None, "M70,333 C74,338 82,340 88,334 C88,341 86,346 82,348 C76,349 71,345 70,333 Z", True),  # knee
     ("calves", "M69,349 C63,359 62,372 66,384 C71,391 79,391 83,384 C86,373 86,360 83,349 C79,345 73,345 69,349 Z", True),
-    ("calves", "M69,349 C64,357 63,366 65,375 C69,374 73,371 75,366 L75,347 C73,347 71,347 69,349 Z", True),  # lateral gastrocnemius
-    ("calves", "M77,347 L77,366 C79,372 82,375 85,375 C86,366 86,357 83,349 C81,347 79,347 77,347 Z", True),  # medial gastrocnemius
+    ("calves", "M69,349 C64,357 63,366 65,375 C69,374 73,371 75,366 L75,347 C73,347 71,347 69,349 Z", True, DETAIL),  # lateral gastrocnemius
+    ("calves", "M77,347 L77,366 C79,372 82,375 85,375 C86,366 86,357 83,349 C81,347 79,347 77,347 Z", True, DETAIL),  # medial gastrocnemius
     (None, "M67,391 C64,394 62,398 66,399 L84,399 C86,397 84,393 82,391 C77,393 72,393 67,391 Z", True),  # foot
 ]
 
@@ -94,42 +99,51 @@ def mirror(path: str) -> str:
 
 def expand(shapes):
     out = []
-    for muscle, path, mirrored in shapes:
+    for muscle, path, mirrored, *rest in shapes:
+        detail = bool(rest and rest[0])
         path = legs(path)
-        out.append((muscle, path))
+        out.append((muscle, path, detail))
         if mirrored:
-            out.append((muscle, mirror(path)))
+            out.append((muscle, mirror(path), detail))
     return out
 
 
 def svg(primary, secondary):
+    """Preview in the app's light colours: body parts lighter than untrained muscles."""
     def fill(muscle):
         if muscle is None:
-            return "#C5CBC2"
+            return "#E7E9E3"
         if muscle in primary:
             return "#5A3E8A"
         if muscle in secondary:
             return "#B7A6D6"
-        return "#DADED6"
+        return "#D5D9D0"
 
     parts = []
     for offset, shapes in ((0, FRONT), (W + 20, BACK)):
         group = "".join(
-            f'<path d="{p}" fill="{fill(m)}" stroke="#EEF0EB" stroke-width="1.6" stroke-linejoin="round"/>'
-            for m, p in expand(shapes)
+            f'<path d="{p}" fill="{fill(m)}" stroke="#FAFBF8" stroke-width="{0.7 if d else 1.2}" stroke-linejoin="round"/>'
+            for m, p, d in expand(shapes)
         )
         parts.append(f'<g transform="translate({offset} 0)">{group}</g>')
     width = W * 2 + 40
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * 2}" height="840" viewBox="-10 -10 {width} 420">'
-            f'<rect x="-10" y="-10" width="{width}" height="420" fill="#EEF0EB"/>{"".join(parts)}</svg>')
+            f'<rect x="-10" y="-10" width="{width}" height="420" fill="#FAFBF8"/>{"".join(parts)}</svg>')
+
+
+def js():
+    """The same shapes for the README mockups: [muscle, path, detail]."""
+    data = {view: [[m, p, d] for m, p, d in expand(shapes)] for view, shapes in (("front", FRONT), ("back", BACK))}
+    return ("// Generated by scripts/anatomy.py from the same shapes as AnatomyShapes.swift (200 x 400).\n"
+            f"const ANATOMY = {json.dumps(data)};\n")
 
 
 def swift():
     def literal(shapes):
         lines = []
-        for muscle, path in expand(shapes):
+        for muscle, path, detail in expand(shapes):
             name = f".{muscle}" if muscle else "nil"
-            lines.append(f'        (muscle: {name}, path: "{path}"),')
+            lines.append(f'        (muscle: {name}, path: "{path}", detail: {"true" if detail else "false"}),')
         return "\n".join(lines)
 
     return f'''// Generated by scripts/anatomy.py. Edit the generator, not this file.
@@ -139,11 +153,11 @@ enum AnatomyShapes {{
     static let width = 200.0
     static let height = 400.0
 
-    static let front: [(muscle: Muscle?, path: String)] = [
+    static let front: [(muscle: Muscle?, path: String, detail: Bool)] = [
 {literal(FRONT)}
     ]
 
-    static let back: [(muscle: Muscle?, path: String)] = [
+    static let back: [(muscle: Muscle?, path: String, detail: Bool)] = [
 {literal(BACK)}
     ]
 }}
@@ -155,5 +169,7 @@ if __name__ == "__main__":
         primary = set(filter(None, (sys.argv[2] if len(sys.argv) > 2 else "").split(",")))
         secondary = set(filter(None, (sys.argv[3] if len(sys.argv) > 3 else "").split(",")))
         sys.stdout.write(svg(primary, secondary))
+    elif sys.argv[1] == "js":
+        sys.stdout.write(js())
     else:
         sys.stdout.write(swift())
