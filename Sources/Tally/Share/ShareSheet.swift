@@ -17,7 +17,7 @@ struct SharePNG: Transferable {
     }
 }
 
-/// Preview and export a story image or a transparent sticker, as in Outdoor Office.
+/// Preview and export a story image, a transparent sticker or plain text.
 struct ShareSheet: View {
     @Environment(\.dismiss) private var dismiss
     let model: ShareModel
@@ -25,6 +25,7 @@ struct ShareSheet: View {
     enum Format: String, CaseIterable, Identifiable {
         case story = "Story"
         case sticker = "Sticker"
+        case text = "Text"
         var id: String { rawValue }
     }
 
@@ -72,8 +73,12 @@ struct ShareSheet: View {
                 VStack(spacing: 18) {
                     preview
                     Segmented(selection: $format)
-                    if format == .story { backgrounds } else { stickerColors }
-                    partToggles
+                    switch format {
+                    case .story: backgrounds
+                    case .sticker: stickerColors
+                    case .text: EmptyView()
+                    }
+                    if format != .text { partToggles }
                 }
                 .padding(16)
             }
@@ -89,7 +94,12 @@ struct ShareSheet: View {
                 HStack(spacing: 10) {
                     Button(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc", action: copy)
                         .buttonStyle(OOButtonStyle(kind: copied ? .done : .outline, shape: .pill, height: 58))
-                    if let image, let data = image.pngData() {
+                    if format == .text {
+                        ShareLink(item: model.plainText, subject: Text(model.title)) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.bigPrimary)
+                    } else if let image, let data = image.pngData() {
                         ShareLink(
                             item: SharePNG(data: data, name: model.fileName),
                             preview: SharePreview(model.title, image: Image(uiImage: image))
@@ -116,6 +126,19 @@ struct ShareSheet: View {
 
     @ViewBuilder
     private var preview: some View {
+        if format == .text {
+            Text(model.plainText)
+                .font(.system(size: 12.5, design: .monospaced))
+                .foregroundStyle(Theme.ink)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .card(padding: 14, cornerRadius: 16)
+        } else {
+            imagePreview
+        }
+    }
+
+    private var imagePreview: some View {
         ZStack {
             if format == .sticker {
                 Checkerboard(dark: sticker != .black)
@@ -240,12 +263,18 @@ struct ShareSheet: View {
             renderer.scale = 1
             renderer.isOpaque = false
             image = renderer.uiImage
+        case .text:
+            break
         }
     }
 
     private func copy() {
-        guard let data = image?.pngData() else { return }
-        UIPasteboard.general.setItems([[UTType.png.identifier: data]])
+        if format == .text {
+            UIPasteboard.general.string = model.plainText
+        } else {
+            guard let data = image?.pngData() else { return }
+            UIPasteboard.general.setItems([[UTType.png.identifier: data]])
+        }
         withAnimation(.snappy) { copied = true }
     }
 

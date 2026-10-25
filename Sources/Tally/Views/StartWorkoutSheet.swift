@@ -220,6 +220,8 @@ struct SettingsSheet: View {
 
                     HealthSettingsSection()
 
+                    ExportSettingsSection()
+
                     AboutSection()
                 }
                 .padding(16)

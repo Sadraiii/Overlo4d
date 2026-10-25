@@ -4,6 +4,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(GymStore.self) private var gym
+    @State private var exporting = false
 
     private var byMonth: [(month: Date, items: [HistoryItem])] {
         let items = gym.workouts.map(HistoryItem.workout) + gym.healthWorkouts.map(HistoryItem.health)
@@ -76,6 +77,12 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("History")
+            .toolbar {
+                if !gym.workouts.isEmpty {
+                    Button("Export", systemImage: "square.and.arrow.up") { exporting = true }
+                }
+            }
+            .sheet(isPresented: $exporting) { ExportSheet() }
             .navigationDestination(for: UUID.self) { id in
                 if let workout = gym.workout(id) {
                     WorkoutDetailView(workout: workout)
