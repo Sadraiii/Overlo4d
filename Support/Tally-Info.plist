@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Tally</string>
+	<string>Overload</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.6</string>
 	<key>CFBundleVersion</key>
@@ -30,11 +30,11 @@
 		</dict>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Tally shows your steps, active energy, heart rate and body weight next to your training.</string>
+	<string>Overload shows your steps, active energy, heart rate and body weight next to your training.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Tally saves finished workouts to Apple Health.</string>
+	<string>Overload saves finished workouts to Apple Health.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Tally saves share images to your photo library.</string>
+	<string>Overload saves share images to your photo library.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UILaunchScreen</key>

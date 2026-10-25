@@ -80,7 +80,7 @@ extension ShareModel {
             stats: stats,
             lines: lines,
             footer: "\(workout.startedAt.formatted(.dateTime.weekday(.wide).day().month(.wide).year())) · \(time)",
-            fileName: "Tally \(workout.name)"
+            fileName: "Overload \(workout.name)"
         )
     }
 
@@ -116,7 +116,7 @@ extension ShareModel {
             todayIndex: Calendar.current.isDate(date, equalTo: .now, toGranularity: .weekOfYear)
                 ? ActivitySnapshot.weekdayIndex() : nil,
             footer: "Week \(week), \(start.formatted(.dateTime.year()))",
-            fileName: "Tally week \(week)"
+            fileName: "Overload week \(week)"
         )
     }
 
@@ -134,7 +134,7 @@ extension ShareModel {
             stats: [Stat(label: "Goal", value: "\(model.dailyGoal)")],
             lines: lines,
             footer: Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).year()),
-            fileName: "Tally reps"
+            fileName: "Overload reps"
         )
     }
 }

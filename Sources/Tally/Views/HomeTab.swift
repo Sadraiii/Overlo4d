@@ -19,7 +19,7 @@ struct HomeTab: View {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 10) {
                         Seal(size: 38)
-                        Text("Tally")
+                        Text("Overload")
                             .font(Typo.display(21))
                             .tracking(1.5)
                             .textCase(.uppercase)

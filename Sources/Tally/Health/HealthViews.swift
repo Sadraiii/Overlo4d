@@ -142,7 +142,7 @@ struct HealthSettingsSection: View {
                         .font(Typo.body(15, .semibold))
                         .padding(14)
                     Rectangle().fill(Theme.line).frame(height: 1)
-                    Text("Change access in Health › Profile › Apps › Tally.")
+                    Text("Change access in Health › Profile › Apps › Overload.")
                         .font(Typo.body(13))
                         .foregroundStyle(Theme.ink3)
                         .padding(14)
