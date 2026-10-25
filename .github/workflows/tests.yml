@@ -1,0 +1,18 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tallycore:
+    name: TallyCore (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble
+    defaults:
+      run:
+        working-directory: Packages/TallyCore
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test

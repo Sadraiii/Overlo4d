@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- README banner and social preview (1280 x 640). Uses the screens rendered by render.js. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: Display; src: url(../../Resources/Fonts/BigShouldersDisplayThin-Black.ttf); }
+@font-face { font-family: Body; font-weight: 500; src: url(../../Resources/Fonts/SchibstedGrotesk-Medium.ttf); }
+@font-face { font-family: Body; font-weight: 600; src: url(../../Resources/Fonts/SchibstedGrotesk-SemiBold.ttf); }
+* { margin: 0; box-sizing: border-box; }
+body { width: 1280px; height: 640px; overflow: hidden; position: relative; font-family: Body; color: #ECEFE8;
+  background: radial-gradient(circle at 78% 40%, #3a2b5c 0%, #1a1626 38%, #0F120F 70%); }
+.grain { position: absolute; inset: 0; opacity: .05; background-image: repeating-linear-gradient(90deg, #fff 0 1px, transparent 1px 64px), repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 64px); }
+.left { position: absolute; left: 84px; top: 0; bottom: 0; width: 560px; display: flex; flex-direction: column; justify-content: center; }
+.icon { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+h1 { font-family: Display; font-weight: 400; font-size: 124px; line-height: .86; letter-spacing: 2px; margin-top: 30px; text-transform: uppercase; }
+p { font-size: 26px; line-height: 1.35; color: #B4BAB1; margin-top: 18px; max-width: 500px; }
+.chips { display: flex; gap: 10px; margin-top: 30px; flex-wrap: wrap; }
+.chips span { font-weight: 600; font-size: 15px; padding: 8px 14px; border-radius: 99px; background: rgba(185,160,230,.14); color: #B9A0E6; }
+.phones img { position: absolute; width: 270px; filter: drop-shadow(0 30px 40px rgba(0,0,0,.55)); }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="left">
+  <img class="icon" src="../../Resources/AppIcon.png">
+  <h1>Overload</h1>
+  <p>A gym tracker built around progressive overload. Log every set, see every muscle, beat last week.</p>
+  <div class="chips"><span>iOS 26</span><span>SwiftUI</span><span>Apple Health</span><span>Live Activities</span><span>AI coach</span></div>
+</div>
+<div class="phones">
+  <img src="../../docs/images/screen-progress.png" style="left:1020px;top:120px;transform:rotate(6deg)">
+  <img src="../../docs/images/screen-home.png" style="left:680px;top:120px;transform:rotate(-6deg)">
+  <img src="../../docs/images/screen-workout.png" style="left:850px;top:60px;z-index:2">
+</div>
+</body>
+</html>
