@@ -1,5 +1,6 @@
 version: 1
 # Bundle and App Group IDs keep the app's earlier name so installed data carries over.
+# The app is shown as "Overload"; targets, modules and the tally:// URL scheme keep the Tally name.
 bundleID: com.mahmud.plusultra
 product: Tally
 infoPath: Support/Tally-Info.plist
