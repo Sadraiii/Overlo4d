@@ -24,6 +24,7 @@ struct TallyApp: App {
     @State private var ui = AppUI()
     @State private var health = HealthManager()
     @State private var clock = IntervalClock()
+    @State private var coach = CoachStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -42,10 +43,11 @@ struct TallyApp: App {
                 .environment(ui)
                 .environment(health)
                 .environment(clock)
+                .environment(coach)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
-                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health) }
+                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear { rest.requestPermission() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }
