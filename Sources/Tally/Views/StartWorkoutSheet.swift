@@ -222,6 +222,8 @@ struct SettingsSheet: View {
 
                     CoachSettingsSection()
 
+                    ExportSettingsSection()
+
                     AboutSection()
                 }
                 .padding(16)

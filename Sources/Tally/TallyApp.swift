@@ -47,7 +47,7 @@ struct TallyApp: App {
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
-                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach) }
+                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear { rest.requestPermission() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }

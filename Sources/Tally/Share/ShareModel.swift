@@ -25,6 +25,22 @@ struct ShareModel {
     var todayIndex: Int?
     var footer: String
     var fileName: String
+    /// Set-by-set text for workouts; other content is described from the parts above.
+    var log: String?
+
+    /// The same content as plain text, for Notes or Messages.
+    var plainText: String {
+        if let log { return log }
+        var text = [eyebrow, title.uppercased()]
+        let numbers = ([hero].compactMap { $0 } + stats).map { "\($0.label) \($0.value)\($0.unit.isEmpty ? "" : " \($0.unit)")" }
+        if !numbers.isEmpty { text.append(numbers.joined(separator: " · ")) }
+        if !lines.isEmpty {
+            text.append("")
+            // "Bench Press: 12 sets", "Push-ups: 40"
+            text += lines.map { line in "\(line.text): \([line.lead, line.detail].compactMap { $0 }.joined(separator: " "))" }
+        }
+        return text.joined(separator: "\n")
+    }
 }
 
 extension ShareModel {
@@ -80,7 +96,8 @@ extension ShareModel {
             stats: stats,
             lines: lines,
             footer: "\(workout.startedAt.formatted(.dateTime.weekday(.wide).day().month(.wide).year())) · \(time)",
-            fileName: "Tally \(workout.name)"
+            fileName: "Tally \(workout.name)",
+            log: WorkoutExport.text(workout, gym: gym)
         )
     }
 
