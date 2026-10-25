@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
-  Mockups of the app's screens for the README, drawn in HTML with the app's colours, fonts and
-  muscle figure. They are not simulator captures. Render with: node scripts/mockups/render.js
+  Mockups of the app's screens for the README, laid out like the SwiftUI views with the app's colours,
+  fonts and muscle figure. They are not simulator captures. Render with: node scripts/mockups/render.js
 -->
 <html>
 <head>
@@ -32,7 +32,7 @@
 body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40px; font-family: Body; }
 .phone {
   width: 390px; height: 844px; position: relative; overflow: hidden;
-  background: var(--paper); color: var(--ink); font-family: Body; font-size: 15px; border-radius: 48px;
+  background: var(--paper); color: var(--ink); font-family: Body; font-size: 15px;
 }
 .content { padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
 
@@ -141,6 +141,23 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 .flag .dot { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
 .zone { height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
 .zone b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.large { font-weight: 700; font-size: 34px; letter-spacing: -.4px; padding: 2px 0 4px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--line); border-radius: 12px; padding: 3px; font-weight: 600; font-size: 14px; text-align: center; }
+.seg span { padding: 7px; border-radius: 9px; color: var(--ink2); }
+.seg span.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.stat .eyebrow { font-size: 10.5px; }
+.stat .display { font-size: 28px; margin-top: 3px; }
+.tool { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; font-weight: 600; flex: 1; }
+.tool i { width: 34px; height: 34px; border-radius: 10px; background: var(--line); display: flex; align-items: center; justify-content: center; font-style: normal; }
+.wcard { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.wcard .display { font-size: 23px; }
+.wcard .meta { font-size: 13px; color: var(--ink2); margin: 6px 0 5px; }
+.wcard .ex { font-size: 13px; color: var(--ink2); line-height: 1.55; }
+.wcard .ex b { font-family: Display; font-weight: 400; font-size: 16px; color: var(--ink); margin-right: 5px; }
+.dock { position: absolute; left: 16px; right: 16px; bottom: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; background: var(--card); border: 1px solid var(--line2); border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.dock .btn { height: 44px; border-radius: 22px; }
+.mbar { height: 8px; border-radius: 4px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.mbar b { display: block; height: 100%; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -175,17 +192,17 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     </div>
 
     <div class="card" style="border-radius:22px;box-shadow:0 10px 24px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:14px">
-      <div class="row between"><span class="pill">This week</span><span class="streak">🔥 6 wk</span></div>
+      <div class="row between"><span class="pill">This week</span><span class="streak">4 wk</span></div>
       <div class="row" style="gap:16px">
         <div class="bib"><small>THU</small><b>22</b><small>OCT</small></div>
         <div>
-          <div class="display" style="font-size:36px">3 workouts</div>
-          <div class="ink2" style="font-size:14px;margin-top:5px">14,820 kg · 3 h 12 min</div>
+          <div class="display" style="font-size:36px">2 workouts</div>
+          <div class="ink2" style="font-size:14px;margin-top:5px">1 h 51 min · 9,860 kg</div>
         </div>
       </div>
       <div class="week">
         <div><span>M</span><i class="on">✓</i></div><div><span>T</span><i></i></div><div><span>W</span><i class="on">✓</i></div>
-        <div><span class="today">T</span><i class="today"></i></div><div><span>F</span><i></i></div><div><span>S</span><i class="on">✓</i></div><div><span>S</span><i></i></div>
+        <div><span class="today">T</span><i class="today"></i></div><div><span>F</span><i></i></div><div><span>S</span><i></i></div><div><span>S</span><i></i></div>
       </div>
       <div class="ticket"><i></i></div>
       <div class="btn-big"><span style="font-size:22px;font-weight:500;margin-top:-2px">+</span> Start workout</div>
@@ -193,225 +210,139 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 
     <div class="card row" style="gap:14px;padding:15px">
       <div style="flex:1">
-        <div class="eyebrow">Last week</div>
-        <div class="display" style="font-size:24px;margin-top:6px">4 workouts · +8% volume</div>
-        <div class="muted" style="font-size:13px;margin-top:4px">2 records · most trained: chest</div>
-      </div>
-      <span class="muted">›</span>
-    </div>
-
-    <div class="card row" style="gap:14px;padding:15px">
-      <div style="flex:1">
         <div class="eyebrow">Reps today</div>
         <div class="row" style="gap:6px;align-items:baseline;margin:6px 0 8px">
-          <span class="display" style="font-size:40px">65</span><span class="display muted" style="font-size:22px">/ 100</span>
+          <span class="display" style="font-size:40px">35</span><span class="display muted" style="font-size:22px">/ 100</span>
         </div>
         <div class="tally">
           <div class="g full"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
-          <div class="g full"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
-          <div class="g"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div>
+          <div class="g"><b class="on"></b><b class="on"></b><b></b><b></b></div>
+          <div class="g"><b></b><b></b><b></b><b></b></div>
           <div class="g"><b></b><b></b><b></b><b></b></div>
         </div>
       </div>
       <span class="muted">›</span>
     </div>
 
-    <div class="card row" style="gap:14px;padding:15px">
-      <div style="flex:1">
-        <div class="eyebrow">Coach</div>
-        <div style="font-weight:600;margin-top:5px">Legs haven't been trained in 9 days</div>
-        <div class="muted" style="font-size:13px;margin-top:2px">Push volume is 1.6× pull this week</div>
+    <div class="card">
+      <div class="row between"><span class="eyebrow">Today</span><span class="muted" style="font-size:12px;font-weight:600">♥ Apple Health</span></div>
+      <div class="row" style="gap:12px;margin-top:12px">
+        <div class="stat" style="flex:1"><div class="eyebrow">Steps</div><div class="display">6,412</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Active</div><div class="display">318 kcal</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Exercise</div><div class="display">24 min</div></div>
       </div>
-      <span class="pill" style="background:color-mix(in srgb,var(--hot) 16%,transparent);color:var(--hot)">2 notes</span>
+    </div>
+
+    <div class="row" style="gap:8px">
+      <div class="tool"><i>⏱</i>Timer<span class="muted" style="margin-left:auto">›</span></div>
+      <div class="tool"><i>◎</i>Plates<span class="muted" style="margin-left:auto">›</span></div>
+    </div>
+
+    <div class="section"><span class="display">Last workout</span></div>
+    <div class="wcard">
+      <div class="bib"><small>WED</small><b>21</b><small>OCT</small></div>
+      <div><div class="display">Lower A</div><div class="meta">58 min · 5,140 kg · 15 sets</div></div>
     </div>
   </div>
 </section>
 
 <!-- 2. Active workout -->
 <section class="phone light" id="workout">
-  <div class="content" style="gap:12px">
+  <div class="content" style="gap:14px">
     <div class="row between" style="height:42px">
-      <span class="btn" style="height:36px;border:0;padding:0;color:var(--ink2)">⌄ Minimise</span>
+      <span style="color:var(--ink2);font-size:20px">⌄</span>
       <span class="btn primary" style="height:36px">Finish</span>
     </div>
-    <div>
-      <div class="eyebrow" style="font-size:11px">Started 18:04</div>
-      <div class="display" style="font-size:40px;margin-top:4px">Push day</div>
-      <div class="row ink2" style="gap:14px;font-size:14px;margin-top:6px">
-        <span>⏱ 42:18</span><span>11 sets</span><span>6,240 kg</span>
+    <div style="padding:0 4px">
+      <div class="row between"><span class="pill live">In progress</span><span class="eyebrow" style="font-size:11px">Started 18:04</span></div>
+      <div class="display" style="font-size:34px;margin-top:10px">Upper A</div>
+      <div class="display" style="font-size:72px;margin-top:4px;font-variant-numeric:tabular-nums">31:07</div>
+      <div class="row" style="gap:12px;margin-top:8px">
+        <div class="stat" style="flex:1"><div class="eyebrow">Volume</div><div class="display">3,180 kg</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Sets</div><div class="display">7/14</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Exercises</div><div class="display">4</div></div>
       </div>
-    </div>
-
-    <div class="card row" style="padding:12px 14px;gap:12px;background:var(--accent);border:0;color:var(--accentInk)">
-      <div>
-        <div class="eyebrow" style="color:inherit;opacity:.75;font-size:11px">Rest</div>
-        <div class="display" style="font-size:34px">1:24</div>
-      </div>
-      <div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden"><div style="width:53%;height:100%;background:#fff"></div></div>
-      <span class="btn" style="height:34px;border-color:rgba(255,255,255,.4);color:inherit">+15s</span>
     </div>
 
     <div class="card" style="padding:14px">
       <div class="row" style="gap:12px;margin-bottom:10px">
         <div class="badge"><svg class="fig" data-primary="chest,frontDelts" data-secondary="triceps" width="40" height="40"></svg></div>
-        <div style="flex:1">
-          <div style="font-weight:600">Bench Press</div>
-          <div class="muted" style="font-size:13px">Barbell · Chest, front delts</div>
-        </div>
-        <span class="pill">🏆 PR</span>
+        <div class="display" style="font-size:22px;flex:1">Bench Press</div>
+        <span class="muted" style="font-size:18px">···</span>
       </div>
       <div class="sets">
         <div class="h"><span>Set</span><span>Previous</span><span>Kg</span><span>Reps</span><span></span></div>
-        <div class="r done"><span class="n w">W</span><span class="prev">40 × 10</span><span class="f">40</span><span class="f">10</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-        <div class="r done"><span class="n">1</span><span class="prev">80 × 8</span><span class="f">82.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-        <div class="r done"><span class="n">2</span><span class="prev">80 × 7</span><span class="f">82.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-        <div class="r"><span class="n">3</span><span class="prev">80 × 6</span><span class="f ph">82.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r done"><span class="n">1</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r done"><span class="n">2</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r"><span class="n">3</span><span class="prev">70 × 7</span><span class="f ph">72.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
       </div>
-      <div class="muted" style="font-size:13px;text-align:center;margin-top:6px">+ Add set</div>
     </div>
 
-    <div class="card" style="padding:14px;border-left:4px solid var(--accent)">
-      <div class="eyebrow" style="font-size:10.5px;color:var(--accent);margin-bottom:8px">Superset A</div>
-      <div class="row" style="gap:12px;margin-bottom:10px">
-        <div class="badge"><svg class="fig" data-primary="sideDelts" data-secondary="traps,frontDelts" width="40" height="40"></svg></div>
-        <div style="flex:1"><div style="font-weight:600">Lateral Raise</div><div class="muted" style="font-size:13px">Dumbbell · 3 sets · 12.5 kg</div></div>
-      </div>
+    <div class="card" style="padding:14px">
       <div class="row" style="gap:12px">
-        <div class="badge"><svg class="fig" data-primary="triceps" data-secondary="" width="40" height="40"></svg></div>
-        <div style="flex:1"><div style="font-weight:600">Triceps Pushdown</div><div class="muted" style="font-size:13px">Cable · 3 sets · 27.5 kg</div></div>
+        <div class="badge"><svg class="fig" data-primary="lats,upperBack" data-secondary="biceps,rearDelts" width="40" height="40"></svg></div>
+        <div class="display" style="font-size:22px;flex:1">Lat Pulldown</div>
+        <span class="muted" style="font-size:18px">···</span>
       </div>
     </div>
-
-    <div class="card row" style="padding:14px;gap:12px">
-      <div class="badge"><svg class="fig" data-primary="chest" data-secondary="frontDelts,triceps" width="40" height="40"></svg></div>
-      <div style="flex:1"><div style="font-weight:600">Incline Dumbbell Press</div><div class="muted" style="font-size:13px">Last time 30 kg × 10, 10, 9</div></div>
-      <span class="muted" style="font-size:13px">3 sets</span>
-    </div>
+  </div>
+  <div class="dock">
+    <div style="flex:1"><div class="eyebrow" style="font-size:11px">Rest</div><div class="display" style="font-size:30px">1:24</div></div>
+    <span class="btn">−15</span><span class="btn">+15</span><span class="btn primary">Skip</span>
   </div>
 </section>
 
-<!-- 3. Progress: muscles -->
-<section class="phone light" id="progress" data-tab="progress">
+<!-- 3. History -->
+<section class="phone light" id="history" data-tab="history">
   <div class="content" style="gap:12px">
-    <div class="display" style="font-size:38px;padding-top:4px">Progress</div>
-    <div class="tiles">
-      <div class="tile"><div class="display">48</div><div class="eyebrow">Workouts</div></div>
-      <div class="tile"><div class="display" style="color:var(--hot)">6</div><div class="eyebrow">Week streak</div></div>
-      <div class="tile"><div class="display">12</div><div class="eyebrow">Records</div></div>
-    </div>
-    <div class="card">
-      <div class="row between" style="align-items:baseline">
-        <span class="display" style="font-size:16px">Muscles this week</span>
-        <span class="muted" style="font-size:12.5px">Sets vs 10–20 range</span>
-      </div>
-      <div class="row" style="justify-content:center;gap:10px;margin:10px 0 6px">
-        <svg class="fig heat" data-view="front" width="150" height="300"></svg>
-        <svg class="fig heat" data-view="back" width="150" height="300"></svg>
-      </div>
-      <div class="row" style="gap:14px;justify-content:center;font-size:12px" >
-        <span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--sec)"></i>Some</span>
-        <span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--accent)"></i>Growth zone</span>
-        <span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--hot)"></i>High</span>
-      </div>
-    </div>
-    <div class="card" style="padding:14px 16px">
-      <div class="row between" style="margin-bottom:8px"><span style="font-weight:600">Chest</span><span class="muted" style="font-size:13px">16 sets</span></div>
-      <div class="zone"><b style="width:64%;background:var(--accent)"></b></div>
-      <div class="row between" style="margin:14px 0 8px"><span style="font-weight:600">Quads</span><span class="muted" style="font-size:13px">22 sets</span></div>
-      <div class="zone"><b style="width:88%;background:var(--hot)"></b></div>
-      <div class="row between" style="margin:14px 0 8px"><span style="font-weight:600">Lats</span><span class="muted" style="font-size:13px">6 sets</span></div>
-      <div class="zone"><b style="width:24%;background:var(--sec)"></b></div>
-    </div>
-  </div>
-</section>
-
-<!-- 4. History (dark) -->
-<section class="phone dark" id="history" data-tab="history">
-  <div class="content" style="gap:12px">
-    <div class="display" style="font-size:38px;padding-top:4px">History</div>
+    <div class="large">History</div>
     <div class="card">
       <div class="row between" style="margin-bottom:12px">
-        <span class="display" style="font-size:22px">October 2026</span>
+        <span style="font-weight:600;font-size:16px">October 2026</span>
         <span class="muted">‹ &nbsp; ›</span>
       </div>
       <div class="cal" id="cal"></div>
     </div>
-    <div class="section"><span class="display">This week</span><a>Export</a></div>
-    <div class="card row" style="gap:14px;padding:12px 14px">
-      <div class="bib" style="width:40px;padding:6px 0 5px;border-radius:7px"><small style="font-size:8px">WED</small><b style="font-size:20px;margin:1px 0">21</b><small style="font-size:8px">OCT</small></div>
-      <div style="flex:1"><div style="font-weight:600">Push day</div><div class="muted" style="font-size:13px">58 min · 16 sets · 6,240 kg</div></div>
-      <span class="pill" style="font-size:11px">2 PRs</span>
-      <div class="slot" style="background:#F2A66B"></div>
-    </div>
-    <div class="card row" style="gap:14px;padding:12px 14px">
-      <div class="bib" style="width:40px;padding:6px 0 5px;border-radius:7px"><small style="font-size:8px">TUE</small><b style="font-size:20px;margin:1px 0">20</b><small style="font-size:8px">OCT</small></div>
-      <div style="flex:1"><div style="font-weight:600">Outdoor Run</div><div class="muted" style="font-size:13px">Apple Watch · 5.2 km · 5:18 /km</div></div>
-      <div class="slot" style="background:#8AD8F2"></div>
-    </div>
-    <div class="card row" style="gap:14px;padding:12px 14px">
-      <div class="bib" style="width:40px;padding:6px 0 5px;border-radius:7px"><small style="font-size:8px">MON</small><b style="font-size:20px;margin:1px 0">19</b><small style="font-size:8px">OCT</small></div>
-      <div style="flex:1"><div style="font-weight:600">Pull day</div><div class="muted" style="font-size:13px">1 h 04 min · 18 sets · 7,110 kg</div></div>
-      <div class="slot" style="background:#7FB8F5"></div>
-    </div>
-  </div>
-</section>
-
-<!-- 5. Coach (dark) -->
-<section class="phone dark" id="coach">
-  <div class="content" style="gap:12px">
-    <div class="row" style="height:42px;color:var(--accent);font-weight:600">‹ Home</div>
-    <div>
-      <div class="eyebrow">Last 4 weeks</div>
-      <div class="display" style="font-size:40px;margin-top:4px">Coach</div>
-    </div>
-    <div class="card">
-      <div class="row between" style="margin-bottom:6px"><span class="display" style="font-size:18px">Training load</span><span class="pill" style="background:color-mix(in srgb,var(--hot) 18%,transparent);color:var(--hot)">3 notes</span></div>
-      <div class="flag"><span class="dot" style="background:color-mix(in srgb,var(--hot) 18%,transparent);color:var(--hot)">!</span><div><div style="font-weight:600">Quads: 22 hard sets this week</div><div class="muted" style="font-size:13px;margin-top:2px">Above 20 sets, extra volume rarely adds growth.</div></div></div>
-      <div class="flag"><span class="dot" style="background:var(--accentSoft);color:var(--accent)">⇄</span><div><div style="font-weight:600">Push 1.6× pull</div><div class="muted" style="font-size:13px;margin-top:2px">Add rows or pulldowns to balance your shoulders.</div></div></div>
-      <div class="flag"><span class="dot" style="background:var(--line);color:var(--ink2)">◷</span><div><div style="font-weight:600">Hamstrings skipped for 3 weeks</div><div class="muted" style="font-size:13px;margin-top:2px">Romanian deadlifts or leg curls would cover them.</div></div></div>
-    </div>
-    <div class="card">
-      <div class="row between" style="margin-bottom:10px"><span class="display" style="font-size:18px">AI review</span><span class="muted" style="font-size:12px">Claude · today</span></div>
-      <div style="font-size:14.5px;line-height:1.45;color:var(--ink2)">Bench press is up 5 kg in four weeks, a solid rate for your level. Your legs are getting most of the volume, so trim one quad exercise and add a hamstring movement on leg day.</div>
-      <div class="eyebrow" style="font-size:10.5px;margin:14px 0 8px">Next session</div>
-      <div style="font-size:14px;line-height:1.6">
-        <div>• Bench press: try 85 kg × 6</div>
-        <div>• Swap leg extension for Romanian deadlift</div>
-        <div>• Keep rest at 2–3 min on compounds</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 6. Exercise detail -->
-<section class="phone light" id="exercise">
-  <div class="content" style="gap:12px">
-    <div class="row" style="height:42px;color:var(--accent);font-weight:600">‹ Exercises</div>
-    <div class="row" style="gap:16px">
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:10px;display:flex;gap:4px">
-        <svg class="fig" data-view="front" data-primary="quads,glutes" data-secondary="adductors,hamstrings,lowerBack,abs" width="60" height="120"></svg>
-        <svg class="fig" data-view="back" data-primary="quads,glutes" data-secondary="adductors,hamstrings,lowerBack,abs" width="60" height="120"></svg>
-      </div>
+    <div class="row between" style="padding-top:6px"><span class="eyebrow">This week</span><span class="muted" style="font-size:12px">2 workouts</span></div>
+    <div class="wcard">
+      <div class="bib"><small>WED</small><b>21</b><small>OCT</small></div>
       <div>
-        <div class="display" style="font-size:36px">Back squat</div>
-        <div class="muted" style="font-size:13.5px;margin-top:6px">Barbell · Quads, glutes</div>
-        <div class="row" style="gap:6px;margin-top:10px"><span class="pill">Legs</span><span class="pill" style="background:var(--line);color:var(--ink2)">Barbell</span></div>
+        <div class="display">Lower A</div>
+        <div class="meta">58 min · 5,140 kg · 15 sets</div>
+        <div class="ex"><b>4×</b>Back Squat<br><b>3×</b>Romanian Deadlift<br><b>3×</b>Leg Press</div>
       </div>
     </div>
-    <div class="tiles">
-      <div class="tile"><div class="display">140</div><div class="eyebrow">Best kg</div></div>
-      <div class="tile"><div class="display">158</div><div class="eyebrow">Est. 1RM</div></div>
-      <div class="tile"><div class="display">31</div><div class="eyebrow">Sessions</div></div>
+    <div class="wcard">
+      <div class="bib"><small>MON</small><b>19</b><small>OCT</small></div>
+      <div>
+        <div class="display">Upper A</div>
+        <div class="meta">53 min · 4,720 kg · 14 sets</div>
+        <div class="ex"><b>3×</b>Bench Press<br><b>3×</b>Lat Pulldown<br><b>3×</b>Seated Cable Row</div>
+      </div>
     </div>
+  </div>
+</section>
+
+<!-- 4. Progress -->
+<section class="phone light" id="progress" data-tab="progress">
+  <div class="content" style="gap:12px">
+    <div class="large">Progress</div>
+    <div class="seg"><span class="on">Overview</span><span>Exercises</span></div>
+    <div class="card" style="padding:14px;border-radius:16px">
+      <div class="row between" style="align-items:baseline"><span class="display" style="font-size:16px">Workouts per week</span><span class="muted" style="font-size:12.5px">Last 12 weeks</span></div>
+      <div class="bars" style="height:90px;margin-top:12px" id="wk"></div>
+    </div>
+    <div class="section"><span class="display">Muscles</span></div>
     <div class="card">
-      <div class="row between" style="align-items:baseline;margin-bottom:12px"><span class="display" style="font-size:16px">Estimated 1RM</span><span class="muted" style="font-size:12.5px">kg · 6 months</span></div>
-      <svg id="e1rm" width="326" height="150"></svg>
-    </div>
-    <div class="card" style="padding:12px 16px">
-      <div class="eyebrow" style="font-size:10.5px;margin-bottom:6px">Last session · Sat 17 Oct</div>
-      <div class="row between" style="padding:6px 0"><span class="muted">1</span><span style="font-weight:600">130 kg × 5</span></div>
-      <div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><span class="muted">2</span><span style="font-weight:600">135 kg × 5</span></div>
-      <div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><span class="muted">3</span><span style="font-weight:600">140 kg × 4 <span class="pill" style="font-size:10.5px;padding:3px 7px;margin-left:4px">PR</span></span></div>
+      <div class="row" style="justify-content:center;gap:6px">
+        <svg class="fig heat" data-view="front" width="100" height="200"></svg>
+        <svg class="fig heat" data-view="back" width="100" height="200"></svg>
+      </div>
+      <div style="margin-top:12px;font-size:14px">
+        <div class="row between"><b style="font-weight:600">Chest</b><span class="muted">18 sets</span></div><div class="mbar"><b style="width:100%;background:#D2551F"></b></div>
+        <div class="row between" style="margin-top:12px"><b style="font-weight:600">Back</b><span class="muted">16 sets</span></div><div class="mbar"><b style="width:89%;background:#2F7FD8"></b></div>
+        <div class="row between" style="margin-top:12px"><b style="font-weight:600">Legs</b><span class="muted">15 sets</span></div><div class="mbar"><b style="width:83%;background:#4C8A2B"></b></div>
+      </div>
     </div>
   </div>
 </section>
@@ -432,7 +363,7 @@ document.querySelectorAll('.phone').forEach(p => {
 
 // Muscle figures.
 const NS = 'http://www.w3.org/2000/svg';
-const heat = { chest: 'g', frontDelts: 'g', triceps: 'g', quads: 'h', glutes: 'g', sideDelts: 's', lats: 's', upperBack: 's', biceps: 's', abs: 's', calves: 's', rearDelts: 's', hamstrings: '' };
+const heat = { chest: 'g', frontDelts: 'g', triceps: 's', quads: 'g', glutes: 's', lats: 'g', upperBack: 'g', biceps: 's', hamstrings: 's', rearDelts: 's', sideDelts: 's' };
 function draw(svg, view, fill) {
   const g = document.createElementNS(NS, 'g');
   ANATOMY[view].forEach(([m, d, detail]) => {
@@ -474,8 +405,8 @@ document.querySelectorAll('svg.fig').forEach(svg => {
 // History calendar: October 2026 starts on a Thursday (Monday-first grid).
 const cal = document.getElementById('cal');
 'MTWTFSS'.split('').forEach(d => cal.insertAdjacentHTML('beforeend', `<div class="wd">${d}</div>`));
-const trained = [1, 3, 5, 6, 8, 10, 12, 14, 15, 17, 19, 21];
-const watch = [4, 11, 13, 20];
+const trained = [2, 5, 7, 9, 12, 14, 16, 19, 21];
+const watch = [];
 [28, 29, 30].forEach(d => cal.insertAdjacentHTML('beforeend', `<div class="d x">${d}</div>`));
 for (let d = 1; d <= 31; d++) {
   const cls = trained.includes(d) ? 'on' : watch.includes(d) ? 'watch' : '';
@@ -483,17 +414,9 @@ for (let d = 1; d <= 31; d++) {
 }
 cal.insertAdjacentHTML('beforeend', `<div class="d x">1</div>`);
 
-// Estimated 1RM line.
-const pts = [128, 131, 130, 134, 137, 136, 140, 143, 142, 147, 150, 149, 153, 158];
-const svg = document.getElementById('e1rm');
-const W = 326, H = 150, min = 120, max = 165;
-const xy = pts.map((v, i) => [8 + i * (W - 16) / (pts.length - 1), H - 12 - (v - min) / (max - min) * (H - 24)]);
-const line = xy.map((p, i) => (i ? 'L' : 'M') + p.join(',')).join(' ');
-svg.innerHTML = [0, 1, 2, 3].map(i => `<line x1="0" x2="${W}" y1="${12 + i * (H - 24) / 3}" y2="${12 + i * (H - 24) / 3}" stroke="var(--line)" stroke-dasharray="3 4"/>`).join('')
-  + `<path d="${line} L${xy.at(-1)[0]},${H} L${xy[0][0]},${H} Z" fill="var(--accent)" opacity=".12"/>`
-  + `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`
-  + xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>`).join('')
-  + `<circle cx="${xy.at(-1)[0]}" cy="${xy.at(-1)[1]}" r="6" fill="var(--accent)"/>`;
+// Workouts per week.
+const wk = document.getElementById('wk');
+[2, 3, 3, 1, 2, 3, 4, 3, 2, 3, 3, 2].forEach((n, i, a) => wk.insertAdjacentHTML('beforeend', `<div class="${i === a.length - 1 ? 'cur' : ''}" style="height:${n * 22}px"></div>`));
 </script>
 </body>
 </html>
