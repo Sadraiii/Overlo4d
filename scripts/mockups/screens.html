@@ -1,0 +1,498 @@
+<!doctype html>
+<!--
+  Mockups of the app's screens for the README, drawn in HTML with the app's colours, fonts and
+  muscle figure. They are not simulator captures. Render with: node scripts/mockups/render.js
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: Display; src: url(../../Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf); }
+@font-face { font-family: DisplayBlack; src: url(../../Resources/Fonts/BigShouldersDisplayThin-Black.ttf); }
+@font-face { font-family: Body; font-weight: 400; src: url(../../Resources/Fonts/SchibstedGrotesk-Regular.ttf); }
+@font-face { font-family: Body; font-weight: 500; src: url(../../Resources/Fonts/SchibstedGrotesk-Medium.ttf); }
+@font-face { font-family: Body; font-weight: 600; src: url(../../Resources/Fonts/SchibstedGrotesk-SemiBold.ttf); }
+@font-face { font-family: Body; font-weight: 700; src: url(../../Resources/Fonts/SchibstedGrotesk-Bold.ttf); }
+
+/* Theme.swift, violet accent */
+.light {
+  --paper: #EEF0EB; --card: #FAFBF8; --ink: #151815; --ink2: #4A504A; --ink3: #737A72;
+  --line: #DADED6; --line2: #C5CBC2; --good: #2C7748; --goodSoft: #D8EEDF; --danger: #B0382C;
+  --hot: #C4561A; --accent: #5A3E8A; --accentInk: #FFFFFF; --accentSoft: #E8E1F2; --glass: rgba(250,251,248,.82);
+  --body: #C5CBC2; --muscle: #DADED6; --sec: #B9A6D8;
+}
+.dark {
+  --paper: #0F120F; --card: #191D19; --ink: #ECEFE8; --ink2: #B4BAB1; --ink3: #8A9288;
+  --line: #2A302A; --line2: #3A413A; --good: #6CCB8C; --goodSoft: #16301F; --danger: #F0897D;
+  --hot: #F5A167; --accent: #B9A0E6; --accentInk: #1B1229; --accentSoft: #2A2240; --glass: rgba(30,34,30,.82);
+  --body: #3A413A; --muscle: #2A302A; --sec: #5E4E80;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40px; font-family: Body; }
+.phone {
+  width: 390px; height: 844px; position: relative; overflow: hidden;
+  background: var(--paper); color: var(--ink); font-family: Body; font-size: 15px; border-radius: 48px;
+}
+.content { padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* Status bar and Dynamic Island */
+.status { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 46px; font-weight: 600; font-size: 16.5px; }
+.status .icons { display: flex; gap: 6px; align-items: center; }
+.island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 124px; height: 36px; background: #000; border-radius: 20px; }
+
+/* Text styles from Components.swift */
+.display { font-family: Display; text-transform: uppercase; line-height: .95; letter-spacing: .2px; }
+.eyebrow { font-weight: 600; font-size: 12px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink3); }
+.muted { color: var(--ink3); }
+.ink2 { color: var(--ink2); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; }
+.row { display: flex; align-items: center; }
+.between { justify-content: space-between; }
+.pill { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 12px; padding: 6px 10px; border-radius: 99px; background: var(--accentSoft); color: var(--accent); }
+.pill.live { background: var(--goodSoft); color: var(--good); }
+.pill.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 25%, transparent); }
+.streak { font-weight: 700; font-size: 12px; color: var(--hot); background: color-mix(in srgb, var(--hot) 16%, transparent); padding: 4px 8px; border-radius: 99px; }
+.btn-big { height: 58px; border-radius: 29px; background: var(--accent); color: var(--accentInk); font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn { height: 40px; border-radius: 20px; padding: 0 16px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line2); }
+.btn.primary { background: var(--accent); color: var(--accentInk); border-color: transparent; }
+.section { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; }
+.section .display { font-size: 25px; }
+.section a { color: var(--accent); font-weight: 600; font-size: 14px; }
+
+/* Ticket divider */
+.ticket { position: relative; height: 16px; margin: 0 -16px; }
+.ticket::before { content: ""; position: absolute; left: 16px; right: 16px; top: 7px; border-top: 1.5px dashed var(--line2); }
+.ticket::after, .ticket i { content: ""; position: absolute; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); }
+.ticket::after { left: -8px; } .ticket i { right: -8px; }
+
+/* Bib */
+.bib { width: 56px; padding: 12px 0 9px; background: #FAFAF6; border-radius: 10px; color: #121412; text-align: center; position: relative; box-shadow: 0 1px 0 rgba(0,0,0,.08); }
+.dark .bib { background: #E9EAE4; }
+.bib small { display: block; font-weight: 700; font-size: 10.5px; letter-spacing: 1px; }
+.bib b { display: block; font-family: Display; font-size: 31px; line-height: 1; margin: 3px 0; }
+.bib::before, .bib::after { content: ""; position: absolute; top: 5px; width: 5px; height: 5px; border-radius: 50%; border: 1.3px solid rgba(0,0,0,.3); }
+.bib::before { left: 5px; } .bib::after { right: 5px; }
+
+/* Week strip */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; }
+.week span { font-weight: 600; font-size: 11px; color: var(--ink3); display: block; margin-bottom: 5px; }
+.week span.today { color: var(--accent); }
+.week i { display: flex; margin: 0 auto; width: 32px; height: 32px; border-radius: 9px; background: var(--line); align-items: center; justify-content: center; color: var(--accentInk); font-style: normal; font-weight: 700; }
+.week i.on { background: var(--accent); }
+.week i.today { background: transparent; border: 1.5px dashed var(--line2); }
+
+/* Tally marks */
+.tally { display: flex; gap: 12px; height: 20px; }
+.tally .g { flex: 1; display: flex; justify-content: space-between; padding: 0 3px; position: relative; }
+.tally .g b { width: 4px; border-radius: 3px; background: var(--line); }
+.tally .g b.on { background: var(--ink); }
+.tally .g.full::after { content: ""; position: absolute; left: -4px; right: -4px; top: 8px; height: 3px; border-radius: 3px; background: var(--accent); transform: rotate(-21deg); }
+
+/* Tab bar (Liquid Glass) */
+.tabbar { position: absolute; left: 16px; right: 16px; bottom: 26px; height: 64px; border-radius: 32px; background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--line); display: flex; justify-content: space-around; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.12); }
+.tabbar div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; color: var(--ink2); padding: 6px 10px; border-radius: 24px; }
+.tabbar div.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.tabbar svg { width: 24px; height: 22px; fill: currentColor; }
+.home-ind { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: var(--ink); }
+
+/* Tiles */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 12px 12px; }
+.tile .display { font-size: 32px; }
+.tile .eyebrow { font-size: 10.5px; margin-top: 4px; }
+
+/* Set rows */
+.sets { font-variant-numeric: tabular-nums; }
+.sets .h, .sets .r { display: grid; grid-template-columns: 32px 1fr 66px 58px 40px; gap: 6px; align-items: center; text-align: center; }
+.sets .h { font-weight: 600; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink3); padding: 4px 0 6px; }
+.sets .r { height: 44px; border-radius: 12px; margin-bottom: 4px; }
+.sets .r.done { background: var(--goodSoft); }
+.sets .n { font-family: Display; font-size: 19px; }
+.sets .n.w { color: var(--hot); font-family: Body; font-weight: 700; font-size: 13px; }
+.sets .prev { color: var(--ink3); font-size: 13.5px; }
+.sets .f { height: 36px; border-radius: 10px; background: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
+.sets .done .f { background: transparent; }
+.sets .ph { color: var(--ink3); font-weight: 500; }
+.check { width: 34px; height: 34px; border-radius: 10px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: var(--line); color: var(--ink3); }
+.done .check { background: var(--good); color: #fff; }
+.dark .done .check { color: #0F120F; }
+.check svg { width: 16px; height: 16px; }
+
+.badge { width: 46px; height: 46px; border-radius: 12px; background: var(--paper); flex: none; display: flex; align-items: center; justify-content: center; }
+.slot { width: 5px; height: 44px; border-radius: 3px; }
+
+/* Calendar */
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 6px; text-align: center; }
+.cal .wd { font-weight: 600; font-size: 11px; color: var(--ink3); padding-bottom: 4px; }
+.cal .d { height: 38px; width: 38px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 11px; font-weight: 500; font-size: 15px; position: relative; }
+.cal .d.on { background: var(--accent); color: var(--accentInk); font-weight: 700; }
+.cal .d.watch { background: var(--accentSoft); color: var(--accent); font-weight: 700; }
+.cal .d.today { border: 1.5px solid var(--ink); }
+.cal .d.x { color: var(--ink3); opacity: .45; }
+
+/* Bars */
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; }
+.bars div { flex: 1; border-radius: 6px 6px 3px 3px; background: color-mix(in srgb, var(--accent) 35%, var(--card)); }
+.bars div.cur { background: var(--accent); }
+
+.flag { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); }
+.flag:first-of-type { border-top: 0; }
+.flag .dot { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+.zone { height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
+.zone b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<template id="chrome">
+  <div class="island"></div>
+  <div class="status"><span>9:41</span><span class="icons">
+    <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+    <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 2.2c2.4 0 4.6.9 6.2 2.5l1.2-1.2C14 1.6 11.4.5 8.5.5S3 1.6 1.1 3.5l1.2 1.2C3.9 3.1 6.1 2.2 8.5 2.2zm0 3.4c1.5 0 2.8.6 3.8 1.5l1.2-1.2C12.2 4.6 10.4 3.9 8.5 3.9S4.8 4.6 3.5 5.9l1.2 1.2c1-.9 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.2.2 1.6.6L8.5 11.2 6.9 9.6c.4-.4 1-.6 1.6-.6z"/></svg>
+    <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"/><rect x="25" y="4.5" width="1.5" height="4" rx=".7" fill="currentColor" opacity=".4"/></svg>
+  </span></div>
+</template>
+
+<template id="tabs">
+  <div class="tabbar">
+    <div data-tab="home"><svg viewBox="0 0 24 22"><path d="M12 1.5 1.5 10.4l1.3 1.5L4 10.9V20a1 1 0 0 0 1 1h5v-6h4v6h5a1 1 0 0 0 1-1v-9.1l1.2 1 1.3-1.5z"/></svg>Home</div>
+    <div data-tab="plans"><svg viewBox="0 0 24 22"><rect x="4" y="1" width="16" height="20" rx="3"/><rect x="7.5" y="6" width="9" height="1.8" rx=".9" fill="var(--paper)"/><rect x="7.5" y="10" width="9" height="1.8" rx=".9" fill="var(--paper)"/><rect x="7.5" y="14" width="6" height="1.8" rx=".9" fill="var(--paper)"/></svg>Plans</div>
+    <div data-tab="start"><svg viewBox="0 0 24 22"><circle cx="12" cy="11" r="10.5"/><path d="M11 6h2v4h4v2h-4v4h-2v-4H7v-2h4z" fill="var(--paper)"/></svg>Start</div>
+    <div data-tab="history"><svg viewBox="0 0 24 22"><rect x="2" y="3" width="20" height="18" rx="3.5"/><rect x="2" y="3" width="20" height="5" rx="2" fill="currentColor"/><rect x="6" y="0.5" width="2" height="5" rx="1"/><rect x="16" y="0.5" width="2" height="5" rx="1"/><g fill="var(--paper)"><rect x="6" y="11" width="3" height="3" rx=".8"/><rect x="10.5" y="11" width="3" height="3" rx=".8"/><rect x="15" y="11" width="3" height="3" rx=".8"/><rect x="6" y="15.5" width="3" height="3" rx=".8"/><rect x="10.5" y="15.5" width="3" height="3" rx=".8"/></g></svg>History</div>
+    <div data-tab="progress"><svg viewBox="0 0 24 22"><rect x="2" y="11" width="5" height="10" rx="1.5"/><rect x="9.5" y="5" width="5" height="16" rx="1.5"/><rect x="17" y="1" width="5" height="20" rx="1.5"/></svg>Progress</div>
+  </div>
+  <div class="home-ind"></div>
+</template>
+
+<!-- 1. Home -->
+<section class="phone light" id="home" data-tab="home">
+  <div class="content">
+    <div class="row" style="gap:10px;height:42px">
+      <img src="../../Resources/Seal.png" width="38" height="38">
+      <span class="display" style="font-size:21px;letter-spacing:1.5px">Overload</span>
+      <span style="margin-left:auto;color:var(--ink2)"><svg width="22" height="18" viewBox="0 0 22 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 3h12M17 3h4M1 9h4M9 9h12M1 15h10M15 15h6"/><circle cx="15" cy="3" r="2"/><circle cx="7" cy="9" r="2"/><circle cx="13" cy="15" r="2"/></svg></span>
+    </div>
+
+    <div class="card" style="border-radius:22px;box-shadow:0 10px 24px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:14px">
+      <div class="row between"><span class="pill">This week</span><span class="streak">🔥 6 wk</span></div>
+      <div class="row" style="gap:16px">
+        <div class="bib"><small>THU</small><b>22</b><small>OCT</small></div>
+        <div>
+          <div class="display" style="font-size:36px">3 workouts</div>
+          <div class="ink2" style="font-size:14px;margin-top:5px">14,820 kg · 3 h 12 min</div>
+        </div>
+      </div>
+      <div class="week">
+        <div><span>M</span><i class="on">✓</i></div><div><span>T</span><i></i></div><div><span>W</span><i class="on">✓</i></div>
+        <div><span class="today">T</span><i class="today"></i></div><div><span>F</span><i></i></div><div><span>S</span><i class="on">✓</i></div><div><span>S</span><i></i></div>
+      </div>
+      <div class="ticket"><i></i></div>
+      <div class="btn-big"><span style="font-size:22px;font-weight:500;margin-top:-2px">+</span> Start workout</div>
+    </div>
+
+    <div class="card row" style="gap:14px;padding:15px">
+      <div style="flex:1">
+        <div class="eyebrow">Last week</div>
+        <div class="display" style="font-size:24px;margin-top:6px">4 workouts · +8% volume</div>
+        <div class="muted" style="font-size:13px;margin-top:4px">2 records · most trained: chest</div>
+      </div>
+      <span class="muted">›</span>
+    </div>
+
+    <div class="card row" style="gap:14px;padding:15px">
+      <div style="flex:1">
+        <div class="eyebrow">Reps today</div>
+        <div class="row" style="gap:6px;align-items:baseline;margin:6px 0 8px">
+          <span class="display" style="font-size:40px">65</span><span class="display muted" style="font-size:22px">/ 100</span>
+        </div>
+        <div class="tally">
+          <div class="g full"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
+          <div class="g full"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
+          <div class="g"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div>
+          <div class="g"><b></b><b></b><b></b><b></b></div>
+        </div>
+      </div>
+      <span class="muted">›</span>
+    </div>
+
+    <div class="card row" style="gap:14px;padding:15px">
+      <div style="flex:1">
+        <div class="eyebrow">Coach</div>
+        <div style="font-weight:600;margin-top:5px">Legs haven't been trained in 9 days</div>
+        <div class="muted" style="font-size:13px;margin-top:2px">Push volume is 1.6× pull this week</div>
+      </div>
+      <span class="pill" style="background:color-mix(in srgb,var(--hot) 16%,transparent);color:var(--hot)">2 notes</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Active workout -->
+<section class="phone light" id="workout">
+  <div class="content" style="gap:12px">
+    <div class="row between" style="height:42px">
+      <span class="btn" style="height:36px;border:0;padding:0;color:var(--ink2)">⌄ Minimise</span>
+      <span class="btn primary" style="height:36px">Finish</span>
+    </div>
+    <div>
+      <div class="eyebrow" style="font-size:11px">Started 18:04</div>
+      <div class="display" style="font-size:40px;margin-top:4px">Push day</div>
+      <div class="row ink2" style="gap:14px;font-size:14px;margin-top:6px">
+        <span>⏱ 42:18</span><span>11 sets</span><span>6,240 kg</span>
+      </div>
+    </div>
+
+    <div class="card row" style="padding:12px 14px;gap:12px;background:var(--accent);border:0;color:var(--accentInk)">
+      <div>
+        <div class="eyebrow" style="color:inherit;opacity:.75;font-size:11px">Rest</div>
+        <div class="display" style="font-size:34px">1:24</div>
+      </div>
+      <div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden"><div style="width:53%;height:100%;background:#fff"></div></div>
+      <span class="btn" style="height:34px;border-color:rgba(255,255,255,.4);color:inherit">+15s</span>
+    </div>
+
+    <div class="card" style="padding:14px">
+      <div class="row" style="gap:12px;margin-bottom:10px">
+        <div class="badge"><svg class="fig" data-primary="chest,frontDelts" data-secondary="triceps" width="40" height="40"></svg></div>
+        <div style="flex:1">
+          <div style="font-weight:600">Bench Press</div>
+          <div class="muted" style="font-size:13px">Barbell · Chest, front delts</div>
+        </div>
+        <span class="pill">🏆 PR</span>
+      </div>
+      <div class="sets">
+        <div class="h"><span>Set</span><span>Previous</span><span>Kg</span><span>Reps</span><span></span></div>
+        <div class="r done"><span class="n w">W</span><span class="prev">40 × 10</span><span class="f">40</span><span class="f">10</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r done"><span class="n">1</span><span class="prev">80 × 8</span><span class="f">82.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r done"><span class="n">2</span><span class="prev">80 × 7</span><span class="f">82.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r"><span class="n">3</span><span class="prev">80 × 6</span><span class="f ph">82.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+      </div>
+      <div class="muted" style="font-size:13px;text-align:center;margin-top:6px">+ Add set</div>
+    </div>
+
+    <div class="card" style="padding:14px;border-left:4px solid var(--accent)">
+      <div class="eyebrow" style="font-size:10.5px;color:var(--accent);margin-bottom:8px">Superset A</div>
+      <div class="row" style="gap:12px;margin-bottom:10px">
+        <div class="badge"><svg class="fig" data-primary="sideDelts" data-secondary="traps,frontDelts" width="40" height="40"></svg></div>
+        <div style="flex:1"><div style="font-weight:600">Lateral Raise</div><div class="muted" style="font-size:13px">Dumbbell · 3 sets · 12.5 kg</div></div>
+      </div>
+      <div class="row" style="gap:12px">
+        <div class="badge"><svg class="fig" data-primary="triceps" data-secondary="" width="40" height="40"></svg></div>
+        <div style="flex:1"><div style="font-weight:600">Triceps Pushdown</div><div class="muted" style="font-size:13px">Cable · 3 sets · 27.5 kg</div></div>
+      </div>
+    </div>
+
+    <div class="card row" style="padding:14px;gap:12px">
+      <div class="badge"><svg class="fig" data-primary="chest" data-secondary="frontDelts,triceps" width="40" height="40"></svg></div>
+      <div style="flex:1"><div style="font-weight:600">Incline Dumbbell Press</div><div class="muted" style="font-size:13px">Last time 30 kg × 10, 10, 9</div></div>
+      <span class="muted" style="font-size:13px">3 sets</span>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Progress: muscles -->
+<section class="phone light" id="progress" data-tab="progress">
+  <div class="content" style="gap:12px">
+    <div class="display" style="font-size:38px;padding-top:4px">Progress</div>
+    <div class="tiles">
+      <div class="tile"><div class="display">48</div><div class="eyebrow">Workouts</div></div>
+      <div class="tile"><div class="display" style="color:var(--hot)">6</div><div class="eyebrow">Week streak</div></div>
+      <div class="tile"><div class="display">12</div><div class="eyebrow">Records</div></div>
+    </div>
+    <div class="card">
+      <div class="row between" style="align-items:baseline">
+        <span class="display" style="font-size:16px">Muscles this week</span>
+        <span class="muted" style="font-size:12.5px">Sets vs 10–20 range</span>
+      </div>
+      <div class="row" style="justify-content:center;gap:10px;margin:10px 0 6px">
+        <svg class="fig heat" data-view="front" width="150" height="300"></svg>
+        <svg class="fig heat" data-view="back" width="150" height="300"></svg>
+      </div>
+      <div class="row" style="gap:14px;justify-content:center;font-size:12px" >
+        <span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--sec)"></i>Some</span>
+        <span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--accent)"></i>Growth zone</span>
+        <span class="row" style="gap:5px"><i style="width:10px;height:10px;border-radius:3px;background:var(--hot)"></i>High</span>
+      </div>
+    </div>
+    <div class="card" style="padding:14px 16px">
+      <div class="row between" style="margin-bottom:8px"><span style="font-weight:600">Chest</span><span class="muted" style="font-size:13px">16 sets</span></div>
+      <div class="zone"><b style="width:64%;background:var(--accent)"></b></div>
+      <div class="row between" style="margin:14px 0 8px"><span style="font-weight:600">Quads</span><span class="muted" style="font-size:13px">22 sets</span></div>
+      <div class="zone"><b style="width:88%;background:var(--hot)"></b></div>
+      <div class="row between" style="margin:14px 0 8px"><span style="font-weight:600">Lats</span><span class="muted" style="font-size:13px">6 sets</span></div>
+      <div class="zone"><b style="width:24%;background:var(--sec)"></b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. History (dark) -->
+<section class="phone dark" id="history" data-tab="history">
+  <div class="content" style="gap:12px">
+    <div class="display" style="font-size:38px;padding-top:4px">History</div>
+    <div class="card">
+      <div class="row between" style="margin-bottom:12px">
+        <span class="display" style="font-size:22px">October 2026</span>
+        <span class="muted">‹ &nbsp; ›</span>
+      </div>
+      <div class="cal" id="cal"></div>
+    </div>
+    <div class="section"><span class="display">This week</span><a>Export</a></div>
+    <div class="card row" style="gap:14px;padding:12px 14px">
+      <div class="bib" style="width:40px;padding:6px 0 5px;border-radius:7px"><small style="font-size:8px">WED</small><b style="font-size:20px;margin:1px 0">21</b><small style="font-size:8px">OCT</small></div>
+      <div style="flex:1"><div style="font-weight:600">Push day</div><div class="muted" style="font-size:13px">58 min · 16 sets · 6,240 kg</div></div>
+      <span class="pill" style="font-size:11px">2 PRs</span>
+      <div class="slot" style="background:#F2A66B"></div>
+    </div>
+    <div class="card row" style="gap:14px;padding:12px 14px">
+      <div class="bib" style="width:40px;padding:6px 0 5px;border-radius:7px"><small style="font-size:8px">TUE</small><b style="font-size:20px;margin:1px 0">20</b><small style="font-size:8px">OCT</small></div>
+      <div style="flex:1"><div style="font-weight:600">Outdoor Run</div><div class="muted" style="font-size:13px">Apple Watch · 5.2 km · 5:18 /km</div></div>
+      <div class="slot" style="background:#8AD8F2"></div>
+    </div>
+    <div class="card row" style="gap:14px;padding:12px 14px">
+      <div class="bib" style="width:40px;padding:6px 0 5px;border-radius:7px"><small style="font-size:8px">MON</small><b style="font-size:20px;margin:1px 0">19</b><small style="font-size:8px">OCT</small></div>
+      <div style="flex:1"><div style="font-weight:600">Pull day</div><div class="muted" style="font-size:13px">1 h 04 min · 18 sets · 7,110 kg</div></div>
+      <div class="slot" style="background:#7FB8F5"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Coach (dark) -->
+<section class="phone dark" id="coach">
+  <div class="content" style="gap:12px">
+    <div class="row" style="height:42px;color:var(--accent);font-weight:600">‹ Home</div>
+    <div>
+      <div class="eyebrow">Last 4 weeks</div>
+      <div class="display" style="font-size:40px;margin-top:4px">Coach</div>
+    </div>
+    <div class="card">
+      <div class="row between" style="margin-bottom:6px"><span class="display" style="font-size:18px">Training load</span><span class="pill" style="background:color-mix(in srgb,var(--hot) 18%,transparent);color:var(--hot)">3 notes</span></div>
+      <div class="flag"><span class="dot" style="background:color-mix(in srgb,var(--hot) 18%,transparent);color:var(--hot)">!</span><div><div style="font-weight:600">Quads: 22 hard sets this week</div><div class="muted" style="font-size:13px;margin-top:2px">Above 20 sets, extra volume rarely adds growth.</div></div></div>
+      <div class="flag"><span class="dot" style="background:var(--accentSoft);color:var(--accent)">⇄</span><div><div style="font-weight:600">Push 1.6× pull</div><div class="muted" style="font-size:13px;margin-top:2px">Add rows or pulldowns to balance your shoulders.</div></div></div>
+      <div class="flag"><span class="dot" style="background:var(--line);color:var(--ink2)">◷</span><div><div style="font-weight:600">Hamstrings skipped for 3 weeks</div><div class="muted" style="font-size:13px;margin-top:2px">Romanian deadlifts or leg curls would cover them.</div></div></div>
+    </div>
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px"><span class="display" style="font-size:18px">AI review</span><span class="muted" style="font-size:12px">Claude · today</span></div>
+      <div style="font-size:14.5px;line-height:1.45;color:var(--ink2)">Bench press is up 5 kg in four weeks, a solid rate for your level. Your legs are getting most of the volume, so trim one quad exercise and add a hamstring movement on leg day.</div>
+      <div class="eyebrow" style="font-size:10.5px;margin:14px 0 8px">Next session</div>
+      <div style="font-size:14px;line-height:1.6">
+        <div>• Bench press: try 85 kg × 6</div>
+        <div>• Swap leg extension for Romanian deadlift</div>
+        <div>• Keep rest at 2–3 min on compounds</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Exercise detail -->
+<section class="phone light" id="exercise">
+  <div class="content" style="gap:12px">
+    <div class="row" style="height:42px;color:var(--accent);font-weight:600">‹ Exercises</div>
+    <div class="row" style="gap:16px">
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:10px;display:flex;gap:4px">
+        <svg class="fig" data-view="front" data-primary="quads,glutes" data-secondary="adductors,hamstrings,lowerBack,abs" width="60" height="120"></svg>
+        <svg class="fig" data-view="back" data-primary="quads,glutes" data-secondary="adductors,hamstrings,lowerBack,abs" width="60" height="120"></svg>
+      </div>
+      <div>
+        <div class="display" style="font-size:36px">Back squat</div>
+        <div class="muted" style="font-size:13.5px;margin-top:6px">Barbell · Quads, glutes</div>
+        <div class="row" style="gap:6px;margin-top:10px"><span class="pill">Legs</span><span class="pill" style="background:var(--line);color:var(--ink2)">Barbell</span></div>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="display">140</div><div class="eyebrow">Best kg</div></div>
+      <div class="tile"><div class="display">158</div><div class="eyebrow">Est. 1RM</div></div>
+      <div class="tile"><div class="display">31</div><div class="eyebrow">Sessions</div></div>
+    </div>
+    <div class="card">
+      <div class="row between" style="align-items:baseline;margin-bottom:12px"><span class="display" style="font-size:16px">Estimated 1RM</span><span class="muted" style="font-size:12.5px">kg · 6 months</span></div>
+      <svg id="e1rm" width="326" height="150"></svg>
+    </div>
+    <div class="card" style="padding:12px 16px">
+      <div class="eyebrow" style="font-size:10.5px;margin-bottom:6px">Last session · Sat 17 Oct</div>
+      <div class="row between" style="padding:6px 0"><span class="muted">1</span><span style="font-weight:600">130 kg × 5</span></div>
+      <div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><span class="muted">2</span><span style="font-weight:600">135 kg × 5</span></div>
+      <div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><span class="muted">3</span><span style="font-weight:600">140 kg × 4 <span class="pill" style="font-size:10.5px;padding:3px 7px;margin-left:4px">PR</span></span></div>
+    </div>
+  </div>
+</section>
+
+<script src="anatomy.js"></script>
+<script>
+// Status bar and tab bar on every screen.
+const chrome = document.getElementById('chrome').content;
+const tabs = document.getElementById('tabs').content;
+document.querySelectorAll('.phone').forEach(p => {
+  p.prepend(chrome.cloneNode(true));
+  if (p.dataset.tab) {
+    const t = tabs.cloneNode(true);
+    t.querySelector(`[data-tab="${p.dataset.tab}"]`).classList.add('on');
+    p.append(t);
+  }
+});
+
+// Muscle figures.
+const NS = 'http://www.w3.org/2000/svg';
+const heat = { chest: 'g', frontDelts: 'g', triceps: 'g', quads: 'h', glutes: 'g', sideDelts: 's', lats: 's', upperBack: 's', biceps: 's', abs: 's', calves: 's', rearDelts: 's', hamstrings: '' };
+function draw(svg, view, fill) {
+  const g = document.createElementNS(NS, 'g');
+  ANATOMY[view].forEach(([m, d]) => {
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('fill', fill(m));
+    p.setAttribute('stroke', 'var(--paper)');
+    p.setAttribute('stroke-width', '2.2');
+    p.setAttribute('stroke-linejoin', 'round');
+    g.append(p);
+  });
+  return g;
+}
+document.querySelectorAll('svg.fig').forEach(svg => {
+  const primary = (svg.dataset.primary || '').split(',');
+  const secondary = (svg.dataset.secondary || '').split(',');
+  const isHeat = svg.classList.contains('heat');
+  const fill = m => {
+    if (!m) return 'var(--body)';
+    if (isHeat) return { g: 'var(--accent)', h: 'var(--hot)', s: 'var(--sec)' }[heat[m]] || 'var(--muscle)';
+    if (primary.includes(m)) return 'var(--accent)';
+    if (secondary.includes(m)) return 'var(--sec)';
+    return 'var(--muscle)';
+  };
+  if (svg.dataset.view) {
+    svg.setAttribute('viewBox', '0 0 200 400');
+    svg.append(draw(svg, svg.dataset.view, fill));
+  } else {
+    // Badge: front and back side by side.
+    svg.setAttribute('viewBox', '0 0 400 400');
+    svg.append(draw(svg, 'front', fill));
+    const back = draw(svg, 'back', fill);
+    back.setAttribute('transform', 'translate(200 0)');
+    svg.append(back);
+  }
+});
+
+// History calendar: October 2026 starts on a Thursday (Monday-first grid).
+const cal = document.getElementById('cal');
+'MTWTFSS'.split('').forEach(d => cal.insertAdjacentHTML('beforeend', `<div class="wd">${d}</div>`));
+const trained = [1, 3, 5, 6, 8, 10, 12, 14, 15, 17, 19, 21];
+const watch = [4, 11, 13, 20];
+[28, 29, 30].forEach(d => cal.insertAdjacentHTML('beforeend', `<div class="d x">${d}</div>`));
+for (let d = 1; d <= 31; d++) {
+  const cls = trained.includes(d) ? 'on' : watch.includes(d) ? 'watch' : '';
+  cal.insertAdjacentHTML('beforeend', `<div class="d ${cls} ${d === 22 ? 'today' : ''}">${d}</div>`);
+}
+cal.insertAdjacentHTML('beforeend', `<div class="d x">1</div>`);
+
+// Estimated 1RM line.
+const pts = [128, 131, 130, 134, 137, 136, 140, 143, 142, 147, 150, 149, 153, 158];
+const svg = document.getElementById('e1rm');
+const W = 326, H = 150, min = 120, max = 165;
+const xy = pts.map((v, i) => [8 + i * (W - 16) / (pts.length - 1), H - 12 - (v - min) / (max - min) * (H - 24)]);
+const line = xy.map((p, i) => (i ? 'L' : 'M') + p.join(',')).join(' ');
+svg.innerHTML = [0, 1, 2, 3].map(i => `<line x1="0" x2="${W}" y1="${12 + i * (H - 24) / 3}" y2="${12 + i * (H - 24) / 3}" stroke="var(--line)" stroke-dasharray="3 4"/>`).join('')
+  + `<path d="${line} L${xy.at(-1)[0]},${H} L${xy[0][0]},${H} Z" fill="var(--accent)" opacity=".12"/>`
+  + `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`
+  + xy.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>`).join('')
+  + `<circle cx="${xy.at(-1)[0]}" cy="${xy.at(-1)[1]}" r="6" fill="var(--accent)"/>`;
+</script>
+</body>
+</html>
