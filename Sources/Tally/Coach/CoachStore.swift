@@ -55,7 +55,7 @@ final class CoachStore {
     private var modelID: String
 
     var model: CoachModel {
-        get { CoachModel(rawValue: modelID) ?? .opus }
+        get { CoachModel(rawValue: modelID) ?? .haiku }
         set {
             modelID = newValue.rawValue
             UserDefaults.standard.set(newValue.rawValue, forKey: Self.modelKey)
@@ -66,7 +66,7 @@ final class CoachStore {
 
     init() {
         hasKey = Keychain.read(Self.keyAccount)?.isEmpty == false
-        modelID = UserDefaults.standard.string(forKey: Self.modelKey) ?? CoachModel.opus.rawValue
+        modelID = UserDefaults.standard.string(forKey: Self.modelKey) ?? CoachModel.haiku.rawValue
         saved = (try? Data(contentsOf: Self.fileURL)).flatMap { try? JSONDecoder().decode([String: Saved].self, from: $0) } ?? [:]
     }
 

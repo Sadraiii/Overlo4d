@@ -3,11 +3,11 @@ import Foundation
 import FoundationNetworking
 #endif
 
-/// Claude models the coach can use. The user picks one in Settings.
+/// Claude models the coach can use, cheapest first. Haiku is the default; the user can pick another in Settings.
 public enum CoachModel: String, CaseIterable, Identifiable, Sendable {
-    case opus = "claude-opus-5-5"
-    case sonnet = "claude-sonnet-5-5"
     case haiku = "claude-haiku-5-5"
+    case sonnet = "claude-sonnet-5-5"
+    case opus = "claude-opus-5-5"
 
     public var id: String { rawValue }
 
@@ -21,9 +21,9 @@ public enum CoachModel: String, CaseIterable, Identifiable, Sendable {
 
     public var note: String {
         switch self {
-        case .opus: "Most thorough"
-        case .sonnet: "Faster, costs less"
-        case .haiku: "Fastest, costs least"
+        case .opus: "Most thorough, costs most"
+        case .sonnet: "More thorough, costs more"
+        case .haiku: "Fast, costs least"
         }
     }
 
