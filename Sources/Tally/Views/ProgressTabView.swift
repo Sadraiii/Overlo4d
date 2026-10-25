@@ -111,20 +111,6 @@ struct ProgressOverview: View {
         }
     }
 
-    /// Working sets per muscle group over the last 30 days.
-    private var muscleSets: [(muscle: MuscleGroup, sets: Int)] {
-        let since = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
-        var counts: [MuscleGroup: Int] = [:]
-        for workout in gym.workouts where workout.startedAt >= since {
-            for exercise in workout.exercises {
-                guard let muscle = gym.exercise(exercise.exerciseID)?.muscle else { continue }
-                counts[muscle, default: 0] += exercise.sets.filter { $0.type != .warmup }.count
-            }
-        }
-        return counts.map { ($0.key, $0.value) }.sorted { $0.sets > $1.sets }
-    }
-
-
     private struct RecordItem: Identifiable {
         var id: UUID { workoutSet.id }
         let date: Date
@@ -242,35 +228,13 @@ struct ProgressOverview: View {
 
             WeightCard()
 
-            if !muscleSets.isEmpty {
+            // Averaged over the last 4 weeks, or since the first workout for newer users.
+            let muscleSince = min(max(Calendar.current.date(byAdding: .day, value: -28, to: .now) ?? .now, gym.workouts.last?.startedAt ?? .now), .now)
+            let muscleVolume = gym.weeklyMuscleSets(in: DateInterval(start: muscleSince, end: .now))
+            if !muscleVolume.isEmpty {
                 SectionHead("Muscles")
-                let most = max(muscleSets.first?.sets ?? 1, 1)
-                VStack(spacing: 12) {
-                    AnatomyFigure(levels: gym.muscleLevels(in: DateInterval(start: Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now, end: .now)))
-                        .frame(height: 200)
-                        .frame(maxWidth: .infinity)
-                        .padding(.bottom, 6)
-                    ForEach(muscleSets, id: \.muscle) { item in
-                        VStack(spacing: 6) {
-                            HStack {
-                                Text(item.muscle.label).font(Typo.body(14, .semibold))
-                                Spacer()
-                                Text("\(item.sets) sets").font(Typo.body(14)).foregroundStyle(Theme.ink3)
-                            }
-                            GeometryReader { proxy in
-                                Capsule().fill(Theme.line)
-                                    .overlay(alignment: .leading) {
-                                        Capsule().fill(item.muscle.color)
-                                            .frame(width: proxy.size.width * CGFloat(item.sets) / CGFloat(most))
-                                    }
-                            }
-                            .frame(height: 8)
-                        }
-                    }
-                    Text("Working sets, last 30 days").font(Typo.body(12.5)).foregroundStyle(Theme.ink3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .card()
+                MuscleVolumeCard(weeklySets: muscleVolume, caption: "Average working sets per week, last 4 weeks")
+                    .card()
             }
 
             if !recentRecords.isEmpty {

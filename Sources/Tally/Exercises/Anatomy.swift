@@ -134,8 +134,11 @@ enum Figure {
 struct AnatomyFigure: View {
     var primary: Set<Muscle> = []
     var secondary: Set<Muscle> = []
-    /// 0–1 per muscle. When set, muscles are shaded by level instead of primary/secondary.
-    var levels: [Muscle: Double]?
+    /// Working sets per week for each muscle. When set, muscles are shaded by volume zone instead of
+    /// primary/secondary.
+    var weeklySets: [Muscle: Double]?
+    /// Outlined, for the muscle being inspected.
+    var selected: Muscle?
     /// Colour of the gaps between muscles; match the background behind the figure.
     var gap: Color = Theme.card
     /// Makes muscles tappable (picking muscles for a custom exercise).
@@ -151,6 +154,8 @@ struct AnatomyFigure: View {
     private func side(_ regions: [FigureRegion]) -> some View {
         let fills = regions.map { color($0.muscle) }
         let gap = gap
+        let selected = selected
+        let outline = Theme.ink
         return Canvas { context, size in
             let scale = size.width / AnatomyShapes.width
             context.scaleBy(x: scale, y: scale)
@@ -159,6 +164,11 @@ struct AnatomyFigure: View {
             for (region, fill) in zip(regions, fills) {
                 context.fill(region.path, with: .color(fill))
                 context.stroke(region.path, with: .color(gap), style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
+            }
+            if let selected {
+                for region in regions where region.muscle == selected {
+                    context.stroke(region.path, with: .color(outline), style: StrokeStyle(lineWidth: lineWidth * 1.4, lineJoin: .round))
+                }
             }
         }
         .aspectRatio(AnatomyShapes.width / AnatomyShapes.height, contentMode: .fit)
@@ -192,9 +202,8 @@ struct AnatomyFigure: View {
 
     private func color(_ muscle: Muscle?) -> Color {
         guard let muscle else { return Theme.line2 }
-        if let levels {
-            let level = levels[muscle] ?? 0
-            return level > 0 ? Theme.accent.opacity(0.2 + 0.8 * level) : Theme.line
+        if let weeklySets {
+            return VolumeZone(sets: weeklySets[muscle] ?? 0)?.color ?? Theme.line
         }
         if primary.contains(muscle) { return Theme.accent }
         if secondary.contains(muscle) { return Theme.accent.opacity(0.4) }
@@ -230,5 +239,199 @@ struct MuscleLegend: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: horizontal ? .infinity : nil, alignment: .leading)
+    }
+}
+
+/// How much a muscle was trained in a week, using the common hypertrophy guideline that most people
+/// grow best on roughly 10–20 hard sets per muscle per week.
+enum VolumeZone: CaseIterable {
+    case light, maintenance, growth, high
+
+    /// Nil for no sets at all.
+    init?(sets: Double) {
+        switch sets {
+        case ..<0.25: return nil
+        case ..<4: self = .light
+        case ..<10: self = .maintenance
+        case ...20: self = .growth
+        default: self = .high
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .light: "Light"
+        case .maintenance: "Maintenance"
+        case .growth: "Growth"
+        case .high: "High"
+        }
+    }
+
+    var range: String {
+        switch self {
+        case .light: "1–3"
+        case .maintenance: "4–9"
+        case .growth: "10–20"
+        case .high: "20+"
+        }
+    }
+
+    var advice: String {
+        switch self {
+        case .light: "Very little work this week. Add a few sets if you want this muscle to grow."
+        case .maintenance: "Enough to hold on to what you have. Most people grow best on 10–20 sets a week."
+        case .growth: "In the 10–20 set range where most people grow best."
+        case .high: "Over 20 sets a week. Watch your recovery: past this point more sets rarely means more growth."
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .light: Theme.accent.opacity(0.3)
+        case .maintenance: Theme.accent.opacity(0.62)
+        case .growth: Theme.accent
+        case .high: Theme.hot
+        }
+    }
+
+    static func format(_ sets: Double) -> String {
+        sets.formatted(.number.precision(.fractionLength(0...1)))
+    }
+}
+
+/// Swatches for the volume zones, in sets per week.
+struct VolumeLegend: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            ForEach(VolumeZone.allCases, id: \.self) { zone in
+                HStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 3).fill(zone.color).frame(width: 10, height: 10)
+                    Text(zone.range).font(Typo.body(12, .semibold)).foregroundStyle(Theme.ink2)
+                }
+            }
+            Spacer(minLength: 0)
+            Text("sets / wk").font(Typo.body(12)).foregroundStyle(Theme.ink3)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Colour key: light, 1 to 3 sets a week; maintenance, 4 to 9; growth, 10 to 20; high, over 20.")
+    }
+}
+
+/// The body figure shaded by weekly sets, with a tappable muscle and a ranked list against the
+/// 10–20 sets a week growth range.
+struct MuscleVolumeCard: View {
+    let weeklySets: [Muscle: Double]
+    /// What the numbers cover, such as "Average per week, last 30 days".
+    let caption: String
+
+    @State private var selected: Muscle?
+
+    private var ranked: [(muscle: Muscle, sets: Double)] {
+        weeklySets.map { (muscle: $0.key, sets: $0.value) }.sorted { $0.sets > $1.sets }
+    }
+
+    private var untrained: [Muscle] {
+        Muscle.allCases.filter { VolumeZone(sets: weeklySets[$0] ?? 0) == nil }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            AnatomyFigure(weeklySets: weeklySets, selected: selected, onTap: select)
+                .frame(height: 240)
+                .frame(maxWidth: .infinity)
+                .sensoryFeedback(.selection, trigger: selected)
+
+            VolumeLegend()
+
+            if let selected {
+                detail(selected)
+            } else {
+                Text("Tap a muscle for details.")
+                    .font(Typo.body(13))
+                    .foregroundStyle(Theme.ink3)
+            }
+
+            Rectangle().fill(Theme.line).frame(height: 1)
+
+            let scale = max(24, ranked.first?.sets ?? 0)
+            VStack(spacing: 4) {
+                ForEach(ranked, id: \.muscle) { item in
+                    row(item.muscle, sets: item.sets, scale: scale)
+                }
+            }
+
+            if !untrained.isEmpty {
+                Text("Not trained: \(untrained.map(\.label).joined(separator: ", "))")
+                    .font(Typo.body(13))
+                    .foregroundStyle(Theme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Text("\(caption). Secondary muscles count as half a set. The shaded band marks 10–20 sets.")
+                .font(Typo.body(12.5))
+                .foregroundStyle(Theme.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func select(_ muscle: Muscle) {
+        withAnimation(.snappy) { selected = selected == muscle ? nil : muscle }
+    }
+
+    private func detail(_ muscle: Muscle) -> some View {
+        let sets = weeklySets[muscle] ?? 0
+        let zone = VolumeZone(sets: sets)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(muscle.label).display(22)
+                Spacer()
+                Text(zone.map { "\(VolumeZone.format(sets)) sets / wk · \($0.label)" } ?? "Not trained")
+                    .font(Typo.body(14, .semibold))
+                    .foregroundStyle(zone == .high ? Theme.hot : Theme.ink2)
+            }
+            Text(zone?.advice ?? "No working sets hit this muscle.")
+                .font(Typo.body(13.5))
+                .foregroundStyle(Theme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.paper, in: .rect(cornerRadius: 14))
+    }
+
+    private func row(_ muscle: Muscle, sets: Double, scale: Double) -> some View {
+        let zone = VolumeZone(sets: sets)
+        return Button { select(muscle) } label: {
+            VStack(spacing: 6) {
+                HStack {
+                    Text(muscle.label).font(Typo.body(14, .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text("\(VolumeZone.format(sets)) sets")
+                        .font(Typo.body(14))
+                        .foregroundStyle(zone == .high ? Theme.hot : Theme.ink3)
+                }
+                GeometryReader { proxy in
+                    let band = proxy.size.width * CGFloat(10 / scale)
+                    ZStack(alignment: .leading) {
+                        Theme.line
+                        Theme.good.opacity(0.22)
+                            .frame(width: band)
+                            .offset(x: band)
+                        Capsule()
+                            .fill(zone?.color ?? Theme.line2)
+                            .frame(width: max(proxy.size.width * CGFloat(min(sets / scale, 1)), 8))
+                    }
+                    .clipShape(Capsule())
+                }
+                .frame(height: 8)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .background(selected == muscle ? Theme.paper : .clear, in: .rect(cornerRadius: 10))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, -8)
+        .accessibilityLabel("\(muscle.label), \(VolumeZone.format(sets)) sets a week, \(zone?.label ?? "not trained")")
     }
 }
