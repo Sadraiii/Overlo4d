@@ -8,6 +8,8 @@ struct HomeTab: View {
 
     @State private var showingTimer = false
     @State private var showingPlates = false
+    @State private var showingOneRepMax = false
+    @State private var showingRecords = false
     @State private var showingChangelog = false
     @AppStorage("changelog.seenVersion") private var seenVersion = ""
 
@@ -54,6 +56,10 @@ struct HomeTab: View {
                         ToolButton(title: "Timer", symbol: "stopwatch") { showingTimer = true }
                         ToolButton(title: "Plates", symbol: "circle.grid.2x1") { showingPlates = true }
                     }
+                    HStack(spacing: 8) {
+                        ToolButton(title: "1RM", symbol: "percent") { showingOneRepMax = true }
+                        ToolButton(title: "Records", symbol: "trophy") { showingRecords = true }
+                    }
 
                     if let last = gym.workouts.first {
                         SectionHead("Last workout")
@@ -77,7 +83,9 @@ struct HomeTab: View {
             .navigationDestination(isPresented: $ui.showingReps) { QuickCountView() }
             .navigationDestination(for: RecapRoute.self) { RecapView(weekStart: $0.weekStart) }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
+            .navigationDestination(isPresented: $showingRecords) { RecordsView() }
             .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }
+            .sheet(isPresented: $showingOneRepMax) { OneRepMaxSheet() }
             .sheet(isPresented: $showingChangelog) { ChangelogSheet() }
         }
     }
@@ -220,7 +228,7 @@ struct UpdateBanner: View {
     }
 }
 
-/// Small shortcut on Home (Timer, Plates).
+/// Small shortcut on Home (Timer, Plates, 1RM, Records).
 struct ToolButton: View {
     let title: String
     let symbol: String

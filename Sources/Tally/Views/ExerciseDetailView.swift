@@ -173,6 +173,10 @@ struct ExerciseDetailView: View {
                     }
                     .card()
 
+                    if exercise.kind == .weightReps {
+                        RepMaxCard(sessions: sessions)
+                    }
+
                     SectionHead("History")
                     ForEach(sessions) { session in
                         HStack(alignment: .top, spacing: 14) {
@@ -210,5 +214,48 @@ struct ExerciseDetailView: View {
             }
         }
         .sheet(isPresented: $editing) { ExerciseEditor(exercise: exercise) }
+    }
+}
+
+/// Heaviest weight lifted for 1 to 10 reps.
+private struct RepMaxCard: View {
+    let sessions: [ExerciseSession]
+
+    var body: some View {
+        let lifts = sessions.flatMap { session in
+            session.sets.filter { $0.type != .warmup }.compactMap { set -> RepMax.Lift? in
+                guard let weight = set.weight, let reps = set.reps else { return nil }
+                return RepMax.Lift(weight: weight, reps: reps, date: session.date)
+            }
+        }
+        let table = RepMax.table(lifts, upTo: 10)
+        if !table.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Rep maxes").display(16)
+                    Spacer()
+                    Text("Best for at least that many reps").font(Typo.body(12.5)).foregroundStyle(Theme.ink3)
+                }
+                VStack(spacing: 0) {
+                    ForEach(Array(table.enumerated()), id: \.offset) { index, entry in
+                        if index > 0 { Rectangle().fill(Theme.line).frame(height: 1) }
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("\(entry.reps)RM")
+                                .font(Typo.body(14, .semibold))
+                                .frame(width: 48, alignment: .leading)
+                            Text(entry.date.formatted(.dateTime.day().month().year(.twoDigits)))
+                                .font(Typo.body(12.5))
+                                .foregroundStyle(Theme.ink3)
+                            Spacer()
+                            Text("\(Fmt.weight(entry.weight)) kg")
+                                .font(Typo.display(20))
+                                .monospacedDigit()
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+            }
+            .card()
+        }
     }
 }

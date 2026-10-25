@@ -1,4 +1,5 @@
 import SwiftUI
+import TallyCore
 import TallyKit
 
 /// Which plates to load on each side of the bar for a target weight.
@@ -12,19 +13,11 @@ struct PlateCalculatorSheet: View {
     }
 
     private static let bars = [20.0, 15.0, 10.0]
-    private static let plates = [25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25]
 
-    /// Greedy plate selection per side, plus whatever can't be loaded with these plates.
+    /// Plates per side, plus whatever can't be loaded with standard plates.
     private var load: (plates: [Double], leftover: Double) {
-        var side = max(0, ((target ?? 0) - bar) / 2)
-        var result: [Double] = []
-        for plate in Self.plates {
-            while side >= plate - 0.001 {
-                result.append(plate)
-                side -= plate
-            }
-        }
-        return (result, side * 2)
+        let load = Plates.load(target: target ?? 0, bar: bar)
+        return (load.perSide, load.leftover)
     }
 
     var body: some View {

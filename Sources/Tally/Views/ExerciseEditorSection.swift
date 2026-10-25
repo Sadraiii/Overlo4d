@@ -81,6 +81,9 @@ struct ExerciseEditorSection: View {
                         Button("Add note", systemImage: "note.text") { addingNote = true }
                     }
                     if kind == .weightReps {
+                        if !warmUps(for: def).isEmpty {
+                            Button("Add warm-up sets", systemImage: "flame") { addWarmUps(for: def) }
+                        }
                         Button("Plate calculator", systemImage: "circle.grid.2x1") { showingPlates = true }
                     }
                     Button("Move up", systemImage: "arrow.up") { onMove(-1) }
@@ -153,6 +156,25 @@ struct ExerciseEditorSection: View {
             .buttonStyle(.plain)
             .cardRow()
         }
+    }
+
+    /// Ramp-up sets to the heaviest working set, starting from the empty bar on barbell lifts.
+    private func warmUps(for def: ExerciseDef?) -> [WorkoutSet] {
+        guard let working = exercise.sets.filter({ $0.type != .warmup }).compactMap(\.weight).max() else { return [] }
+        let bar: Double = switch def?.equipment ?? .other {
+        case .barbell, .smith: 20
+        case .ezBar: 10
+        default: 0
+        }
+        return WarmUp.sets(working: working, bar: bar).map { WorkoutSet(type: .warmup, weight: $0.weight, reps: $0.reps) }
+    }
+
+    /// Replaces warm-ups not done yet with a fresh ramp, placed before the working sets.
+    private func addWarmUps(for def: ExerciseDef?) {
+        let sets = warmUps(for: def)
+        exercise.sets.removeAll { $0.type == .warmup && !$0.isDone }
+        let index = exercise.sets.lastIndex { $0.type == .warmup }.map { $0 + 1 } ?? 0
+        exercise.sets.insert(contentsOf: sets, at: index)
     }
 }
 

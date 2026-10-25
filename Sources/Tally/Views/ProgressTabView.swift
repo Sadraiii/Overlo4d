@@ -274,7 +274,9 @@ struct ProgressOverview: View {
             }
 
             if !recentRecords.isEmpty {
-                SectionHead("Records")
+                SectionHead("Records") {
+                    NavigationLink("See all") { RecordsView() }
+                }
                 VStack(spacing: 0) {
                     ForEach(Array(recentRecords.enumerated()), id: \.element.id) { index, record in
                         if index > 0 { Rectangle().fill(Theme.line).frame(height: 1) }
