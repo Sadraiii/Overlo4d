@@ -107,7 +107,7 @@ struct ExerciseDetailView: View {
                 }
 
                 HStack(alignment: .center, spacing: 18) {
-                    AnatomyFigure(primary: Set(exercise.primary), secondary: Set(exercise.secondary))
+                    AnatomyFigure(primary: Set(exercise.primary), secondary: Set(exercise.secondary), labels: true)
                         .frame(height: 200)
                     MuscleLegend(primary: exercise.primary, secondary: exercise.secondary)
                     Spacer(minLength: 0)

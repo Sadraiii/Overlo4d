@@ -88,11 +88,13 @@ extension MuscleGroup {
 struct FigureRegion: @unchecked Sendable {
     let muscle: Muscle?
     let path: Path
+    /// A muscle head drawn over its own muscle; only its outline adds anything.
+    let detail: Bool
 }
 
 enum Figure {
-    static let front = AnatomyShapes.front.map { FigureRegion(muscle: $0.muscle, path: parse($0.path)) }
-    static let back = AnatomyShapes.back.map { FigureRegion(muscle: $0.muscle, path: parse($0.path)) }
+    static let front = AnatomyShapes.front.map { FigureRegion(muscle: $0.muscle, path: parse($0.path), detail: $0.detail) }
+    static let back = AnatomyShapes.back.map { FigureRegion(muscle: $0.muscle, path: parse($0.path), detail: $0.detail) }
 
     /// Parses an SVG path string that uses only absolute M, L, C and Z commands.
     static func parse(_ d: String) -> Path {
@@ -143,11 +145,25 @@ struct AnatomyFigure: View {
     var gap: Color = Theme.card
     /// Makes muscles tappable (picking muscles for a custom exercise).
     var onTap: ((Muscle) -> Void)?
+    /// "Front" and "Back" under the figures, for the larger sizes.
+    var labels = false
 
     var body: some View {
         HStack(spacing: 0) {
-            side(Figure.front)
-            side(Figure.back)
+            labelled("Front", side(Figure.front))
+            labelled("Back", side(Figure.back))
+        }
+    }
+
+    @ViewBuilder
+    private func labelled(_ title: String, _ figure: some View) -> some View {
+        if labels {
+            VStack(spacing: 6) {
+                figure
+                Text(title).eyebrow(10).foregroundStyle(Theme.ink3)
+            }
+        } else {
+            figure
         }
     }
 
@@ -160,13 +176,18 @@ struct AnatomyFigure: View {
             let scale = size.width / AnatomyShapes.width
             context.scaleBy(x: scale, y: scale)
             // At least 0.4 pt on screen so small figures keep their muscle outlines.
-            let lineWidth = max(1.4, 0.4 / scale)
+            let lineWidth = max(1.2, 0.4 / scale)
+            // Lines between muscle heads are finer, and left out where they'd only add noise.
+            let detailWidth = scale >= 0.4 ? max(0.7, 0.3 / scale) : 0
             for (region, fill) in zip(regions, fills) {
                 context.fill(region.path, with: .color(fill))
-                context.stroke(region.path, with: .color(gap), style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
+                let width = region.detail ? detailWidth : lineWidth
+                if width > 0 {
+                    context.stroke(region.path, with: .color(gap), style: StrokeStyle(lineWidth: width, lineJoin: .round))
+                }
             }
             if let selected {
-                for region in regions where region.muscle == selected {
+                for region in regions where region.muscle == selected && !region.detail {
                     context.stroke(region.path, with: .color(outline), style: StrokeStyle(lineWidth: lineWidth * 1.4, lineJoin: .round))
                 }
             }
@@ -201,7 +222,8 @@ struct AnatomyFigure: View {
     }
 
     private func color(_ muscle: Muscle?) -> Color {
-        guard let muscle else { return Theme.line2 }
+        // Head, hands, knees and feet sit back so the muscles read first.
+        guard let muscle else { return Theme.line.opacity(0.5) }
         if let weeklySets {
             return VolumeZone(sets: weeklySets[muscle] ?? 0)?.color ?? Theme.line
         }
@@ -325,6 +347,10 @@ struct MuscleVolumeCard: View {
     let caption: String
 
     @State private var selected: Muscle?
+    @State private var showingAll = false
+
+    /// Rows shown before "Show all".
+    private let collapsedCount = 5
 
     private var ranked: [(muscle: Muscle, sets: Double)] {
         weeklySets.map { (muscle: $0.key, sets: $0.value) }.sorted { $0.sets > $1.sets }
@@ -335,9 +361,9 @@ struct MuscleVolumeCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            AnatomyFigure(weeklySets: weeklySets, selected: selected, onTap: select)
-                .frame(height: 240)
+        VStack(alignment: .leading, spacing: 16) {
+            AnatomyFigure(weeklySets: weeklySets, selected: selected, onTap: select, labels: true)
+                .frame(height: 260)
                 .frame(maxWidth: .infinity)
                 .sensoryFeedback(.selection, trigger: selected)
 
@@ -345,29 +371,39 @@ struct MuscleVolumeCard: View {
 
             if let selected {
                 detail(selected)
-            } else {
-                Text("Tap a muscle for details.")
-                    .font(Typo.body(13))
-                    .foregroundStyle(Theme.ink3)
+                    .transition(.opacity)
             }
 
-            Rectangle().fill(Theme.line).frame(height: 1)
-
             let scale = max(24, ranked.first?.sets ?? 0)
-            VStack(spacing: 4) {
-                ForEach(ranked, id: \.muscle) { item in
+            let shown = showingAll ? ranked : Array(ranked.prefix(collapsedCount))
+            VStack(spacing: 2) {
+                ForEach(shown, id: \.muscle) { item in
                     row(item.muscle, sets: item.sets, scale: scale)
                 }
             }
 
-            if !untrained.isEmpty {
-                Text("Not trained: \(untrained.map(\.label).joined(separator: ", "))")
-                    .font(Typo.body(13))
-                    .foregroundStyle(Theme.ink2)
-                    .fixedSize(horizontal: false, vertical: true)
+            if ranked.count > collapsedCount {
+                Button {
+                    withAnimation(.snappy) { showingAll.toggle() }
+                } label: {
+                    Text(verbatim: showingAll ? "Show less" : "Show all \(ranked.count) muscles")
+                        .font(Typo.body(14, .semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+                .buttonStyle(.plain)
             }
 
-            Text("\(caption). Secondary muscles count as half a set. The shaded band marks 10–20 sets.")
+            if !untrained.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Not trained").eyebrow(10.5).foregroundStyle(Theme.ink3)
+                    Text(untrained.map(\.label).joined(separator: ", "))
+                        .font(Typo.body(14))
+                        .foregroundStyle(Theme.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Text("\(caption). Tap a muscle for details. Secondary muscles count as half a set, and the shaded band is 10–20 sets.")
                 .font(Typo.body(12.5))
                 .foregroundStyle(Theme.ink3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -406,7 +442,7 @@ struct MuscleVolumeCard: View {
                 HStack {
                     Text(muscle.label).font(Typo.body(14, .semibold)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Text("\(VolumeZone.format(sets)) sets")
+                    Text("\(VolumeZone.format(sets)) / wk")
                         .font(Typo.body(14))
                         .foregroundStyle(zone == .high ? Theme.hot : Theme.ink3)
                 }
@@ -414,7 +450,7 @@ struct MuscleVolumeCard: View {
                     let band = proxy.size.width * CGFloat(10 / scale)
                     ZStack(alignment: .leading) {
                         Theme.line
-                        Theme.good.opacity(0.22)
+                        Theme.good.opacity(0.16)
                             .frame(width: band)
                             .offset(x: band)
                         Capsule()
@@ -423,7 +459,7 @@ struct MuscleVolumeCard: View {
                     }
                     .clipShape(Capsule())
                 }
-                .frame(height: 8)
+                .frame(height: 6)
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 8)

@@ -45,7 +45,8 @@ struct ExerciseEditor: View {
                         AnatomyFigure(
                             primary: Set(exercise.primary),
                             secondary: Set(exercise.secondary),
-                            onTap: toggle
+                            onTap: toggle,
+                            labels: true
                         )
                         .frame(height: 300)
                         .frame(maxWidth: .infinity)

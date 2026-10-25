@@ -435,12 +435,13 @@ const NS = 'http://www.w3.org/2000/svg';
 const heat = { chest: 'g', frontDelts: 'g', triceps: 'g', quads: 'h', glutes: 'g', sideDelts: 's', lats: 's', upperBack: 's', biceps: 's', abs: 's', calves: 's', rearDelts: 's', hamstrings: '' };
 function draw(svg, view, fill) {
   const g = document.createElementNS(NS, 'g');
-  ANATOMY[view].forEach(([m, d]) => {
+  ANATOMY[view].forEach(([m, d, detail]) => {
     const p = document.createElementNS(NS, 'path');
     p.setAttribute('d', d);
     p.setAttribute('fill', fill(m));
     p.setAttribute('stroke', 'var(--paper)');
-    p.setAttribute('stroke-width', '2.2');
+    // Lines between the heads of one muscle are finer than the gaps between muscles.
+    p.setAttribute('stroke-width', detail ? '1' : '2.2');
     p.setAttribute('stroke-linejoin', 'round');
     g.append(p);
   });
