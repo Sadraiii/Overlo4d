@@ -48,6 +48,8 @@ struct HomeTab: View {
 
                     LastWeekCard()
 
+                    FoodCard { ui.showingFood = true }
+
                     CoachCard()
 
                     RepsCard { ui.showingReps = true }
@@ -83,6 +85,7 @@ struct HomeTab: View {
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
             .navigationDestination(isPresented: $ui.showingReps) { QuickCountView() }
+            .navigationDestination(isPresented: $ui.showingFood) { FoodDiaryView() }
             .navigationDestination(for: RecapRoute.self) { RecapView(weekStart: $0.weekStart) }
             .navigationDestination(for: CoachRoute.self) { _ in CoachView() }
             .sheet(isPresented: $showingTimer) { TimerSheet() }

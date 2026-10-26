@@ -14,6 +14,8 @@ final class AppUI {
     var showingSettings = false
     /// The rep counter, pushed on Home.
     var showingReps = false
+    /// The food diary, pushed on Home.
+    var showingFood = false
 }
 
 @main
@@ -25,6 +27,7 @@ struct TallyApp: App {
     @State private var health = HealthManager()
     @State private var clock = IntervalClock()
     @State private var coach = CoachStore()
+    @State private var food = FoodStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -44,6 +47,7 @@ struct TallyApp: App {
                 .environment(health)
                 .environment(clock)
                 .environment(coach)
+                .environment(food)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
@@ -118,11 +122,14 @@ struct RootView: View {
             WorkoutFlowView()
         }
         .onOpenURL { url in
-            // Widgets deep-link with tally://reps and tally://train.
+            // Widgets deep-link with tally://reps and tally://train; tally://food opens the food diary.
             switch url.host() {
             case "reps":
                 tab = .home
                 ui.showingReps = true
+            case "food":
+                tab = .home
+                ui.showingFood = true
             case "train":
                 tab = .home
             default: break

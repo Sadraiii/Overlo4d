@@ -5,9 +5,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>Overload</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.6</string>
+	<string>0.7</string>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>7</string>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
@@ -29,6 +29,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Overload uses the camera to scan food barcodes.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Overload shows your steps, active energy, heart rate and body weight next to your training.</string>
 	<key>NSHealthUpdateUsageDescription</key>
