@@ -37,6 +37,8 @@ public enum CoachFocus: Sendable, Equatable {
     case workout(name: String, date: Date)
     /// The last few weeks of training as a whole.
     case overall
+    /// The last two weeks of sleep and how to sleep better.
+    case sleep
 }
 
 /// The coach's answer, as the JSON schema in `CoachAPI` asks for.
@@ -185,16 +187,48 @@ public enum CoachAPI {
     - Weights are in kilograms. Write for someone reading on a phone: short sentences, no jargon \
     without a word of explanation, no markdown.
     - If the log is too short to judge something, say so instead of guessing.
+    - If sleep is included, use it for recovery: after short nights or a run of sleep debt, \
+    suggest keeping the weights but cutting a set or two and staying away from failure, and say \
+    when poor sleep may explain a stall.
     """
 
-    /// JSON schema for `CoachFeedback`.
-    static var schema: [String: Any] {
+    static let sleepSystem = """
+    You are the sleep coach inside Tally, a gym tracker. You read someone's sleep log (from Apple \
+    Health or entered by hand) next to their training and tell them, plainly and specifically, \
+    how their sleep is going and how to sleep better.
+
+    How to coach:
+    - Base everything on the log. Quote actual bedtimes, wake times and hours.
+    - Most adults need 7-9 hours asleep. Judge time asleep against their goal, and look at \
+    consistency: bed and wake times that move by more than about an hour unsettle the body clock, \
+    and a regular wake time matters most.
+    - Stage figures from a watch are estimates. Deep and REM together are usually 35-45% of a night; \
+    only comment on stages when the pattern is clear over several nights.
+    - Use the tags and quality ratings (e.g. late caffeine, alcohol, late workout, screens in bed) \
+    to find what helps or hurts this person, and say how sure you can be from the number of nights.
+    - Connect sleep and training: hard sessions late in the evening can delay sleep, and short \
+    sleep slows recovery and strength gains.
+    - Suggest at most four changes, the most useful first: things they can do tonight or this week, \
+    such as a fixed wake time, a wind-down routine, light in the morning, caffeine cut-off, a cool \
+    dark room, or moving late workouts earlier.
+    - Add a warning only when the log shows a real problem, such as a large sleep debt or very short \
+    nights. Use area for what it is about, e.g. Sleep debt or Bedtime. Use "rest" only when they \
+    are so short on sleep that they should skip hard training.
+    - You are not a doctor. If notes mention loud snoring, gasping or choking at night, being very \
+    sleepy despite long nights, or trouble sleeping most nights for weeks, say to talk to a doctor. \
+    Don't recommend medication or supplement doses.
+    - Write for someone reading on a phone: short sentences, no jargon, no markdown.
+    - If the log is too short to judge something, say so instead of guessing.
+    """
+
+    /// JSON schema for `CoachFeedback`. Sleep feedback asks for tonight's plan instead of the next workout.
+    static func schema(sleep: Bool = false) -> [String: Any] {
         [
             "type": "object",
             "additionalProperties": false,
             "required": ["summary", "going_well", "changes", "warnings", "next_session"],
             "properties": [
-                "summary": ["type": "string", "description": "Two or three sentences on how the training is going."],
+                "summary": ["type": "string", "description": sleep ? "Two or three sentences on how their sleep is going." : "Two or three sentences on how the training is going."],
                 "going_well": [
                     "type": "array",
                     "description": "Up to three specific things that are working.",
@@ -215,19 +249,19 @@ public enum CoachAPI {
                 ],
                 "warnings": [
                     "type": "array",
-                    "description": "Overtraining or recovery risks the log shows. Empty when there are none.",
+                    "description": sleep ? "Sleep problems the log shows. Empty when there are none." : "Overtraining or recovery risks the log shows. Empty when there are none.",
                     "items": [
                         "type": "object",
                         "additionalProperties": false,
                         "required": ["area", "detail", "level"],
                         "properties": [
-                            "area": ["type": "string", "description": "The muscle or body area, e.g. Chest or Lower back."],
+                            "area": ["type": "string", "description": sleep ? "What it is about, e.g. Sleep debt or Bedtime." : "The muscle or body area, e.g. Chest or Lower back."],
                             "detail": ["type": "string"],
                             "level": ["type": "string", "enum": ["watch", "reduce", "rest"]],
                         ],
                     ],
                 ],
-                "next_session": ["type": "string", "description": "What to do in the next workout, in one or two sentences."],
+                "next_session": ["type": "string", "description": sleep ? "The plan for tonight, in one or two sentences." : "What to do in the next workout, in one or two sentences."],
             ],
         ]
     }
@@ -239,6 +273,7 @@ public enum CoachAPI {
         workouts: [DigestWorkout],
         load: [String],
         weekly: [(muscle: String, sets: Double, usual: Double?)],
+        sleep: [String] = [],
         now: Date,
         calendar: Calendar = .current
     ) -> String {
@@ -254,9 +289,17 @@ public enum CoachAPI {
             lines.append("Give feedback on my workout \"\(name)\" from \(date.formatted(dateFormat)), marked FOCUS below. Compare it with the weeks before.")
         case .overall:
             lines.append("Review my training over the last few weeks.")
+        case .sleep:
+            lines.append("Review my sleep over the last two weeks and tell me how to sleep better. My training is below for context.")
         }
         if !goal.isEmpty { lines.append("My goal: \(goal).") }
         lines.append("Now: \(now.formatted(dateFormat)).")
+
+        if !sleep.isEmpty {
+            lines.append("")
+            lines.append("Sleep, newest first:")
+            lines.append(contentsOf: sleep.map { "- \($0)" })
+        }
 
         lines.append("")
         lines.append("Hard sets per muscle in the last 7 days (secondary muscles count half), with the usual week before that:")
@@ -288,22 +331,22 @@ public enum CoachAPI {
     }
 
     /// The Messages API request body.
-    public static func body(model: CoachModel, prompt: String) throws -> Data {
+    public static func body(model: CoachModel, prompt: String, sleep: Bool = false) throws -> Data {
         var body: [String: Any] = [
             "model": model.rawValue,
             "max_tokens": 16_000,
-            "system": system,
+            "system": sleep ? sleepSystem : system,
             "messages": [["role": "user", "content": prompt]],
             "output_config": [
                 "effort": "medium",
-                "format": ["type": "json_schema", "schema": schema],
+                "format": ["type": "json_schema", "schema": schema(sleep: sleep)],
             ],
         ]
         if model.supportsFallbacks { body["fallbacks"] = "default" }
         return try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
     }
 
-    public static func request(apiKey: String, model: CoachModel, prompt: String) throws -> URLRequest {
+    public static func request(apiKey: String, model: CoachModel, prompt: String, sleep: Bool = false) throws -> URLRequest {
         guard !apiKey.isEmpty else { throw CoachError.missingKey }
         var request = URLRequest(url: endpoint, timeoutInterval: 180)
         request.httpMethod = "POST"
@@ -311,7 +354,7 @@ public enum CoachAPI {
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue(version, forHTTPHeaderField: "anthropic-version")
         if model.supportsFallbacks { request.setValue(fallbackBeta, forHTTPHeaderField: "anthropic-beta") }
-        request.httpBody = try body(model: model, prompt: prompt)
+        request.httpBody = try body(model: model, prompt: prompt, sleep: sleep)
         return request
     }
 

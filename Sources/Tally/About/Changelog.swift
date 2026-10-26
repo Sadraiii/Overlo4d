@@ -25,6 +25,10 @@ enum Changelog {
             "Search millions of foods from Open Food Facts, or scan a barcode.",
             "Calorie and macro goals worked out from your body, activity and goal. Exercise from Apple Health adds to the day.",
             "Quick add, your own foods, copy a meal from yesterday, a water tracker and the last 7 days.",
+            "Sleep: nights from Apple Health with stages and a sleep score, or tap Good night and I'm up, or log them yourself.",
+            "A sleep goal and alarm time set your bedtime, with wind-down and bedtime reminders and a wind-down checklist.",
+            "Tag nights (late caffeine, late workout…) to see what helps you sleep, and get tips from the last two weeks.",
+            "Last night's sleep tells you whether to train as planned or go lighter, and the AI coach can review your sleep.",
         ]),
         ChangelogEntry(version: "0.6", date: DateComponents(year: 2026, month: 10, day: 16), changes: [
             "Supersets: link exercises so the rest timer starts after the last one.",

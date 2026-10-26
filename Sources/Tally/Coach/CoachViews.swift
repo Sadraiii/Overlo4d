@@ -54,6 +54,7 @@ struct CoachCard: View {
 /// Training load, weekly sets per muscle and Claude's review of the last weeks.
 struct CoachView: View {
     @Environment(GymStore.self) private var gym
+    @Environment(SleepStore.self) private var sleep
     @State private var reviewing: Workout?
 
     var body: some View {
@@ -66,6 +67,10 @@ struct CoachView: View {
                     Text("How your training is going, what to change and where you're doing too much.")
                         .font(Typo.body(15))
                         .foregroundStyle(Theme.ink2)
+                }
+
+                if let readiness = sleep.report().readiness {
+                    ReadinessRow(readiness: readiness)
                 }
 
                 SectionHead("Training load")
@@ -224,6 +229,7 @@ struct WeeklySetsCard: View {
 struct CoachFeedbackPanel: View {
     @Environment(CoachStore.self) private var coach
     @Environment(GymStore.self) private var gym
+    @Environment(SleepStore.self) private var sleep
     let scope: CoachScope
     var askTitle = "Get feedback"
     /// Asks as soon as the panel appears, when there's a key and no earlier answer.
@@ -236,12 +242,12 @@ struct CoachFeedbackPanel: View {
             } else if coach.isLoading(scope) {
                 HStack(spacing: 12) {
                     ProgressView()
-                    Text("Claude is reading your log…").font(Typo.body(14, .semibold)).foregroundStyle(Theme.ink2)
+                    Text(scope == .sleep ? "Claude is reading your sleep…" : "Claude is reading your log…").font(Typo.body(14, .semibold)).foregroundStyle(Theme.ink2)
                 }
                 .frame(maxWidth: .infinity, minHeight: 58)
                 .card(padding: 14, cornerRadius: 16)
             } else if let saved = coach.feedback(for: scope) {
-                CoachFeedbackContent(feedback: saved.feedback)
+                CoachFeedbackContent(feedback: saved.feedback, nextTitle: scope == .sleep ? "Tonight" : "Next session")
                 HStack {
                     Text("\(CoachModel(rawValue: saved.model)?.label ?? saved.model) · \(saved.date.formatted(.relative(presentation: .named)))")
                         .font(Typo.body(12))
@@ -265,18 +271,19 @@ struct CoachFeedbackPanel: View {
         }
         .task {
             if askOnAppear && coach.hasKey && coach.feedback(for: scope) == nil && coach.error(for: scope) == nil {
-                await coach.ask(scope, gym: gym)
+                await coach.ask(scope, gym: gym, sleep: sleep.coachLines())
             }
         }
     }
 
     private func ask() {
-        Task { await coach.ask(scope, gym: gym) }
+        Task { await coach.ask(scope, gym: gym, sleep: sleep.coachLines()) }
     }
 }
 
 struct CoachFeedbackContent: View {
     let feedback: CoachFeedback
+    var nextTitle = "Next session"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -338,7 +345,7 @@ struct CoachFeedbackContent: View {
 
             if !feedback.nextSession.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Next session").eyebrow(11)
+                    Text(nextTitle).eyebrow(11)
                     Text(feedback.nextSession)
                         .font(Typo.body(15, .semibold))
                         .fixedSize(horizontal: false, vertical: true)
@@ -496,7 +503,7 @@ struct CoachSettingsSection: View {
                 }
                 .background(Theme.card, in: .rect(cornerRadius: 16))
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
-                Text("When you ask for feedback, your last 4 weeks of workouts and notes are sent to Anthropic. Requests are billed to your API account.")
+                Text("When you ask for feedback, your last 4 weeks of workouts and notes, and your last 2 weeks of sleep, are sent to Anthropic. Requests are billed to your API account.")
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)

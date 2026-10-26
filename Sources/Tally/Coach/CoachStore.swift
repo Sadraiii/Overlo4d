@@ -2,15 +2,17 @@ import Foundation
 import Observation
 import TallyCore
 
-/// What a piece of feedback is about: one workout, or training overall.
+/// What a piece of feedback is about: one workout, training overall, or sleep.
 enum CoachScope: Hashable, Codable {
     case workout(UUID)
     case overall
+    case sleep
 
     var key: String {
         switch self {
         case .workout(let id): id.uuidString
         case .overall: "overall"
+        case .sleep: "sleep"
         }
     }
 }
@@ -93,7 +95,8 @@ final class CoachStore {
     func isLoading(_ scope: CoachScope) -> Bool { loading.contains(scope.key) }
     func error(for scope: CoachScope) -> CoachError? { errors[scope.key] }
 
-    func ask(_ scope: CoachScope, gym: GymStore) async {
+    /// `sleep` is the sleep log as lines for the prompt (see `SleepStore.coachLines`); empty without sleep data.
+    func ask(_ scope: CoachScope, gym: GymStore, sleep: [String] = []) async {
         let key = scope.key
         guard !loading.contains(key) else { return }
         errors[key] = nil
@@ -103,13 +106,14 @@ final class CoachStore {
         }
         let focus: Workout? = if case .workout(let id) = scope { gym.workout(id) } else { nil }
         let goal = (UserDefaults.standard.string(forKey: CoachGoal.storageKey).flatMap(CoachGoal.init(rawValue:)) ?? .muscle).label
-        let prompt = gym.coachPrompt(focus: focus, goal: goal)
+        let isSleep = scope == .sleep
+        let prompt = gym.coachPrompt(focus: focus, goal: goal, sleep: sleep, sleepReview: isSleep)
         let model = self.model
 
         loading.insert(key)
         defer { loading.remove(key) }
         do {
-            let request = try CoachAPI.request(apiKey: apiKey, model: model, prompt: prompt)
+            let request = try CoachAPI.request(apiKey: apiKey, model: model, prompt: prompt, sleep: isSleep)
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let feedback = try CoachAPI.parse(status: status, data: data)

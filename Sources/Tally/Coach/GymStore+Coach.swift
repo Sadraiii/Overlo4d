@@ -50,8 +50,9 @@ extension GymStore {
     }
 
     /// The text sent to Claude: the last 4 weeks of workouts and other activity, the weekly sets
-    /// per muscle and the load check. `focus` is included and marked even when it is older.
-    func coachPrompt(focus: Workout?, goal: String, now: Date = .now) -> String {
+    /// per muscle, the load check and any sleep. `focus` is included and marked even when it is older.
+    /// `sleepReview` asks about sleep instead of training.
+    func coachPrompt(focus: Workout?, goal: String, sleep: [String] = [], sleepReview: Bool = false, now: Date = .now) -> String {
         let since = Calendar.current.date(byAdding: .day, value: -28, to: now) ?? now
         var recent = Array(workouts.filter { $0.startedAt >= since && $0.startedAt <= now }.prefix(40))
         if let focus, !recent.contains(where: { $0.id == focus.id }) { recent.append(focus) }
@@ -90,13 +91,14 @@ extension GymStore {
             .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
             .map { (muscle: Muscle.label($0.key), sets: $0.value, usual: report.usualWeek[$0.key]) }
 
-        let focusKind: CoachFocus = focus.map { .workout(name: $0.name, date: $0.startedAt) } ?? .overall
+        let focusKind: CoachFocus = sleepReview ? .sleep : focus.map { .workout(name: $0.name, date: $0.startedAt) } ?? .overall
         return CoachAPI.prompt(
             focus: focusKind,
             goal: goal,
             workouts: digest,
             load: report.flags.map { "\($0.title). \($0.detail)" },
             weekly: weekly,
+            sleep: sleep,
             now: now
         )
     }

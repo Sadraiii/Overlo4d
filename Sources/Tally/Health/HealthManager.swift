@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import Observation
+import TallyCore
 
 /// Reads activity from Apple Health and saves finished workouts to it.
 @MainActor
@@ -55,6 +56,7 @@ final class HealthManager {
         HKQuantityType(.distanceWalkingRunning),
         HKQuantityType(.distanceCycling),
         HKQuantityType(.distanceSwimming),
+        HKCategoryType(.sleepAnalysis),
     ]
 
     private static let shareTypes: Set<HKSampleType> = [
@@ -129,6 +131,12 @@ final class HealthManager {
         return id
     }
 
+    /// Sleep samples from every source (Watch, iPhone, other apps) since `start`.
+    func sleepSegments(since start: Date) async -> [SleepSegment] {
+        guard isAvailable, isConnected else { return [] }
+        return await Self.sleepSegments(since: start, store: store)
+    }
+
     // MARK: Queries
 
     private nonisolated static func sum(
@@ -177,6 +185,29 @@ final class HealthManager {
         )
         let samples = (try? await descriptor.result(for: store)) ?? []
         return samples.map { Weight(date: $0.endDate, kg: $0.quantity.doubleValue(for: .gramUnit(with: .kilo))) }
+    }
+
+    private nonisolated static func sleepSegments(since start: Date, store: HKHealthStore) async -> [SleepSegment] {
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.categorySample(
+                type: HKCategoryType(.sleepAnalysis),
+                predicate: HKQuery.predicateForSamples(withStart: start, end: nil)
+            )],
+            sortDescriptors: [SortDescriptor(\.startDate, order: .forward)]
+        )
+        let samples = (try? await descriptor.result(for: store)) ?? []
+        return samples.compactMap { sample in
+            let stage: SleepStage? = switch HKCategoryValueSleepAnalysis(rawValue: sample.value) {
+            case .inBed: .inBed
+            case .awake: .awake
+            case .asleepCore: .core
+            case .asleepDeep: .deep
+            case .asleepREM: .rem
+            case .asleepUnspecified: .asleep
+            default: nil
+            }
+            return stage.map { SleepSegment(start: sample.startDate, end: sample.endDate, stage: $0) }
+        }
     }
 
     private nonisolated static func deleteWorkout(id: UUID, store: HKHealthStore) async -> Bool {

@@ -32,7 +32,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Overload uses the camera to scan food barcodes.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Overload shows your steps, active energy, heart rate and body weight next to your training.</string>
+	<string>Overload shows your steps, active energy, heart rate, body weight and sleep next to your training.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Overload saves finished workouts to Apple Health.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

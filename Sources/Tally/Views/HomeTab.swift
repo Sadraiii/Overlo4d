@@ -50,6 +50,8 @@ struct HomeTab: View {
 
                     FoodCard { ui.showingFood = true }
 
+                    SleepCard()
+
                     CoachCard()
 
                     RepsCard { ui.showingReps = true }
@@ -88,6 +90,7 @@ struct HomeTab: View {
             .navigationDestination(isPresented: $ui.showingFood) { FoodDiaryView() }
             .navigationDestination(for: RecapRoute.self) { RecapView(weekStart: $0.weekStart) }
             .navigationDestination(for: CoachRoute.self) { _ in CoachView() }
+            .navigationDestination(for: SleepRoute.self) { _ in SleepView() }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
             .navigationDestination(isPresented: $showingRecords) { RecordsView() }
             .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }

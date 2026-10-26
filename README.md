@@ -16,6 +16,7 @@ Gym tracker for iPhone.
 - Workouts, plans, supersets and a rest timer
 - Muscle map, records and weekly recap
 - Calorie and macro tracking with food search and barcode scanning ([Open Food Facts](https://world.openfoodfacts.org))
+- Sleep tracking, sleep score, bedtime reminders and a wind-down routine
 - Apple Health and Apple Watch workouts
 - Widgets and a Live Activity
 - Export to CSV, text or JSON

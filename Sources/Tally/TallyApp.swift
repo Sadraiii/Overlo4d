@@ -28,6 +28,7 @@ struct TallyApp: App {
     @State private var clock = IntervalClock()
     @State private var coach = CoachStore()
     @State private var food = FoodStore()
+    @State private var sleep = SleepStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -48,6 +49,7 @@ struct TallyApp: App {
                 .environment(clock)
                 .environment(coach)
                 .environment(food)
+                .environment(sleep)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
@@ -55,13 +57,22 @@ struct TallyApp: App {
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear { rest.requestPermission() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }
-                .onChange(of: health.isConnected) { Task { await HealthSync.refresh(gym: gym, health: health) } }
+                .onChange(of: health.isConnected) {
+                    Task {
+                        await HealthSync.refresh(gym: gym, health: health)
+                        await sleep.refresh(health: health)
+                    }
+                }
         }
         .onChange(of: scenePhase) { _, phase in
             // Pick up the new day (and any widget-side changes) when returning to the app.
             guard phase == .active else { return }
             reps.reload()
-            Task { await HealthSync.refresh(gym: gym, health: health) }
+            Task {
+                // After Health's refresh, which asks for sleep access the first time.
+                await HealthSync.refresh(gym: gym, health: health)
+                await sleep.refresh(health: health)
+            }
         }
     }
 
