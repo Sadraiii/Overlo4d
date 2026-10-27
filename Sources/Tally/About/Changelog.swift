@@ -20,6 +20,13 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.8", date: DateComponents(year: 2026, month: 10, day: 27), changes: [
+            "Sleep: naps are kept apart from the night, so a nap on the sofa no longer spoils the score.",
+            "Nights are tagged for you from late workouts, big late meals and late coffee in the food diary.",
+            "See how much more you lift after a good night than after a short one.",
+            "Spots weekend lie-ins that throw your body clock off on Mondays.",
+            "Optional morning check-in and caffeine cut-off reminders.",
+        ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",
             "Search millions of foods from Open Food Facts, or scan a barcode.",

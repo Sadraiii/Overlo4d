@@ -114,6 +114,8 @@ struct ScoreRing: View {
 struct SleepView: View {
     @Environment(SleepStore.self) private var sleep
     @Environment(HealthManager.self) private var health
+    @Environment(GymStore.self) private var gym
+    @Environment(FoodStore.self) private var food
     @State private var sheet: SleepSheet?
 
     var body: some View {
@@ -186,6 +188,9 @@ struct SleepView: View {
 
                     SectionHead("What affects your sleep")
                     TagEffectsCard(effects: report.tagEffects)
+
+                    SectionHead("Sleep and your workouts")
+                    TrainingLinkCard(link: sleep.trainingLink(nights: nights), goal: sleep.goal)
                 }
 
                 SectionHead("AI sleep coach")
@@ -220,7 +225,10 @@ struct SleepView: View {
             }
         }
         .refreshable { await sleep.refresh(health: health) }
-        .task { await sleep.refresh(health: health) }
+        .task {
+            sleep.updateContext(gym: gym, food: food)
+            await sleep.refresh(health: health)
+        }
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .log(let entry): SleepLogSheet(entry: entry)
@@ -260,7 +268,7 @@ struct LastNightCard: View {
             HStack {
                 StatusPill(text: isToday ? "Last night" : night.day.formatted(.dateTime.weekday(.wide).day().month()))
                 Spacer()
-                Text(night.isManual ? "Logged by you" : "Apple Health")
+                Text(night.isManual ? "Logged by you" : night.hasStages ? "Apple Watch" : "Apple Health")
                     .font(Typo.body(12, .semibold))
                     .foregroundStyle(Theme.ink3)
             }
@@ -287,6 +295,15 @@ struct LastNightCard: View {
             }
 
             ScoreBreakdown(parts: parts, hasStages: night.hasStages)
+
+            if !night.naps.isEmpty {
+                Label(
+                    "Plus \(night.naps.count == 1 ? "a nap" : "\(night.naps.count) naps") of \(Fmt.sleep(night.naps.reduce(0) { $0 + $1.duration })), not counted in the score",
+                    systemImage: "powersleep"
+                )
+                .font(Typo.body(13))
+                .foregroundStyle(Theme.ink2)
+            }
 
             TicketDivider()
 
@@ -632,6 +649,8 @@ extension SleepFlag {
             "Asleep \(Int((efficiency * 100).rounded()))% of the time in bed"
         case .lateBedtime(let minutes):
             "Usually in bed around \(SleepStore.clock(Int(minutes) + 720))"
+        case .weekendShift(let minutes):
+            "Sleeping \(Fmt.sleep(minutes * 60)) later at weekends"
         }
     }
 
@@ -647,6 +666,8 @@ extension SleepFlag {
             "Keep the bed for sleep: if you're awake for more than 20 minutes, get up and read in dim light until sleepy. Cut caffeine after 2 pm."
         case .lateBedtime:
             "Late nights with a fixed alarm cut sleep short. Move bedtime 15 minutes earlier every few days, and get daylight soon after waking."
+        case .weekendShift:
+            "Late weekends work like flying across time zones, which is why Mondays feel rough. Keep weekend wake-up within an hour of weekdays and nap early in the afternoon if you need to."
         }
     }
 
@@ -748,5 +769,47 @@ struct NightRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .contentShape(.rect)
+    }
+}
+
+/// Workout volume after nights near the goal against after short ones.
+struct TrainingLinkCard: View {
+    let link: SleepTrainingLink?
+    let goal: TimeInterval
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let link {
+                HStack(spacing: 8) {
+                    Tile(value: SleepDigest.percent(link.afterRested), label: "After good nights", tint: link.afterRested >= 0 ? Theme.good : Theme.ink)
+                    Tile(value: SleepDigest.percent(link.afterShort), label: "After short nights", tint: link.afterShort < 0 ? Theme.hot : Theme.ink)
+                }
+                Text(Self.summary(link))
+                    .font(Typo.body(13.5))
+                    .foregroundStyle(Theme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Volume compared with your usual for the same workout. Good nights are within 30 minutes of your \(Fmt.sleep(goal)) goal, short ones an hour or more under. \(link.restedCount + link.shortCount) workouts so far.")
+                    .font(Typo.body(12))
+                    .foregroundStyle(Theme.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Once you have a few workouts after good nights and a few after short ones (same workout name, three or more times), this shows how much sleep changes what you lift.")
+                    .font(Typo.body(13.5))
+                    .foregroundStyle(Theme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card(padding: 14, cornerRadius: 16)
+    }
+
+    private static func summary(_ link: SleepTrainingLink) -> String {
+        let points = Int((link.difference * 100).rounded())
+        if points >= 3 {
+            return "You move about \(points)% more weight after a good night. Sleep is part of your training."
+        } else if points <= -3 {
+            return "So far you lift a little more after short nights. More data will make this clearer."
+        }
+        return "So far short nights haven't changed how much you lift. Recovery between sessions can still suffer."
     }
 }

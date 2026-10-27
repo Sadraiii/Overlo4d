@@ -7,6 +7,22 @@ import UserNotifications
 struct SleepCheckIn: Codable, Equatable {
     var quality: Int?
     var tags: [String] = []
+    /// Automatic tags the user turned off for this night.
+    var dismissed: [String] = []
+
+    init(quality: Int? = nil, tags: [String] = [], dismissed: [String] = []) {
+        self.quality = quality
+        self.tags = tags
+        self.dismissed = dismissed
+    }
+
+    // Missing keys decode to defaults so the file can grow without breaking old saves.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        quality = try container.decodeIfPresent(Int.self, forKey: .quality)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        dismissed = try container.decodeIfPresent([String].self, forKey: .dismissed) ?? []
+    }
 }
 
 /// A step of the evening wind-down routine.
@@ -49,6 +65,10 @@ final class SleepStore {
     private var file: File
     private(set) var healthNights: [SleepNight] = []
     private(set) var isLoading = false
+    /// Workouts (logged and from Health) and food diary entries, for automatic tags and the training link.
+    private(set) var workoutTimes: [DateInterval] = []
+    private(set) var intake: [SleepAutoTags.Intake] = []
+    private(set) var sessions: [SleepTraining.Session] = []
 
     var goalHours: Double = UserDefaults.standard.object(forKey: "sleep.goalHours") as? Double ?? 8 {
         didSet { UserDefaults.standard.set(goalHours, forKey: "sleep.goalHours"); scheduleReminders() }
@@ -64,10 +84,20 @@ final class SleepStore {
     var windDownMinutes: Int = UserDefaults.standard.object(forKey: "sleep.windDownMinutes") as? Int ?? 45 {
         didSet { UserDefaults.standard.set(windDownMinutes, forKey: "sleep.windDownMinutes"); scheduleReminders() }
     }
+    /// "How did you sleep?" half an hour after the alarm.
+    var morningCheckInOn: Bool = UserDefaults.standard.bool(forKey: "sleep.morningCheckIn") {
+        didSet { UserDefaults.standard.set(morningCheckInOn, forKey: "sleep.morningCheckIn"); scheduleReminders() }
+    }
+    /// "Last call for caffeine" 8 hours before bedtime.
+    var caffeineReminderOn: Bool = UserDefaults.standard.bool(forKey: "sleep.caffeineCutoff") {
+        didSet { UserDefaults.standard.set(caffeineReminderOn, forKey: "sleep.caffeineCutoff"); scheduleReminders() }
+    }
 
     private static let fileURL = URL.documentsDirectory.appending(path: "sleep.json")
     private static let windDownID = "sleep.windDown"
     private static let bedtimeID = "sleep.bedtime"
+    private static let morningID = "sleep.morning"
+    private static let caffeineID = "sleep.caffeine"
 
     init() {
         file = (try? Data(contentsOf: Self.fileURL)).flatMap { try? JSONDecoder().decode(File.self, from: $0) } ?? File()
@@ -77,14 +107,18 @@ final class SleepStore {
 
     var goal: TimeInterval { goalHours * 3600 }
 
-    /// Every night, newest first, with check-ins applied.
+    /// Every night, newest first, with check-ins and automatic tags applied.
     var nights: [SleepNight] {
         SleepAnalysis.combine(health: healthNights, manual: file.logs).map { night in
             var night = night
             let key = Self.key(night.day)
-            if let checkIn = file.checkIns[key] {
+            let checkIn = file.checkIns[key]
+            if let checkIn {
                 night.quality = checkIn.quality ?? night.quality
                 night.tags = checkIn.tags
+            }
+            for tag in autoTags(for: night) where !night.tags.contains(tag) && checkIn?.dismissed.contains(tag) != true {
+                night.tags.append(tag)
             }
             if !file.steps.isEmpty, let done = file.stepsDone[key], Set(file.steps.map(\.id)).isSubset(of: done),
                !night.tags.contains(Self.windDownTag) {
@@ -104,9 +138,36 @@ final class SleepStore {
         SleepScore.score(night, goal: goal, usualBedtime: report.usualBedtime)
     }
 
+    /// Tags worked out from workouts and the food diary for the evening before `night`.
+    func autoTags(for night: SleepNight) -> [String] {
+        autoTags(bedtime: night.bedtime)
+    }
+
+    func autoTags(bedtime: Date) -> [String] {
+        SleepAutoTags.tags(bedtime: bedtime, workouts: workoutTimes, intake: intake)
+    }
+
+    /// How workouts after good and short nights compare; nil until there's enough of both.
+    func trainingLink(nights: [SleepNight]? = nil) -> SleepTrainingLink? {
+        SleepTraining.link(nights: nights ?? self.nights, sessions: sessions, goal: goal)
+    }
+
     /// Lines for the coach; empty when there's no sleep logged.
     func coachLines() -> [String] {
-        SleepDigest.lines(nights, goal: goal)
+        let nights = nights
+        return SleepDigest.lines(nights, goal: goal, link: trainingLink(nights: nights))
+    }
+
+    /// Picks up workouts and food for automatic tags and the training link.
+    func updateContext(gym: GymStore, food: FoodStore) {
+        let since = Calendar.current.date(byAdding: .day, value: -90, to: .now) ?? .distantPast
+        let logged = gym.workouts.filter { $0.startedAt >= since && $0.endedAt != nil }
+        workoutTimes = logged.map { DateInterval(start: $0.startedAt, duration: $0.duration) }
+            + gym.healthWorkouts.filter { $0.start >= since }.map(\.interval)
+        sessions = logged.map { SleepTraining.Session(start: $0.startedAt, name: $0.name, volume: $0.volume) }
+        intake = food.diary.entries.filter { $0.loggedAt >= since }.map {
+            SleepAutoTags.Intake(time: $0.loggedAt, kcal: $0.nutrients.kcal, name: $0.food.name)
+        }
     }
 
     func refresh(health: HealthManager) async {
@@ -213,11 +274,24 @@ final class SleepStore {
     /// Two daily notifications: start winding down, then go to bed.
     func scheduleReminders() {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [Self.windDownID, Self.bedtimeID])
-        guard remindersOn else { return }
+        center.removePendingNotificationRequests(withIdentifiers: [Self.windDownID, Self.bedtimeID, Self.morningID, Self.caffeineID])
+        guard remindersOn || morningCheckInOn || caffeineReminderOn else { return }
         Task {
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
         }
+        if morningCheckInOn {
+            let content = UNMutableNotificationContent()
+            content.title = "How did you sleep?"
+            content.body = "Rate last night and tag what happened. It shows what helps you sleep."
+            add(Self.morningID, content, at: wakeMinutes + 30)
+        }
+        if caffeineReminderOn {
+            let content = UNMutableNotificationContent()
+            content.title = "Last call for caffeine"
+            content.body = "Coffee after now can still keep you up at your \(Self.clock(bedtimeMinutes)) bedtime."
+            add(Self.caffeineID, content, at: bedtimeMinutes - 8 * 60)
+        }
+        guard remindersOn else { return }
         let bedtime = SleepClock.timeOfDay(minutes: Double(bedtimeMinutes))
         let windDown = SleepClock.timeOfDay(minutes: Double(windDownStartMinutes))
 
@@ -238,6 +312,16 @@ final class SleepStore {
             identifier: Self.bedtimeID,
             content: bedtimeContent,
             trigger: UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: bedtime.hour, minute: bedtime.minute), repeats: true)
+        ))
+    }
+
+    /// A daily notification at `minutes` after midnight (any value; wraps round the day).
+    private func add(_ id: String, _ content: UNMutableNotificationContent, at minutes: Int) {
+        let time = SleepClock.timeOfDay(minutes: Double(minutes))
+        UNUserNotificationCenter.current().add(UNNotificationRequest(
+            identifier: id,
+            content: content,
+            trigger: UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: time.hour, minute: time.minute), repeats: true)
         ))
     }
 

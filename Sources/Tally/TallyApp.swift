@@ -71,6 +71,7 @@ struct TallyApp: App {
             Task {
                 // After Health's refresh, which asks for sleep access the first time.
                 await HealthSync.refresh(gym: gym, health: health)
+                sleep.updateContext(gym: gym, food: food)
                 await sleep.refresh(health: health)
             }
         }

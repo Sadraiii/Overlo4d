@@ -5,6 +5,8 @@ import TallyKit
 /// How it felt (1–5) and what happened that evening.
 struct CheckInFields: View {
     @Binding var checkIn: SleepCheckIn
+    /// Tags worked out from workouts and food; on unless the user turns them off.
+    var autoTags: [String] = []
 
     private static let labels = ["Awful", "Poor", "OK", "Good", "Great"]
 
@@ -37,9 +39,15 @@ struct CheckInFields: View {
                 Text("What happened that evening?").eyebrow(11.5)
                 FlowLayout(spacing: 8) {
                     ForEach(SleepStore.suggestedTags, id: \.self) { tag in
-                        let selected = checkIn.tags.contains(tag)
-                        Button(tag) {
-                            if selected { checkIn.tags.removeAll { $0 == tag } } else { checkIn.tags.append(tag) }
+                        let isAuto = autoTags.contains(tag)
+                        let selected = checkIn.tags.contains(tag) || (isAuto && !checkIn.dismissed.contains(tag))
+                        Button {
+                            toggle(tag, selected: selected, isAuto: isAuto)
+                        } label: {
+                            HStack(spacing: 5) {
+                                if isAuto { Image(systemName: "sparkles").font(.system(size: 11, weight: .bold)) }
+                                Text(tag)
+                            }
                         }
                         .font(Typo.body(13.5, .semibold))
                         .foregroundStyle(selected ? Theme.accentInk : Theme.ink2)
@@ -50,11 +58,22 @@ struct CheckInFields: View {
                         .buttonStyle(.plain)
                     }
                 }
-                Text("Tags let the app work out what helps you sleep. \"\(SleepStore.windDownTag)\" is added for you when you tick off the whole wind-down routine.")
+                Text("Tags let the app work out what helps you sleep. Ones with \(Image(systemName: "sparkles")) are filled in from your workouts and food diary, and \"\(SleepStore.windDownTag)\" is added when you tick off the whole wind-down routine.")
                     .font(Typo.body(12))
                     .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private func toggle(_ tag: String, selected: Bool, isAuto: Bool) {
+        if selected {
+            checkIn.tags.removeAll { $0 == tag }
+            if isAuto, !checkIn.dismissed.contains(tag) { checkIn.dismissed.append(tag) }
+        } else if isAuto {
+            checkIn.dismissed.removeAll { $0 == tag }
+        } else {
+            checkIn.tags.append(tag)
         }
     }
 }
@@ -121,7 +140,7 @@ struct SleepLogSheet: View {
                             .foregroundStyle(Theme.danger)
                     }
 
-                    CheckInFields(checkIn: $checkIn)
+                    CheckInFields(checkIn: $checkIn, autoTags: sleep.autoTags(bedtime: bedtime))
                 }
                 .padding(16)
             }
@@ -177,7 +196,7 @@ struct NightSheet: View {
                         StageBar(night: night)
                     }
 
-                    CheckInFields(checkIn: $checkIn)
+                    CheckInFields(checkIn: $checkIn, autoTags: sleep.autoTags(for: night))
 
                     if let log = sleep.log(for: night) {
                         HStack(spacing: 8) {
@@ -286,10 +305,20 @@ struct SleepSettingsSheet: View {
                                 .pickerStyle(.menu)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 6)
+                            Rectangle().fill(Theme.line).frame(height: 1)
+                            Toggle("Morning check-in", isOn: $sleep.morningCheckInOn)
+                                .padding(14)
+                            Rectangle().fill(Theme.line).frame(height: 1)
+                            Toggle("Caffeine cut-off", isOn: $sleep.caffeineReminderOn)
+                                .padding(14)
                         }
                         .font(Typo.body(15, .semibold))
                         .background(Theme.card, in: .rect(cornerRadius: 16))
                         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                        Text("Morning check-in asks how you slept 30 minutes after your alarm. Caffeine cut-off comes at \(SleepStore.clock(sleep.bedtimeMinutes - 8 * 60)), 8 hours before bed.")
+                            .font(Typo.body(12.5))
+                            .foregroundStyle(Theme.ink3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     VStack(alignment: .leading, spacing: 12) {

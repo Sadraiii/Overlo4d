@@ -61,11 +61,14 @@ public struct SleepNight: Sendable, Equatable, Identifiable {
     public var quality: Int?
     /// Things the user noted about the evening, e.g. "Late caffeine".
     public var tags: [String]
+    /// Sleep apart from the main night, such as an evening nap on the sofa. Not counted in `asleep`.
+    public var naps: [DateInterval]
 
     public init(
         day: Date, bedtime: Date, wake: Date, asleep: TimeInterval, awake: TimeInterval = 0,
         deep: TimeInterval? = nil, rem: TimeInterval? = nil, core: TimeInterval? = nil,
-        segments: [SleepSegment] = [], isManual: Bool = false, quality: Int? = nil, tags: [String] = []
+        segments: [SleepSegment] = [], isManual: Bool = false, quality: Int? = nil, tags: [String] = [],
+        naps: [DateInterval] = []
     ) {
         self.day = day
         self.bedtime = bedtime
@@ -79,6 +82,7 @@ public struct SleepNight: Sendable, Equatable, Identifiable {
         self.isManual = isManual
         self.quality = quality
         self.tags = tags
+        self.naps = naps
     }
 
     public var inBed: TimeInterval { wake.timeIntervalSince(bedtime) }
@@ -140,9 +144,22 @@ public enum SleepAnalysis {
             .sorted { $0.day > $1.day }
     }
 
+    /// A break this long with nothing recorded splits sleep into separate blocks.
+    static let blockGap: TimeInterval = 90 * 60
+
     static func night(day: Date, segments: [SleepSegment]) -> SleepNight? {
-        let merged = merge(segments)
-        guard merged.contains(where: { $0.stage.isAsleep }) else { return nil }
+        // The block with the most sleep is the night; other blocks with sleep are naps.
+        let blocks = self.blocks(merge(segments))
+        let asleepIn: ([SleepSegment]) -> TimeInterval = { block in
+            block.filter(\.stage.isAsleep).reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
+        }
+        guard let merged = blocks.max(by: { asleepIn($0) < asleepIn($1) }), asleepIn(merged) > 0 else { return nil }
+        let naps = blocks.filter { $0 != merged && asleepIn($0) > 0 }.compactMap { block -> DateInterval? in
+            let sleep = block.filter(\.stage.isAsleep)
+            guard let start = sleep.first?.start, let end = sleep.last?.end else { return nil }
+            return DateInterval(start: start, end: end)
+        }
+        let segments = segments.filter { $0.end > merged.first!.start && $0.start < merged.last!.end }
         let bedtime = merged.map(\.start).min()!
         let wake = merged.map(\.end).max()!
         var totals: [SleepStage: TimeInterval] = [:]
@@ -158,8 +175,22 @@ public enum SleepAnalysis {
             deep: staged ? totals[.deep] ?? 0 : nil,
             rem: staged ? totals[.rem] ?? 0 : nil,
             core: staged ? (totals[.core] ?? 0) + (totals[.asleep] ?? 0) : nil,
-            segments: merged
+            segments: merged,
+            naps: naps.sorted { $0.start < $1.start }
         )
+    }
+
+    /// Splits merged, time-ordered segments wherever nothing is recorded for `blockGap` or more.
+    static func blocks(_ merged: [SleepSegment]) -> [[SleepSegment]] {
+        var blocks: [[SleepSegment]] = []
+        for segment in merged {
+            if let last = blocks.last?.last, segment.start.timeIntervalSince(last.end) < blockGap {
+                blocks[blocks.count - 1].append(segment)
+            } else {
+                blocks.append([segment])
+            }
+        }
+        return blocks
     }
 
     /// Splits the timeline at every boundary and keeps the highest-priority stage in each slice,

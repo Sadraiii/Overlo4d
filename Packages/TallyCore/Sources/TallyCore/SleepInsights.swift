@@ -12,12 +12,14 @@ public enum SleepFlag: Sendable, Equatable {
     case restless(efficiency: Double)
     /// Bedtime is regularly after midnight while the alarm doesn't move.
     case lateBedtime(averageMinutesAfterNoon: Double)
+    /// Sleeping much later at weekends than on weekdays ("social jet lag"), in minutes.
+    case weekendShift(minutes: Double)
 
     /// 2 = fix this, 1 = keep an eye on it.
     public var severity: Int {
         switch self {
         case .short, .debt: 2
-        case .irregular, .restless, .lateBedtime: 1
+        case .irregular, .restless, .lateBedtime, .weekendShift: 1
         }
     }
 }
@@ -64,6 +66,8 @@ public enum SleepInsights {
     static let irregularMinutes = 45.0
     /// Below this share of time in bed asleep is restless sleep.
     static let restlessEfficiency = 0.85
+    /// Weekend sleep this much later than weekday sleep throws the body clock off on Mondays.
+    static let weekendShiftMinutes = 60.0
     /// Tags need this many nights with and without them before they're compared.
     static let tagMinimum = 3
 
@@ -103,6 +107,9 @@ public enum SleepInsights {
         if fortnight.count >= 5, let usualBedtime, usualBedtime > 750 {
             flags.append(.lateBedtime(averageMinutesAfterNoon: usualBedtime))
         }
+        if let shift = weekendShift(nights, now: now, calendar: calendar), shift >= weekendShiftMinutes {
+            flags.append(.weekendShift(minutes: shift))
+        }
         flags.sort { $0.severity > $1.severity }
 
         return SleepReport(
@@ -116,6 +123,23 @@ public enum SleepInsights {
             readiness: readiness(nights, goal: goal, debtHours: debt, now: now, calendar: calendar),
             tagEffects: tagEffects(nights, goal: goal, usualBedtime: usualBedtime, calendar: calendar)
         )
+    }
+
+    /// How much later the middle of the night falls at weekends than on weekdays, over the last
+    /// 4 weeks. Nil without at least 2 weekend and 3 weekday nights.
+    static func weekendShift(_ nights: [SleepNight], now: Date, calendar: Calendar) -> Double? {
+        let today = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -27, to: today) ?? today
+        let recent = nights.filter { $0.day >= start && $0.day <= today }
+        let midpoint: (SleepNight) -> Double = {
+            SleepClock.bedtimeMinutes($0.bedtime.addingTimeInterval($0.inBed / 2), calendar: calendar)
+        }
+        // Nights you wake up from on Saturday or Sunday follow a free evening.
+        let weekend = recent.filter { calendar.isDateInWeekend($0.day) }.map(midpoint)
+        let weekday = recent.filter { !calendar.isDateInWeekend($0.day) }.map(midpoint)
+        guard weekend.count >= 2, weekday.count >= 3,
+              let weekendMean = SleepClock.mean(weekend), let weekdayMean = SleepClock.mean(weekday) else { return nil }
+        return weekendMean - weekdayMean
     }
 
     /// From last night only (nil if there's no night for today) and the week's debt.
@@ -150,7 +174,8 @@ public enum SleepInsights {
 public enum SleepDigest {
     /// A summary line, then one line per night (up to `limit`), newest first.
     public static func lines(
-        _ nights: [SleepNight], goal: TimeInterval, limit: Int = 14, now: Date = .now, calendar: Calendar = .current
+        _ nights: [SleepNight], goal: TimeInterval, link: SleepTrainingLink? = nil, limit: Int = 14,
+        now: Date = .now, calendar: Calendar = .current
     ) -> [String] {
         guard !nights.isEmpty else { return [] }
         let report = SleepInsights.report(nights, goal: goal, now: now, calendar: calendar)
@@ -163,6 +188,9 @@ public enum SleepDigest {
         }
         if let spread = report.bedtimeSpread {
             summary += " Bedtime varies by about \(Int(spread.rounded())) min."
+        }
+        if let link {
+            summary += " Workout volume against usual: \(percent(link.afterRested)) after nights near the goal (\(link.restedCount) workouts), \(percent(link.afterShort)) after short nights (\(link.shortCount) workouts)."
         }
 
         var dayFormat = Date.FormatStyle().weekday(.abbreviated).day().month(.abbreviated)
@@ -178,6 +206,9 @@ public enum SleepDigest {
             text += ", score \(SleepScore.score(night, goal: goal, usualBedtime: report.usualBedtime, calendar: calendar))"
             if let quality = night.quality { text += ", felt \(quality)/5" }
             if !night.tags.isEmpty { text += ", tags: \(night.tags.joined(separator: ", "))" }
+            if !night.naps.isEmpty {
+                text += ", plus \(night.naps.count == 1 ? "a nap" : "\(night.naps.count) naps") of \(duration(night.naps.reduce(0) { $0 + $1.duration }))"
+            }
             if night.isManual { text += " [logged by hand]" }
             return text
         }
@@ -188,6 +219,12 @@ public enum SleepDigest {
     public static func duration(_ seconds: TimeInterval) -> String {
         let minutes = Int((seconds / 60).rounded())
         return "\(minutes / 60) h \(String(format: "%02d", minutes % 60)) m"
+    }
+
+    /// "+6%", "-9%"
+    public static func percent(_ fraction: Double) -> String {
+        let value = Int((fraction * 100).rounded())
+        return value > 0 ? "+\(value)%" : "\(value)%"
     }
 
     static func clock(_ time: (hour: Int, minute: Int)) -> String {
