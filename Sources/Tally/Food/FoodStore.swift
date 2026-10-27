@@ -193,6 +193,11 @@ final class FoodStore {
         hasUSDAKey = FoodKeys.usda != nil
     }
 
+    var danishProducts: Bool {
+        get { diary.danishProducts }
+        set { change { $0.danishProducts = newValue } }
+    }
+
     var remindsMeals: Bool {
         get { diary.remindsMeals }
         set {
@@ -259,9 +264,9 @@ enum FoodAPI {
         case notFound, offline, server, noKey, invalidKey, quota
     }
 
-    /// Packaged foods from Open Food Facts.
-    static func search(_ query: String) async throws -> [Food] {
-        guard let url = OpenFoodFacts.searchURL(query: query) else { return [] }
+    /// Packaged foods from Open Food Facts, only those sold in Denmark when `danish` is on.
+    static func search(_ query: String, danish: Bool = false) async throws -> [Food] {
+        guard let url = OpenFoodFacts.searchURL(query: query, danish: danish) else { return [] }
         return OpenFoodFacts.parseSearch(try await fetch(url))
     }
 

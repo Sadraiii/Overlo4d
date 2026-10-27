@@ -33,6 +33,7 @@ enum Changelog {
             "Weight: log it or use Apple Health, set a goal weight, and see your trend and when you'll reach it.",
             "Food can be saved to Apple Health, and the AI coach now looks at your calories and protein.",
             "Optional reminders to log breakfast, lunch and dinner.",
+            "Danish products: packaged-food search can show only products sold in Denmark, with Danish names.",
         ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",

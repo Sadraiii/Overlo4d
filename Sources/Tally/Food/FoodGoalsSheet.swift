@@ -197,6 +197,8 @@ struct FoodGoalsSheet: View {
                 .cardRow()
 
                 Section {
+                    Toggle("Danish products", isOn: Binding(get: { store.danishProducts }, set: { store.danishProducts = $0 }))
+                        .font(Typo.body(16))
                     if store.hasRecipeKey {
                         HStack {
                             Label("Spoonacular recipes on", systemImage: "checkmark.circle.fill")
@@ -217,7 +219,7 @@ struct FoodGoalsSheet: View {
                 } header: {
                     Text("Online data").eyebrow(11)
                 } footer: {
-                    Text("Food search uses Open Food Facts for packaged food and USDA FoodData Central for everyday foods. USDA works without a key, but a free key allows far more searches.")
+                    Text("Food search uses Open Food Facts for packaged food (with Danish products on, only products sold in Denmark, with their Danish names) and USDA FoodData Central for everyday foods. USDA works without a key, but a free key allows far more searches.")
                         .font(Typo.body(12.5))
                         .foregroundStyle(Theme.ink3)
                 }

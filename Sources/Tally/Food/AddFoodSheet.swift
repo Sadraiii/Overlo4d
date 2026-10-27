@@ -213,7 +213,7 @@ struct AddFoodSheet: View {
         onlineSection("Everyday foods · USDA", everyday, empty: "No everyday foods found.") {
             rows(Array(everyday.items.prefix(12)))
         }
-        onlineSection("Packaged foods · Open Food Facts", packaged, empty: "No packaged foods found.") {
+        onlineSection(food.danishProducts ? "Danish products · Open Food Facts" : "Packaged foods · Open Food Facts", packaged, empty: "No packaged foods found.") {
             rows(packaged.items)
         }
     }
@@ -312,9 +312,10 @@ struct AddFoodSheet: View {
         try? await Task.sleep(for: .milliseconds(600))
         guard !Task.isCancelled else { return }
         let searchRecipes = food.hasRecipeKey
+        let danish = food.danishProducts
         let tasks = [
             Task { everyday = await OnlineResults.load { try await FoodAPI.searchUSDA(text) } loading: { everyday.loading = true } },
-            Task { packaged = await OnlineResults.load { try await FoodAPI.search(text) } loading: { packaged.loading = true } },
+            Task { packaged = await OnlineResults.load { try await FoodAPI.search(text, danish: danish) } loading: { packaged.loading = true } },
             Task {
                 guard searchRecipes, text.count >= 3 else { return }
                 recipes = await OnlineResults.load { try await FoodAPI.recipes(text, filters: []) } loading: { recipes.loading = true }

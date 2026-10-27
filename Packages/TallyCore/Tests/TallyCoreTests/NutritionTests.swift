@@ -212,6 +212,11 @@ private let egg = Food(id: "egg", name: "Egg", per100: Nutrients(kcal: 143, carb
         #expect(food.barcode == "3017624010701")
     }
 
+    @Test func prefersTheDanishName() throws {
+        let json = #"{"status":1,"product":{"code":"5701234567892","product_name":"Rye bread","product_name_da":"Rugbrød","nutriments":{"energy-kcal_100g":215}}}"#
+        #expect(OpenFoodFacts.parseProduct(Data(json.utf8))?.name == "Rugbrød")
+    }
+
     @Test func fallsBackToKilojoulesThenMacros() throws {
         let kj = #"{"status":1,"product":{"code":"1","product_name":"A","nutriments":{"energy_100g":418.4}}}"#
         #expect(OpenFoodFacts.parseProduct(Data(kj.utf8))?.per100.kcal == 100)
@@ -246,6 +251,12 @@ private let egg = Food(id: "egg", name: "Egg", per100: Nutrients(kcal: 143, carb
         #expect(product.absoluteString.hasPrefix("https://world.openfoodfacts.org/api/v2/product/3017624010701.json?fields="))
         let search = try #require(OpenFoodFacts.searchURL(query: "greek yogurt"))
         #expect(search.absoluteString.contains("q=greek%20yogurt"))
+        #expect(!search.absoluteString.contains("denmark"))
+        let danish = try #require(OpenFoodFacts.searchURL(query: "skyr", danish: true))
+        let query = URLComponents(url: danish, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.first { $0.name == "q" }?.value == #"skyr countries_tags:"en:denmark""#)
+        #expect(query.first { $0.name == "langs" }?.value == "da,en")
+        #expect(query.first { $0.name == "fields" }?.value?.hasPrefix("product_name_da,") == true)
     }
 }
 

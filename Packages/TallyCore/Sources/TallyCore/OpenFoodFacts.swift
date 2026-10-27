@@ -13,13 +13,15 @@ public enum OpenFoodFacts {
         return components?.url
     }
 
-    public static func searchURL(query: String, pageSize: Int = 30) -> URL? {
+    /// `danish` limits results to products sold in Denmark and asks for their Danish names.
+    public static func searchURL(query: String, danish: Bool = false, pageSize: Int = 30) -> URL? {
         var components = URLComponents(string: "https://search.openfoodfacts.org/search")
         components?.queryItems = [
-            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "q", value: danish ? "\(query) countries_tags:\"en:denmark\"" : query),
             URLQueryItem(name: "page_size", value: String(pageSize)),
-            URLQueryItem(name: "fields", value: fields),
+            URLQueryItem(name: "fields", value: danish ? "product_name_da," + fields : fields),
         ]
+        if danish { components?.queryItems?.append(URLQueryItem(name: "langs", value: "da,en")) }
         return components?.url
     }
 
@@ -41,7 +43,7 @@ public enum OpenFoodFacts {
     }
 
     static func food(from product: [String: Any], fallbackCode: String?) -> Food? {
-        let name = [product["product_name"], product["product_name_en"], product["generic_name"]]
+        let name = [product["product_name_da"], product["product_name"], product["product_name_en"], product["generic_name"]]
             .compactMap { ($0 as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
         guard let name, let nutriments = product["nutriments"] as? [String: Any] else { return nil }
