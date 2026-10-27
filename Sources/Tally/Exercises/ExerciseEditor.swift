@@ -45,19 +45,20 @@ struct ExerciseEditor: View {
                         AnatomyFigure(
                             primary: Set(exercise.primary),
                             secondary: Set(exercise.secondary),
+                            tertiary: Set(exercise.tertiary),
                             onTap: toggle,
                             labels: true
                         )
                         .frame(height: 300)
                         .frame(maxWidth: .infinity)
-                        MuscleLegend(primary: exercise.primary, secondary: exercise.secondary, horizontal: true)
+                        MuscleLegend(primary: exercise.primary, secondary: exercise.secondary, tertiary: exercise.tertiary, horizontal: true)
                     }
                     .padding(.vertical, 10)
-                    .sensoryFeedback(.selection, trigger: exercise.primary + exercise.secondary)
+                    .sensoryFeedback(.selection, trigger: exercise.primary + exercise.secondary + exercise.tertiary)
                 } header: {
                     Text("Muscles").eyebrow(11)
                 } footer: {
-                    Text("Tap once for primary, again for secondary.")
+                    Text("Tap once for primary, twice for secondary, three times for tertiary (stabilisers).")
                         .font(Typo.body(13))
                         .foregroundStyle(Theme.ink3)
                 }
@@ -70,6 +71,14 @@ struct ExerciseEditor: View {
                     Picker("Equipment", selection: $exercise.equipment) {
                         Text("None").tag(Equipment?.none)
                         ForEach(Equipment.allCases) { Text($0.label).tag(Optional($0)) }
+                    }
+                    Picker("Grip", selection: $exercise.grip) {
+                        Text("None").tag(Grip?.none)
+                        ForEach(Grip.allCases) { Text($0.label).tag(Optional($0)) }
+                    }
+                    Picker("Force", selection: $exercise.force) {
+                        Text("None").tag(Force?.none)
+                        ForEach(Force.allCases) { Text($0.label).tag(Optional($0)) }
                     }
                     Picker("Type", selection: $exercise.kind) {
                         ForEach(ExerciseKind.allCases) { Text($0.label).tag($0) }
@@ -108,20 +117,25 @@ struct ExerciseEditor: View {
         }
     }
 
-    /// Cycles a muscle: not worked → primary → secondary → not worked.
+    /// Cycles a muscle: not worked → primary → secondary → tertiary → not worked.
     private func toggle(_ muscle: Muscle) {
         var primary = exercise.primary
         var secondary = exercise.secondary
+        var tertiary = exercise.tertiary
         if let index = primary.firstIndex(of: muscle) {
             primary.remove(at: index)
             secondary.append(muscle)
         } else if let index = secondary.firstIndex(of: muscle) {
             secondary.remove(at: index)
+            tertiary.append(muscle)
+        } else if let index = tertiary.firstIndex(of: muscle) {
+            tertiary.remove(at: index)
         } else {
             primary.append(muscle)
         }
         exercise.primaryMuscles = primary
         exercise.secondaryMuscles = secondary
+        exercise.tertiaryMuscles = tertiary
         if !groupPicked, let first = primary.first {
             exercise.muscle = first.group
         }

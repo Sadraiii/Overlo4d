@@ -61,9 +61,14 @@ struct ExerciseDef: Codable, Identifiable, Hashable, Sendable {
     var equipment: Equipment?
     var primaryMuscles: [Muscle]?
     var secondaryMuscles: [Muscle]?
+    /// Stabilisers: worked a little, not counted towards weekly sets.
+    var tertiaryMuscles: [Muscle]?
+    var grip: Grip?
+    var force: Force?
 
     var primary: [Muscle] { primaryMuscles ?? muscle.defaultMuscles }
     var secondary: [Muscle] { secondaryMuscles ?? [] }
+    var tertiary: [Muscle] { tertiaryMuscles ?? [] }
 
     /// Primary muscles, e.g. "Quads, Glutes", or the group when none are set.
     var muscleSummary: String {

@@ -67,6 +67,72 @@ enum Equipment: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum Grip: String, Codable, CaseIterable, Identifiable, Sendable {
+    case overhand, underhand, neutral
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .overhand: "Overhand"
+        case .underhand: "Underhand"
+        case .neutral: "Neutral"
+        }
+    }
+}
+
+/// Whether the working muscles push the load away, pull it in, or hold it still.
+enum Force: String, Codable, CaseIterable, Identifiable, Sendable {
+    case push, pull, hold
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .push: "Push"
+        case .pull: "Pull"
+        case .hold: "Hold"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .push: "arrow.up.forward"
+        case .pull: "arrow.down.backward"
+        case .hold: "pause.fill"
+        }
+    }
+}
+
+/// How much an exercise works a muscle. Each role has its own colour on the body figure.
+enum MuscleRole: CaseIterable {
+    case primary, secondary, tertiary
+
+    var label: String {
+        switch self {
+        case .primary: "Primary"
+        case .secondary: "Secondary"
+        case .tertiary: "Tertiary"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .primary: Color(light: 0xE0445F, dark: 0xFF6B86)
+        case .secondary: Color(light: 0xEE8A3C, dark: 0xFFA05C)
+        case .tertiary: Color(light: 0xE0B021, dark: 0xFFD966)
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .primary: "bolt.fill"
+        case .secondary: "plus.circle.fill"
+        case .tertiary: "shield.lefthalf.filled"
+        }
+    }
+}
+
 extension MuscleGroup {
     /// Muscles assumed for exercises saved before muscles were tracked.
     var defaultMuscles: [Muscle] {
@@ -136,8 +202,9 @@ enum Figure {
 struct AnatomyFigure: View {
     var primary: Set<Muscle> = []
     var secondary: Set<Muscle> = []
+    var tertiary: Set<Muscle> = []
     /// Working sets per week for each muscle. When set, muscles are shaded by volume zone instead of
-    /// primary/secondary.
+    /// by role.
     var weeklySets: [Muscle: Double]?
     /// Outlined, for the muscle being inspected.
     var selected: Muscle?
@@ -227,16 +294,18 @@ struct AnatomyFigure: View {
         if let weeklySets {
             return VolumeZone(sets: weeklySets[muscle] ?? 0)?.color ?? Theme.line
         }
-        if primary.contains(muscle) { return Theme.accent }
-        if secondary.contains(muscle) { return Theme.accent.opacity(0.4) }
+        if primary.contains(muscle) { return MuscleRole.primary.color }
+        if secondary.contains(muscle) { return MuscleRole.secondary.color }
+        if tertiary.contains(muscle) { return MuscleRole.tertiary.color }
         return Theme.line
     }
 }
 
-/// "Primary: Chest" and "Secondary: Front delts, Triceps" with the figure's colours.
+/// "Primary: Chest", "Secondary: Front delts, Triceps" and so on, with the figure's colours.
 struct MuscleLegend: View {
     let primary: [Muscle]
     let secondary: [Muscle]
+    var tertiary: [Muscle] = []
     var horizontal = false
 
     var body: some View {
@@ -244,16 +313,19 @@ struct MuscleLegend: View {
             ? AnyLayout(HStackLayout(alignment: .top, spacing: 16))
             : AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
         layout {
-            block("Primary", primary, color: Theme.accent)
-            block("Secondary", secondary, color: Theme.accent.opacity(0.4))
+            block(.primary, primary)
+            block(.secondary, secondary)
+            if horizontal || !tertiary.isEmpty {
+                block(.tertiary, tertiary)
+            }
         }
     }
 
-    private func block(_ title: String, _ muscles: [Muscle], color: Color) -> some View {
+    private func block(_ role: MuscleRole, _ muscles: [Muscle]) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 10, height: 10)
-                Text(title).eyebrow(10.5)
+                RoundedRectangle(cornerRadius: 3).fill(role.color).frame(width: 10, height: 10)
+                Text(role.label).eyebrow(10.5)
             }
             Text(muscles.isEmpty ? "–" : muscles.map(\.label).joined(separator: "\n"))
                 .font(Typo.body(15, .semibold))
@@ -261,6 +333,63 @@ struct MuscleLegend: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: horizontal ? .infinity : nil, alignment: .leading)
+    }
+}
+
+/// The exercise's muscles by role, its grip and its force, as icon rows beside the front and back
+/// figure.
+struct ExerciseDetailsCard: View {
+    let exercise: ExerciseDef
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Exercise details").eyebrow(11)
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 12) {
+                    muscleRow(.primary, exercise.primary)
+                    muscleRow(.secondary, exercise.secondary)
+                    if !exercise.tertiary.isEmpty {
+                        muscleRow(.tertiary, exercise.tertiary)
+                    }
+                    if let grip = exercise.grip {
+                        row("Grip type", grip.label, symbol: "hand.raised.fill", tint: Color(light: 0x7B5CC4, dark: 0xB9A0E6))
+                    }
+                    if let force = exercise.force {
+                        row("Force type", force.label, symbol: force.symbol, tint: Color(light: 0x2F7FB8, dark: 0x8AC6F0))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                AnatomyFigure(
+                    primary: Set(exercise.primary),
+                    secondary: Set(exercise.secondary),
+                    tertiary: Set(exercise.tertiary),
+                    labels: true
+                )
+                .frame(height: 200)
+            }
+        }
+    }
+
+    private func muscleRow(_ role: MuscleRole, _ muscles: [Muscle]) -> some View {
+        row("\(role.label) muscles", muscles.isEmpty ? "–" : muscles.map(\.label).joined(separator: ", "), symbol: role.symbol, tint: role.color)
+    }
+
+    private func row(_ title: String, _ value: String, symbol: String, tint: Color) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.16), in: .rect(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).eyebrow(9.5).foregroundStyle(Theme.ink3)
+                Text(value)
+                    .font(Typo.body(14.5, .semibold))
+                    .foregroundStyle(value == "–" ? Theme.ink3 : Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

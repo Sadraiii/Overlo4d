@@ -106,13 +106,8 @@ struct ExerciseDetailView: View {
                     Text(exercise.name).display(34).lineLimit(2)
                 }
 
-                HStack(alignment: .center, spacing: 18) {
-                    AnatomyFigure(primary: Set(exercise.primary), secondary: Set(exercise.secondary), labels: true)
-                        .frame(height: 200)
-                    MuscleLegend(primary: exercise.primary, secondary: exercise.secondary)
-                    Spacer(minLength: 0)
-                }
-                .card()
+                ExerciseDetailsCard(exercise: exercise)
+                    .card()
 
                 if sessions.isEmpty {
                     Text("Not logged yet")
