@@ -1,12 +1,15 @@
 import Foundation
 import Observation
 import TallyCore
+import UserNotifications
 
 /// The food log, saved to food.json next to gym.json.
 @MainActor
 @Observable
 final class FoodStore {
     private(set) var diary: FoodDiary
+    /// Set at launch. Used for body weight and, when turned on, to save food to Apple Health.
+    @ObservationIgnored weak var health: HealthManager?
 
     private static let fileURL = URL.documentsDirectory.appending(path: "food.json")
 
@@ -28,8 +31,23 @@ final class FoodStore {
     }
 
     private func change(_ body: (inout FoodDiary) -> Void) {
+        let before = diary.entries
         body(&diary)
         save()
+        syncHealth(from: before, to: diary.entries)
+    }
+
+    /// Mirrors added, changed and removed entries to Apple Health. Changed entries are replaced.
+    private func syncHealth(from old: [FoodEntry], to new: [FoodEntry]) {
+        guard diary.savesToHealth, let health, old != new else { return }
+        let oldByID = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let newByID = Dictionary(new.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let removed = old.filter { newByID[$0.id] != $0 }.map(\.id)
+        let added = new.filter { oldByID[$0.id] != $0 }
+        Task {
+            if !removed.isEmpty { await health.deleteFood(removed) }
+            if !added.isEmpty { await health.saveFood(added) }
+        }
     }
 
     // MARK: Reading
@@ -73,6 +91,50 @@ final class FoodStore {
         change { $0.exercise[day] = kcal.rounded() }
     }
 
+    // MARK: Saved meals
+
+    @discardableResult
+    func saveMeal(named name: String, from meal: Meal, on day: DayKey) -> Bool {
+        var saved = false
+        change { saved = $0.saveMeal(named: name, from: meal, on: day) != nil }
+        return saved
+    }
+
+    func log(_ saved: SavedMeal, to meal: Meal, on day: DayKey) {
+        change { _ = $0.log(saved, to: meal, on: day) }
+    }
+
+    func deleteSavedMeal(_ id: UUID) { change { $0.deleteSavedMeal(id) } }
+
+    // MARK: Weight
+
+    /// Weights logged here and in Apple Health, one per day, oldest first.
+    var weights: [WeightPoint] {
+        WeightLog.merge(health: (health?.weights ?? []).map { (date: $0.date, kg: $0.kg) }, logged: diary.weights)
+    }
+
+    /// Logs today's weight, and saves it to Apple Health when connected.
+    func logWeight(_ kg: Double, on day: DayKey) {
+        change { $0.weights[day] = (kg * 10).rounded() / 10 }
+        guard let health else { return }
+        Task { await health.saveWeight(kg, date: day == today ? .now : day.date()) }
+    }
+
+    func deleteWeight(on day: DayKey) { change { $0.weights[day] = nil } }
+
+    /// Progress from the first weight since the goal was set (or the last 180 days) to the target.
+    var weightProgress: WeightProgress? {
+        guard let profile = diary.profile, let target = profile.targetKg, profile.goal != .maintain,
+              let first = weights.first, let last = weights.last
+        else { return nil }
+        return WeightProgress(start: first.kg, current: last.kg, target: target, weeklyRate: profile.weeklyRateKg)
+    }
+
+    /// The last week of eating for the AI coach.
+    func coachLines() -> [String] {
+        diary.coachLines(today: today, weights: weights)
+    }
+
     // MARK: Foods and goals
 
     func saveCustom(_ food: Food) { change { $0.save(custom: food) } }
@@ -97,6 +159,184 @@ final class FoodStore {
     var countsExercise: Bool {
         get { diary.countsExercise }
         set { change { $0.countsExercise = newValue } }
+    }
+
+    /// Turning this on saves the last 7 days, so today's totals in Health are complete.
+    var savesToHealth: Bool {
+        get { diary.savesToHealth }
+        set {
+            guard newValue != diary.savesToHealth else { return }
+            change { $0.savesToHealth = newValue }
+            guard newValue, let health else { return }
+            let since = today.adding(days: -6)
+            let recent = diary.entries.filter { $0.day >= since }
+            Task {
+                await health.deleteFood(recent.map(\.id))
+                await health.saveFood(recent)
+            }
+        }
+    }
+
+    /// Whether a Spoonacular key is saved, so recipes can be searched.
+    private(set) var hasRecipeKey = FoodKeys.spoonacular != nil
+    private(set) var hasUSDAKey = FoodKeys.usda != nil
+
+    /// Saves or (with an empty string) removes a key.
+    func setKey(_ key: String, account: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            Keychain.delete(account)
+        } else {
+            Keychain.save(trimmed, account: account)
+        }
+        hasRecipeKey = FoodKeys.spoonacular != nil
+        hasUSDAKey = FoodKeys.usda != nil
+    }
+
+    var remindsMeals: Bool {
+        get { diary.remindsMeals }
+        set {
+            change { $0.remindsMeals = newValue }
+            scheduleMealReminders()
+        }
+    }
+
+    // MARK: Reminders
+
+    private static let reminders: [(id: String, hour: Int, minute: Int, title: String)] = [
+        ("food.breakfast", 8, 30, "Breakfast"),
+        ("food.lunch", 12, 30, "Lunch"),
+        ("food.dinner", 19, 0, "Dinner"),
+    ]
+
+    /// Three daily nudges to log meals.
+    func scheduleMealReminders() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: Self.reminders.map(\.id))
+        guard diary.remindsMeals else { return }
+        Task {
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+        }
+        for reminder in Self.reminders {
+            let content = UNMutableNotificationContent()
+            content.title = reminder.title
+            content.body = "Log what you ate while you remember."
+            center.add(UNNotificationRequest(
+                identifier: reminder.id,
+                content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: reminder.hour, minute: reminder.minute), repeats: true)
+            ))
+        }
+    }
+}
+
+extension FoodEntry {
+    /// When to date the entry in Apple Health: when it was logged, or a typical meal time for past days.
+    var healthDate: Date {
+        if DayKey(loggedAt) == day { return loggedAt }
+        let (hour, minute) = switch meal {
+        case .breakfast: (8, 0)
+        case .lunch: (12, 30)
+        case .dinner: (19, 0)
+        case .snack: (15, 30)
+        }
+        return Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: day.date()) ?? day.date()
+    }
+}
+
+/// API keys for the online food sources, kept in the Keychain.
+enum FoodKeys {
+    static let usdaAccount = "usda-api-key"
+    static let spoonacularAccount = "spoonacular-api-key"
+
+    static var usda: String? { Keychain.read(usdaAccount).flatMap { $0.isEmpty ? nil : $0 } }
+    static var spoonacular: String? { Keychain.read(spoonacularAccount).flatMap { $0.isEmpty ? nil : $0 } }
+}
+
+/// Looks foods up on Open Food Facts and USDA FoodData Central, and recipes on Spoonacular.
+enum FoodAPI {
+    enum Failure: Error, Equatable {
+        case notFound, offline, server, noKey, invalidKey, quota
+    }
+
+    /// Packaged foods from Open Food Facts.
+    static func search(_ query: String) async throws -> [Food] {
+        guard let url = OpenFoodFacts.searchURL(query: query) else { return [] }
+        return OpenFoodFacts.parseSearch(try await fetch(url))
+    }
+
+    /// Everyday foods from USDA, with lab-measured values per 100 g.
+    static func searchUSDA(_ query: String) async throws -> [Food] {
+        guard let url = USDAFoods.searchURL(query: query, apiKey: FoodKeys.usda) else { return [] }
+        return USDAFoods.parseSearch(try await fetch(url))
+    }
+
+    static func product(barcode: String) async throws -> Food {
+        guard let url = OpenFoodFacts.productURL(barcode: barcode) else { throw Failure.notFound }
+        guard let food = OpenFoodFacts.parseProduct(try await fetch(url, notFoundIsOK: true)) else { throw Failure.notFound }
+        return food
+    }
+
+    static func recipes(_ query: String, filters: Set<Spoonacular.Filter>) async throws -> [Recipe] {
+        guard let key = FoodKeys.spoonacular else { throw Failure.noKey }
+        guard let url = Spoonacular.searchURL(query: query, filters: filters, apiKey: key) else { return [] }
+        return Spoonacular.parseSearch(try await fetch(url))
+    }
+
+    /// The full recipe, with ingredients and steps.
+    static func recipe(_ id: Int) async throws -> Recipe {
+        guard let key = FoodKeys.spoonacular else { throw Failure.noKey }
+        guard let url = Spoonacular.recipeURL(id: id, apiKey: key),
+              let recipe = Spoonacular.parseRecipe(try await fetch(url))
+        else { throw Failure.notFound }
+        return recipe
+    }
+
+    private static func fetch(_ url: URL, notFoundIsOK: Bool = false) async throws -> Data {
+        var request = URLRequest(url: url, timeoutInterval: 15)
+        request.setValue(OpenFoodFacts.userAgent, forHTTPHeaderField: "User-Agent")
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let error as URLError where error.code != .cancelled {
+            throw Failure.offline
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if status == 404 && notFoundIsOK { return data }
+        switch status {
+        case 200..<300: return data
+        case 401, 403: throw Failure.invalidKey
+        case 402, 429: throw Failure.quota
+        default: throw Failure.server
+        }
+    }
+}
+
+extension FoodAPI.Failure {
+    var message: String {
+        switch self {
+        case .notFound: "Not found."
+        case .offline: "You're offline."
+        case .server: "The service is busy. Try again in a moment."
+        case .noKey: "Add a Spoonacular key to search recipes."
+        case .invalidKey: "The API key wasn't accepted. Check it in Food goals › Online data."
+        case .quota: "Today's free searches are used up. Try again tomorrow, or add your own free key."
+        }
+    }
+}
+
+extension FoodEntry {
+    /// When to date the entry in Apple Health: when it was logged, or a typical meal time for past days.
+    var healthDate: Date {
+        if DayKey(loggedAt) == day { return loggedAt }
+        let (hour, minute) = switch meal {
+        case .breakfast: (8, 0)
+        case .lunch: (12, 30)
+        case .dinner: (19, 0)
+        case .snack: (15, 30)
+        }
+        return Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: day.date()) ?? day.date()
     }
 }
 

@@ -8,11 +8,13 @@ struct AddFoodSheet: View {
         case amount(Food)
         case custom(barcode: String?)
         case quick
+        case recipe(Recipe)
     }
 
     enum Shelf: String, CaseIterable, Identifiable {
         case recent = "Recent"
         case common = "Common"
+        case meals = "Meals"
         case mine = "My foods"
         var id: String { rawValue }
     }
@@ -25,9 +27,9 @@ struct AddFoodSheet: View {
     @State private var path: [Page] = []
     @State private var query = ""
     @State private var shelf: Shelf
-    @State private var online: [Food] = []
-    @State private var searching = false
-    @State private var onlineError: FoodAPI.Failure? = nil
+    @State private var packaged = OnlineResults<Food>()
+    @State private var everyday = OnlineResults<Food>()
+    @State private var recipes = OnlineResults<Recipe>()
     @State private var scanning = false
     @State private var lookingUp = false
     @State private var missingBarcode: String? = nil
@@ -101,6 +103,10 @@ struct AddFoodSheet: View {
                     QuickAddView(meal: meal) { nutrients, name, chosenMeal in
                         add(.quick(nutrients, name: name), grams: 100, meal: chosenMeal)
                     }
+                case .recipe(let recipe):
+                    RecipeDetailView(recipe: recipe, meal: meal, popsAfterLogging: false) { grams, chosenMeal, full in
+                        add(full.food, grams: grams, meal: chosenMeal)
+                    }
                 }
             }
             .sheet(isPresented: $scanning) {
@@ -151,6 +157,23 @@ struct AddFoodSheet: View {
             }
         case .common:
             Section { rows(CommonFoods.all) }
+        case .meals:
+            if food.diary.savedMeals.isEmpty {
+                emptyRow("Save a meal you eat often from its menu in the diary (Save as meal), then log it here in one tap.")
+            } else {
+                Section {
+                    ForEach(food.diary.savedMeals.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }) { saved in
+                        SavedMealRow(meal: saved) {
+                            food.log(saved, to: meal, on: day)
+                            confirm("\(saved.name) added to \(meal.label.lowercased())")
+                        }
+                        .cardRow()
+                        .swipeActions {
+                            Button("Delete", systemImage: "trash", role: .destructive) { food.deleteSavedMeal(saved.id) }
+                        }
+                    }
+                }
+            }
         case .mine:
             if food.diary.customFoods.isEmpty {
                 emptyRow("Create foods from their label with the button below. Scanned barcodes that aren't found can be added here too.")
@@ -177,24 +200,45 @@ struct AddFoodSheet: View {
                 Text("On your phone").eyebrow(11)
             }
         }
+        if food.hasRecipeKey {
+            onlineSection("Recipes · Spoonacular", recipes, empty: "No recipes found.") {
+                ForEach(recipes.items.prefix(6)) { recipe in
+                    RecipeRow(recipe: recipe)
+                        .contentShape(.rect)
+                        .onTapGesture { path.append(.recipe(recipe)) }
+                        .cardRow()
+                }
+            }
+        }
+        onlineSection("Everyday foods · USDA", everyday, empty: "No everyday foods found.") {
+            rows(Array(everyday.items.prefix(12)))
+        }
+        onlineSection("Packaged foods · Open Food Facts", packaged, empty: "No packaged foods found.") {
+            rows(packaged.items)
+        }
+    }
+
+    private func onlineSection<Item, Rows: View>(
+        _ title: String, _ results: OnlineResults<Item>, empty: String, @ViewBuilder rows: () -> Rows
+    ) -> some View {
         Section {
-            if searching && online.isEmpty {
+            if results.loading && results.items.isEmpty {
                 HStack { Spacer(); ProgressView(); Spacer() }.cardRow()
-            } else if let onlineError, online.isEmpty {
-                Text(onlineError == .offline ? "You're offline. Showing foods on your phone." : "Search is busy. Try again in a moment.")
+            } else if let error = results.error, results.items.isEmpty {
+                Text(error.message)
                     .font(Typo.body(14))
                     .foregroundStyle(Theme.ink3)
                     .cardRow()
-            } else if online.isEmpty && trimmedQuery.count >= 2 && !searching {
-                Text("Nothing found online.")
+            } else if results.items.isEmpty {
+                Text(trimmedQuery.count >= 2 ? empty : "Type a little more to search online.")
                     .font(Typo.body(14))
                     .foregroundStyle(Theme.ink3)
                     .cardRow()
             } else {
-                rows(online)
+                rows()
             }
         } header: {
-            Text("Open Food Facts").eyebrow(11)
+            Text(title).eyebrow(11)
         }
     }
 
@@ -255,31 +299,40 @@ struct AddFoodSheet: View {
 
     private func add(_ item: Food, grams: Double, meal chosenMeal: Meal) {
         food.log(item, grams: grams, meal: chosenMeal, day: day)
-        addedCount += 1
         path.removeAll()
-        let message = "\(item.name) added to \(chosenMeal.label.lowercased())"
-        withAnimation(.snappy) { toast = message }
-        Task {
-            try? await Task.sleep(for: .seconds(2))
-            if toast == message { withAnimation(.snappy) { toast = nil } }
-        }
+        confirm("\(item.name) added to \(chosenMeal.label.lowercased())")
     }
 
     private func searchOnline(_ text: String) async {
-        online = []
-        onlineError = nil
+        packaged = OnlineResults()
+        everyday = OnlineResults()
+        recipes = OnlineResults()
         guard text.count >= 2 else { return }
         // Wait for typing to pause; the task is cancelled when the text changes.
         try? await Task.sleep(for: .milliseconds(600))
         guard !Task.isCancelled else { return }
-        searching = true
-        defer { searching = false }
-        do {
-            online = try await FoodAPI.search(text)
-        } catch let error as FoodAPI.Failure {
-            onlineError = error
-        } catch {
-            // Cancelled because the text changed.
+        let searchRecipes = food.hasRecipeKey
+        let tasks = [
+            Task { everyday = await OnlineResults.load { try await FoodAPI.searchUSDA(text) } loading: { everyday.loading = true } },
+            Task { packaged = await OnlineResults.load { try await FoodAPI.search(text) } loading: { packaged.loading = true } },
+            Task {
+                guard searchRecipes, text.count >= 3 else { return }
+                recipes = await OnlineResults.load { try await FoodAPI.recipes(text, filters: []) } loading: { recipes.loading = true }
+            },
+        ]
+        await withTaskCancellationHandler {
+            for task in tasks { await task.value }
+        } onCancel: {
+            for task in tasks { task.cancel() }
+        }
+    }
+
+    private func confirm(_ message: String) {
+        addedCount += 1
+        withAnimation(.snappy) { toast = message }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            if toast == message { withAnimation(.snappy) { toast = nil } }
         }
     }
 
@@ -300,6 +353,59 @@ struct AddFoodSheet: View {
             } catch {
                 lookupFailed = true
             }
+        }
+    }
+}
+
+/// One online source's search results.
+struct OnlineResults<Item> {
+    var items: [Item] = []
+    var error: FoodAPI.Failure?
+    var loading = false
+
+    /// Runs a search, calling `loading` first. Cancellation leaves the results empty without an error.
+    @MainActor
+    static func load(_ search: () async throws -> [Item], loading: () -> Void) async -> OnlineResults {
+        loading()
+        do {
+            return OnlineResults(items: try await search())
+        } catch let error as FoodAPI.Failure {
+            return OnlineResults(error: error)
+        } catch {
+            return OnlineResults()
+        }
+    }
+}
+
+/// A saved meal with a one-tap add.
+struct SavedMealRow: View {
+    let meal: SavedMeal
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(meal.name)
+                    .font(Typo.body(15, .medium))
+                    .foregroundStyle(Theme.ink)
+                Text("\(meal.items.count) \(meal.items.count == 1 ? "food" : "foods") · \(Fmt.kcal(meal.nutrients.kcal))")
+                    .font(Typo.body(12.5))
+                    .foregroundStyle(Theme.ink3)
+                Text(meal.items.map(\.food.name).joined(separator: ", "))
+                    .font(Typo.body(12))
+                    .foregroundStyle(Theme.ink3)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Button(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 32, height: 32)
+                    .background(Theme.accentSoft, in: .circle)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Add \(meal.name)")
         }
     }
 }

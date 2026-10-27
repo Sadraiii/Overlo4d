@@ -27,6 +27,12 @@ enum Changelog {
             "Spots weekend lie-ins that throw your body clock off on Mondays.",
             "Optional morning check-in and caffeine cut-off reminders.",
             "Exercise details: primary, secondary and tertiary muscles each in their own colour on the body figure, plus grip and force type.",
+            "Food search adds everyday foods from USDA FoodData Central, with lab-measured nutrition.",
+            "Recipes from Spoonacular with calories and macros per serving. Log a serving in one tap (needs a free key).",
+            "Save a meal you eat often and log it again in one tap.",
+            "Weight: log it or use Apple Health, set a goal weight, and see your trend and when you'll reach it.",
+            "Food can be saved to Apple Health, and the AI coach now looks at your calories and protein.",
+            "Optional reminders to log breakfast, lunch and dinner.",
         ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",

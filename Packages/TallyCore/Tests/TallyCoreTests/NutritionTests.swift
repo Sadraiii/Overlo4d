@@ -280,3 +280,196 @@ private let egg = Food(id: "egg", name: "Egg", per100: Nutrients(kcal: 143, carb
         }
     }
 }
+
+@Suite struct SavedMealTests {
+    let today = DayKey(rawValue: "2026-10-27")
+
+    @Test func savesAMealAndLogsItAgain() throws {
+        var diary = FoodDiary()
+        diary.log(FoodEntry(day: today, meal: .breakfast, food: oats, grams: 60))
+        diary.log(FoodEntry(day: today, meal: .breakfast, food: egg, grams: 100))
+        let blank = diary.saveMeal(named: "  ", from: .breakfast, on: today)
+        let empty = diary.saveMeal(named: "Usual", from: .lunch, on: today)
+        #expect(blank == nil && empty == nil)
+
+        let result = diary.saveMeal(named: " Usual breakfast ", from: .breakfast, on: today)
+        let saved = try #require(result)
+        #expect(saved.name == "Usual breakfast")
+        #expect(saved.nutrients.kcal == 371)
+
+        let tomorrow = today.adding(days: 1)
+        let logged = diary.log(saved, to: .lunch, on: tomorrow)
+        #expect(logged.count == 2)
+        #expect(diary.entries(on: tomorrow, meal: .lunch).map(\.food.id) == ["oats", "egg"])
+
+        diary.deleteSavedMeal(saved.id)
+        #expect(diary.savedMeals.isEmpty)
+    }
+
+    @Test func newFieldsRoundTrip() throws {
+        var diary = FoodDiary()
+        diary.weights[today] = 81.4
+        diary.savesToHealth = true
+        diary.remindsMeals = true
+        diary.log(FoodEntry(day: today, meal: .dinner, food: egg, grams: 100))
+        diary.saveMeal(named: "Eggs", from: .dinner, on: today)
+        let decoded = try JSONDecoder().decode(FoodDiary.self, from: JSONEncoder().encode(diary))
+        #expect(decoded == diary)
+        let old = try JSONDecoder().decode(FoodDiary.self, from: Data(#"{"entries":[]}"#.utf8))
+        #expect(old.savedMeals.isEmpty && old.weights.isEmpty && !old.savesToHealth && !old.remindsMeals)
+    }
+}
+
+@Suite struct WeightTests {
+    @Test func mergePrefersLoggedWeightsAndTheLastHealthReading() {
+        let morning = utc.date(from: DateComponents(year: 2026, month: 10, day: 20, hour: 7))!
+        let evening = utc.date(from: DateComponents(year: 2026, month: 10, day: 20, hour: 21))!
+        let next = utc.date(from: DateComponents(year: 2026, month: 10, day: 21, hour: 7))!
+        let points = WeightLog.merge(
+            health: [(evening, 80.6), (morning, 80.2), (next, 80.0)],
+            logged: [DayKey(rawValue: "2026-10-21"): 79.8, DayKey(rawValue: "2026-10-22"): 79.7],
+            calendar: utc
+        )
+        #expect(points.map(\.day.rawValue) == ["2026-10-20", "2026-10-21", "2026-10-22"])
+        #expect(points.map(\.kg) == [80.6, 79.8, 79.7])
+    }
+
+    @Test func weeklyTrendIsTheSlope() throws {
+        let today = DayKey(rawValue: "2026-10-27")
+        let points = (0..<4).map { WeightPoint(day: today.adding(days: -$0 * 7, calendar: utc), kg: 80 - Double(3 - $0) * 0.5) }.reversed()
+        let trend = try #require(WeightLog.weeklyTrend(Array(points), endingOn: today, calendar: utc))
+        #expect(abs(trend + 0.5) < 0.0001)
+        #expect(WeightLog.weeklyTrend(Array(points.suffix(2)), endingOn: today, calendar: utc) == nil)
+        let sameWeek = [0, 1, 2].map { WeightPoint(day: today.adding(days: -$0, calendar: utc), kg: 80) }.reversed()
+        #expect(WeightLog.weeklyTrend(Array(sameWeek), endingOn: today, calendar: utc) == nil)
+    }
+
+    @Test func progressTowardsTheTarget() {
+        let progress = WeightProgress(start: 90, current: 86, target: 80, weeklyRate: 0.5)
+        #expect(progress.remaining == -6)
+        #expect(abs(progress.fraction - 0.4) < 0.0001)
+        #expect(!progress.isReached)
+        let now = utc.date(from: DateComponents(year: 2026, month: 1, day: 1))!
+        #expect(progress.projectedDate(from: now, calendar: utc) == utc.date(byAdding: .day, value: 84, to: now))
+
+        let gaining = WeightProgress(start: 70, current: 75.5, target: 75, weeklyRate: 0.25)
+        #expect(gaining.isReached && gaining.fraction == 1)
+        #expect(gaining.projectedDate(from: now, calendar: utc) == nil)
+        #expect(WeightProgress(start: 80, current: 81, target: 75, weeklyRate: 0.5).fraction == 0)
+    }
+}
+
+@Suite struct FoodCoachTests {
+    let today = DayKey(rawValue: "2026-10-27")
+
+    @Test func noLinesWithoutFood() {
+        #expect(FoodDiary().coachLines(today: today, calendar: utc).isEmpty)
+    }
+
+    @Test func summarisesLoggedDaysNewestFirst() {
+        var diary = FoodDiary()
+        diary.profile = NutritionProfile(sex: .male, age: 30, heightCm: 180, weightKg: 80, activity: .moderate, goal: .lose, weeklyRateKg: 0.5, targetKg: 75)
+        diary.log(FoodEntry(day: today, meal: .breakfast, food: oats, grams: 100))
+        diary.log(FoodEntry(day: today.adding(days: -2, calendar: utc), meal: .dinner, food: egg, grams: 200))
+        diary.exercise[today] = 300
+        let weights = [WeightPoint(day: today, kg: 80.2)]
+
+        let lines = diary.coachLines(today: today, weights: weights, calendar: utc)
+        #expect(lines == [
+            "Goal: 2210 kcal a day, carbs 276 g, protein 111 g, fat 74 g; aiming to lose 0.5 kg a week to 75 kg.",
+            "Weight: 80.2 kg on 2026-10-27.",
+            "2026-10-27 (today, so far): 380 kcal, protein 13 g, carbs 68 g, fat 7 g, 300 kcal active energy",
+            "2026-10-25: 286 kcal, protein 25 g, carbs 1 g, fat 19 g",
+            "No food logged on the other 5 of the last 7 days.",
+        ])
+    }
+
+    @Test func promptIncludesTheFoodLog() {
+        let prompt = CoachAPI.prompt(focus: .overall, goal: "", workouts: [], load: [], weekly: [], nutrition: ["Goal: 2000 kcal a day."], now: .now)
+        #expect(prompt.contains("Food log, newest first:\n- Goal: 2000 kcal a day."))
+        #expect(!CoachAPI.prompt(focus: .overall, goal: "", workouts: [], load: [], weekly: [], now: .now).contains("Food log"))
+    }
+}
+
+@Suite struct OnlineSourceTests {
+    @Test func parsesUSDASearch() throws {
+        let json = #"""
+        {"totalHits":3,"foods":[
+          {"fdcId":171477,"description":"Chicken, broilers or fryers, breast, meat only, cooked, roasted","dataType":"SR Legacy",
+           "foodNutrients":[{"nutrientId":1003,"unitName":"G","value":31.0},{"nutrientId":1004,"unitName":"G","value":3.57},
+             {"nutrientId":1005,"unitName":"G","value":0},{"nutrientId":1008,"unitName":"KCAL","value":165}]},
+          {"fdcId":2346393,"description":"BANANAS, RIPE","dataType":"Foundation",
+           "foodNutrients":[{"nutrientId":1062,"unitName":"kJ","value":414},{"nutrientId":2047,"unitName":"KCAL","value":98.5},
+             {"nutrientId":1003,"unitName":"G","value":0.74},{"nutrientId":1050,"unitName":"G","value":23},
+             {"nutrientId":1085,"unitName":"G","value":0.29},{"nutrientId":1079,"unitName":"G","value":1.7},{"nutrientId":2000,"unitName":"G","value":15.8}]},
+          {"fdcId":1,"description":"Bananas, ripe","foodNutrients":[{"nutrientId":1008,"unitName":"KCAL","value":89}]},
+          {"fdcId":2,"description":"Mystery","foodNutrients":[]}
+        ]}
+        """#
+        let foods = USDAFoods.parseSearch(Data(json.utf8))
+        #expect(foods.map(\.id) == ["usda:171477", "usda:2346393"])
+        #expect(foods[0].per100 == Nutrients(kcal: 165, carbs: 0, protein: 31, fat: 3.57))
+        #expect(foods[0].source == .usda)
+        #expect(foods[1].name == "Bananas, ripe")
+        #expect(foods[1].per100.kcal == 99)
+        #expect(foods[1].per100.carbs == 23 && foods[1].per100.fat == 0.29)
+        #expect(foods[1].per100.fiber == 1.7 && foods[1].per100.sugar == 15.8)
+    }
+
+    @Test func usdaURLFallsBackToTheDemoKey() throws {
+        let demo = try #require(USDAFoods.searchURL(query: "rice", apiKey: " "))
+        #expect(demo.absoluteString.contains("api_key=DEMO_KEY"))
+        #expect(demo.absoluteString.contains("query=rice"))
+        let own = try #require(USDAFoods.searchURL(query: "rice", apiKey: "abc"))
+        #expect(own.absoluteString.contains("api_key=abc"))
+    }
+
+    static let recipeJSON = #"""
+    {"id":715538,"title":"Bruschetta Style Pork & Pasta","image":"https://img.spoonacular.com/recipes/715538-312x231.jpg",
+     "servings":5,"readyInMinutes":35,"sourceUrl":"https://example.com/pork-pasta",
+     "nutrition":{"nutrients":[{"name":"Calories","amount":521.4,"unit":"kcal"},{"name":"Fat","amount":12.1,"unit":"g"},
+       {"name":"Carbohydrates","amount":59.3,"unit":"g"},{"name":"Sugar","amount":5.6,"unit":"g"},
+       {"name":"Protein","amount":43.6,"unit":"g"},{"name":"Fiber","amount":5.9,"unit":"g"}],
+       "weightPerServing":{"amount":347,"unit":"g"}},
+     "extendedIngredients":[{"original":"1 lb pork tenderloin"},{"original":" 8 oz penne "}],
+     "analyzedInstructions":[{"name":"","steps":[{"number":1,"step":"Boil the pasta."},{"number":2,"step":" Grill the pork. "}]}]}
+    """#
+
+    @Test func parsesARecipe() throws {
+        let recipe = try #require(Spoonacular.parseRecipe(Data(Self.recipeJSON.utf8)))
+        #expect(recipe.id == 715538)
+        #expect(recipe.servings == 5 && recipe.minutes == 35)
+        #expect(recipe.perServing.kcal == 521)
+        #expect(recipe.perServing.protein == 43.6)
+        #expect(recipe.servingGrams == 347)
+        #expect(recipe.ingredients == ["1 lb pork tenderloin", "8 oz penne"])
+        #expect(recipe.steps == ["Boil the pasta.", "Grill the pork."])
+        #expect(recipe.sourceURL?.host() == "example.com")
+
+        let food = recipe.food
+        #expect(food.id == "recipe:715538" && food.source == .recipe)
+        #expect(abs(food.nutrients(grams: 347).kcal - 521) < 0.001)
+        #expect(abs(food.nutrients(grams: 347).protein - 43.6) < 0.001)
+    }
+
+    @Test func parsesRecipeSearchAndSkipsRecipesWithoutCalories() {
+        let json = #"{"results":[\#(Self.recipeJSON),{"id":2,"title":"No nutrition"}],"totalResults":2}"#
+        #expect(Spoonacular.parseSearch(Data(json.utf8)).map(\.id) == [715538])
+        #expect(Spoonacular.errorMessage(Data(#"{"status":"failure","code":402,"message":"Your daily points limit has been reached."}"#.utf8))
+            == "Your daily points limit has been reached.")
+    }
+
+    @Test func recipeWithoutAWeightLogsPerServing() {
+        let recipe = Recipe(id: 1, title: "Soup", perServing: Nutrients(kcal: 300, protein: 20))
+        #expect(recipe.food.servingGrams == 100)
+        #expect(recipe.food.nutrients(grams: 100).kcal == 300)
+    }
+
+    @Test func spoonacularURLsCarryFiltersAndKey() throws {
+        let url = try #require(Spoonacular.searchURL(query: "chicken", filters: [.highProtein, .vegetarian], apiKey: "k"))
+        let text = url.absoluteString
+        #expect(text.contains("query=chicken") && text.contains("addRecipeNutrition=true") && text.contains("apiKey=k"))
+        #expect(text.contains("minProtein=30") && text.contains("diet=vegetarian") && !text.contains("maxCalories"))
+        #expect(Spoonacular.recipeURL(id: 5, apiKey: "k")?.absoluteString == "https://api.spoonacular.com/recipes/5/information?includeNutrition=true&apiKey=k")
+    }
+}

@@ -17,6 +17,14 @@ public struct FoodDiary: Codable, Equatable, Sendable {
     public var waterGoal = Water.defaultGoalGlasses
     /// Whether active energy from Apple Health raises the day's budget, as in Lifesum.
     public var countsExercise = true
+    /// Groups of foods logged together, like "Usual breakfast".
+    public var savedMeals: [SavedMeal] = []
+    /// Body weight logged in the app, in kg. Weights from Apple Health are merged in by the app.
+    public var weights: [DayKey: Double] = [:]
+    /// Whether logged food is also saved to Apple Health.
+    public var savesToHealth = false
+    /// Daily reminders to log breakfast, lunch and dinner.
+    public var remindsMeals = false
 
     public static let maxRecents = 40
 
@@ -25,6 +33,7 @@ public struct FoodDiary: Codable, Equatable, Sendable {
     // Missing keys decode to defaults so the file can grow without breaking old saves.
     private enum CodingKeys: String, CodingKey {
         case entries, customFoods, recents, water, exercise, profile, customKcal, waterGoal, countsExercise
+        case savedMeals, weights, savesToHealth, remindsMeals
     }
 
     public init(from decoder: Decoder) throws {
@@ -38,6 +47,10 @@ public struct FoodDiary: Codable, Equatable, Sendable {
         customKcal = try container.decodeIfPresent(Double.self, forKey: .customKcal)
         waterGoal = try container.decodeIfPresent(Int.self, forKey: .waterGoal) ?? Water.defaultGoalGlasses
         countsExercise = try container.decodeIfPresent(Bool.self, forKey: .countsExercise) ?? true
+        savedMeals = try container.decodeIfPresent([SavedMeal].self, forKey: .savedMeals) ?? []
+        weights = try container.decodeIfPresent([String: Double].self, forKey: .weights)?.mapKeys() ?? [:]
+        savesToHealth = try container.decodeIfPresent(Bool.self, forKey: .savesToHealth) ?? false
+        remindsMeals = try container.decodeIfPresent(Bool.self, forKey: .remindsMeals) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -52,6 +65,10 @@ public struct FoodDiary: Codable, Equatable, Sendable {
         try container.encodeIfPresent(customKcal, forKey: .customKcal)
         try container.encode(waterGoal, forKey: .waterGoal)
         try container.encode(countsExercise, forKey: .countsExercise)
+        try container.encode(savedMeals, forKey: .savedMeals)
+        try container.encode(Dictionary(uniqueKeysWithValues: weights.map { ($0.key.rawValue, $0.value) }), forKey: .weights)
+        try container.encode(savesToHealth, forKey: .savesToHealth)
+        try container.encode(remindsMeals, forKey: .remindsMeals)
     }
 
     // MARK: Goals
@@ -119,6 +136,33 @@ public struct FoodDiary: Codable, Equatable, Sendable {
         return count
     }
 
+    // MARK: Saved meals
+
+    /// Saves what was eaten at `meal` on `day` as a meal that can be logged again in one go.
+    @discardableResult
+    public mutating func saveMeal(named name: String, from meal: Meal, on day: DayKey) -> SavedMeal? {
+        let items = entries(on: day, meal: meal).map { SavedMeal.Item(food: $0.food, grams: $0.grams) }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !items.isEmpty, !trimmed.isEmpty else { return nil }
+        let saved = SavedMeal(name: trimmed, items: items)
+        savedMeals.append(saved)
+        return saved
+    }
+
+    /// Logs every food of a saved meal. Returns the new entries.
+    @discardableResult
+    public mutating func log(_ saved: SavedMeal, to meal: Meal, on day: DayKey, at date: Date = .now) -> [FoodEntry] {
+        let new = saved.items.enumerated().map { offset, item in
+            FoodEntry(day: day, meal: meal, food: item.food, grams: item.grams, loggedAt: date.addingTimeInterval(Double(offset)))
+        }
+        entries += new
+        return new
+    }
+
+    public mutating func deleteSavedMeal(_ id: UUID) {
+        savedMeals.removeAll { $0.id == id }
+    }
+
     // MARK: Foods
 
     /// Moves `food` to the front of the recents. Quick adds aren't kept.
@@ -146,6 +190,33 @@ public struct FoodDiary: Codable, Equatable, Sendable {
     /// A food you already have with this barcode (custom or recent), so scanning works offline the second time.
     public func food(barcode: String) -> Food? {
         (customFoods + recents).first { $0.barcode == barcode }
+    }
+}
+
+/// Several foods saved under one name and logged together.
+public struct SavedMeal: Codable, Hashable, Identifiable, Sendable {
+    public struct Item: Codable, Hashable, Sendable {
+        public var food: Food
+        public var grams: Double
+
+        public init(food: Food, grams: Double) {
+            self.food = food
+            self.grams = grams
+        }
+    }
+
+    public var id: UUID
+    public var name: String
+    public var items: [Item]
+
+    public init(id: UUID = UUID(), name: String, items: [Item]) {
+        self.id = id
+        self.name = name
+        self.items = items
+    }
+
+    public var nutrients: Nutrients {
+        items.reduce(.zero) { $0 + $1.food.nutrients(grams: $1.grams) }
     }
 }
 

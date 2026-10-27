@@ -230,6 +230,7 @@ struct CoachFeedbackPanel: View {
     @Environment(CoachStore.self) private var coach
     @Environment(GymStore.self) private var gym
     @Environment(SleepStore.self) private var sleep
+    @Environment(FoodStore.self) private var food
     let scope: CoachScope
     var askTitle = "Get feedback"
     /// Asks as soon as the panel appears, when there's a key and no earlier answer.
@@ -271,13 +272,13 @@ struct CoachFeedbackPanel: View {
         }
         .task {
             if askOnAppear && coach.hasKey && coach.feedback(for: scope) == nil && coach.error(for: scope) == nil {
-                await coach.ask(scope, gym: gym, sleep: sleep.coachLines())
+                await coach.ask(scope, gym: gym, sleep: sleep.coachLines(), nutrition: food.coachLines())
             }
         }
     }
 
     private func ask() {
-        Task { await coach.ask(scope, gym: gym, sleep: sleep.coachLines()) }
+        Task { await coach.ask(scope, gym: gym, sleep: sleep.coachLines(), nutrition: food.coachLines()) }
     }
 }
 

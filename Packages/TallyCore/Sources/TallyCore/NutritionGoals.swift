@@ -68,10 +68,13 @@ public struct NutritionProfile: Codable, Hashable, Sendable {
     /// Kilograms per week to lose or gain. Ignored when keeping weight.
     public var weeklyRateKg: Double
     public var macros: MacroSplit
+    /// The weight to reach, when losing or gaining.
+    public var targetKg: Double?
 
     public init(
         sex: Sex = .male, age: Int = 30, heightCm: Double = 178, weightKg: Double = 78,
-        activity: Activity = .moderate, goal: Goal = .maintain, weeklyRateKg: Double = 0.5, macros: MacroSplit = .balanced
+        activity: Activity = .moderate, goal: Goal = .maintain, weeklyRateKg: Double = 0.5, macros: MacroSplit = .balanced,
+        targetKg: Double? = nil
     ) {
         self.sex = sex
         self.age = age
@@ -81,6 +84,7 @@ public struct NutritionProfile: Codable, Hashable, Sendable {
         self.goal = goal
         self.weeklyRateKg = weeklyRateKg
         self.macros = macros
+        self.targetKg = targetKg
     }
 
     public static let weeklyRates: [Double] = [0.25, 0.5, 0.75, 1]

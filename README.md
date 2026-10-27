@@ -15,7 +15,7 @@ Gym tracker for iPhone.
 
 - Workouts, plans, supersets and a rest timer
 - Muscle map, records and weekly recap
-- Calorie and macro tracking with food search and barcode scanning ([Open Food Facts](https://world.openfoodfacts.org))
+- Calorie and macro tracking with food search and barcode scanning ([Open Food Facts](https://world.openfoodfacts.org), [USDA FoodData Central](https://fdc.nal.usda.gov)), recipes ([Spoonacular](https://spoonacular.com/food-api), free key) and weight goals
 - Sleep tracking, sleep score, bedtime reminders and a wind-down routine
 - Apple Health and Apple Watch workouts
 - Widgets and a Live Activity

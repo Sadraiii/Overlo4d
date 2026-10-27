@@ -114,12 +114,14 @@ struct FoodDiaryView: View {
         case add(Meal)
         case edit(FoodEntry)
         case goals
+        case weight
 
         var id: String {
             switch self {
             case .add(let meal): "add-\(meal.rawValue)"
             case .edit(let entry): "edit-\(entry.id)"
             case .goals: "goals"
+            case .weight: "weight"
             }
         }
     }
@@ -128,6 +130,7 @@ struct FoodDiaryView: View {
     @Environment(HealthManager.self) private var health
     @State private var day = DayKey(.now)
     @State private var sheet: SheetKind?
+    @State private var showingRecipes = false
 
     var body: some View {
         let summary = food.summary(day)
@@ -154,6 +157,8 @@ struct FoodDiaryView: View {
                 }
 
                 CalorieWeekCard(endingOn: day)
+
+                WeightCard(onLog: { sheet = .weight }, onSetGoal: { sheet = .goals })
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
@@ -163,7 +168,8 @@ struct FoodDiaryView: View {
         .navigationTitle("Food")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("Recipes", systemImage: "book.pages") { showingRecipes = true }
                 Button("Goals", systemImage: "target") { sheet = .goals }
             }
         }
@@ -173,11 +179,13 @@ struct FoodDiaryView: View {
                 case .add(let meal): AddFoodSheet(meal: meal, day: day)
                 case .edit(let entry): EntryEditSheet(entry: entry)
                 case .goals: FoodGoalsSheet()
+                case .weight: LogWeightSheet()
                 }
             }
             .environment(food)
             .environment(health)
         }
+        .navigationDestination(isPresented: $showingRecipes) { RecipesView(day: day) }
         .task {
             await health.refresh()
             food.recordExercise(health.today.activeEnergy, on: food.today)
@@ -375,6 +383,9 @@ struct MealSection: View {
     let onAdd: () -> Void
     let onEdit: (FoodEntry) -> Void
 
+    @State private var naming = false
+    @State private var mealName = ""
+
     var body: some View {
         let entries = food.entries(day, meal: meal)
         let yesterday = food.entries(day.adding(days: -1), meal: meal)
@@ -400,6 +411,21 @@ struct MealSection: View {
                             _ = food.copy(meal: meal, from: day.adding(days: -1), to: day)
                         }
                     }
+                    if !entries.isEmpty {
+                        Button("Save as meal", systemImage: "square.and.arrow.down") {
+                            mealName = ""
+                            naming = true
+                        }
+                    }
+                    if !food.diary.savedMeals.isEmpty {
+                        Section("Saved meals") {
+                            ForEach(food.diary.savedMeals) { saved in
+                                Button("\(saved.name) · \(Fmt.kcal(saved.nutrients.kcal))") {
+                                    food.log(saved, to: meal, on: day)
+                                }
+                            }
+                        }
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .bold))
@@ -411,6 +437,13 @@ struct MealSection: View {
                 }
                 .padding(.leading, 6)
                 .accessibilityLabel("Add to \(meal.label)")
+                .alert("Save as meal", isPresented: $naming) {
+                    TextField("Name, e.g. Usual breakfast", text: $mealName)
+                    Button("Save") { _ = food.saveMeal(named: mealName, from: meal, on: day) }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Log these \(entries.count) foods again in one tap from this menu or the Meals list.")
+                }
             }
             .padding(.bottom, entries.isEmpty ? 0 : 10)
 
@@ -519,5 +552,141 @@ struct CalorieWeekCard: View {
             }
         }
         .card(padding: 14)
+    }
+}
+
+/// Body weight against the goal weight, with the trend and when the goal is reached at this pace.
+struct WeightCard: View {
+    @Environment(FoodStore.self) private var food
+    let onLog: () -> Void
+    let onSetGoal: () -> Void
+
+    var body: some View {
+        let points = food.weights
+        let recent = points.filter { $0.day > food.today.adding(days: -90) }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Weight").eyebrow()
+                Spacer()
+                Button("Log weight", systemImage: "plus", action: onLog)
+                    .font(Typo.body(13, .semibold))
+                    .labelStyle(.titleAndIcon)
+            }
+
+            if let last = points.last {
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(last.kg.formatted(.number.precision(.fractionLength(1))))
+                        .font(Typo.display(40))
+                        .monospacedDigit()
+                    Text("kg").eyebrow(13)
+                    Spacer()
+                    if let trend = WeightLog.weeklyTrend(points, endingOn: food.today) {
+                        Text("\(trend >= 0 ? "+" : "")\(trend.formatted(.number.precision(.fractionLength(1)))) kg/week")
+                            .font(Typo.body(13, .semibold))
+                            .foregroundStyle(Theme.ink2)
+                    }
+                }
+
+                if recent.count >= 2 {
+                    Chart {
+                        ForEach(recent, id: \.day) { point in
+                            LineMark(x: .value("Day", point.day.date(), unit: .day), y: .value("kg", point.kg))
+                                .foregroundStyle(Theme.accent)
+                                .interpolationMethod(.monotone)
+                            PointMark(x: .value("Day", point.day.date(), unit: .day), y: .value("kg", point.kg))
+                                .foregroundStyle(Theme.accent)
+                                .symbolSize(18)
+                        }
+                        if let target = food.profile?.targetKg {
+                            RuleMark(y: .value("Goal", target))
+                                .foregroundStyle(Theme.good)
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        }
+                    }
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 120)
+                }
+
+                if let progress = food.weightProgress {
+                    VStack(alignment: .leading, spacing: 6) {
+                        GeometryReader { proxy in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.line)
+                                Capsule().fill(Theme.good).frame(width: proxy.size.width * progress.fraction)
+                            }
+                        }
+                        .frame(height: 6)
+                        Text(Self.progressText(progress))
+                            .font(Typo.body(13))
+                            .foregroundStyle(Theme.ink2)
+                    }
+                } else if food.profile?.goal != .maintain {
+                    Button("Set a goal weight", action: onSetGoal)
+                        .font(Typo.body(13, .semibold))
+                }
+            } else {
+                Text("Log your weight, or connect Apple Health, to see your progress towards your goal.")
+                    .font(Typo.body(13.5))
+                    .foregroundStyle(Theme.ink3)
+            }
+        }
+        .card(padding: 14)
+    }
+
+    static func progressText(_ progress: WeightProgress) -> String {
+        if progress.isReached { return "Goal of \(Fmt.weight(progress.target)) kg reached." }
+        var text = "\(Fmt.weight(abs(progress.remaining).rounded(toPlaces: 1))) kg to go to \(Fmt.weight(progress.target)) kg"
+        if let date = progress.projectedDate(from: .now) {
+            text += ", around \(date.formatted(.dateTime.day().month(.abbreviated).year()))"
+        }
+        return text + "."
+    }
+}
+
+private extension Double {
+    func rounded(toPlaces places: Int) -> Double {
+        let scale = pow(10, Double(places))
+        return (self * scale).rounded() / scale
+    }
+}
+
+/// Today's weight. Also saved to Apple Health when it's connected.
+struct LogWeightSheet: View {
+    @Environment(FoodStore.self) private var food
+    @Environment(HealthManager.self) private var health
+    @Environment(\.dismiss) private var dismiss
+    @State private var kg: Double? = nil
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    NumberField(value: $kg, placeholder: "0", decimal: true)
+                        .frame(width: 140)
+                    Text("kg").eyebrow(13)
+                }
+                Text(health.isConnected ? "Saved here and to Apple Health." : "Connect Apple Health in Settings to use weights from a smart scale.")
+                    .font(Typo.body(13))
+                    .foregroundStyle(Theme.ink3)
+                Button("Save") {
+                    if let kg, kg >= 25, kg <= 350 { food.logWeight(kg, on: food.today) }
+                    dismiss()
+                }
+                .buttonStyle(.bigPrimary)
+                .disabled((kg ?? 0) < 25 || (kg ?? 0) > 350)
+                Spacer()
+            }
+            .padding(16)
+            .screenBackground()
+            .navigationTitle("Log weight")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark") { dismiss() }
+                }
+            }
+            .onAppear { kg = food.weights.last?.kg }
+        }
+        .presentationDetents([.medium])
     }
 }

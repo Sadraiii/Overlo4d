@@ -96,7 +96,7 @@ final class CoachStore {
     func error(for scope: CoachScope) -> CoachError? { errors[scope.key] }
 
     /// `sleep` is the sleep log as lines for the prompt (see `SleepStore.coachLines`); empty without sleep data.
-    func ask(_ scope: CoachScope, gym: GymStore, sleep: [String] = []) async {
+    func ask(_ scope: CoachScope, gym: GymStore, sleep: [String] = [], nutrition: [String] = []) async {
         let key = scope.key
         guard !loading.contains(key) else { return }
         errors[key] = nil
@@ -107,7 +107,7 @@ final class CoachStore {
         let focus: Workout? = if case .workout(let id) = scope { gym.workout(id) } else { nil }
         let goal = (UserDefaults.standard.string(forKey: CoachGoal.storageKey).flatMap(CoachGoal.init(rawValue:)) ?? .muscle).label
         let isSleep = scope == .sleep
-        let prompt = gym.coachPrompt(focus: focus, goal: goal, sleep: sleep, sleepReview: isSleep)
+        let prompt = gym.coachPrompt(focus: focus, goal: goal, sleep: sleep, nutrition: nutrition, sleepReview: isSleep)
         let model = self.model
 
         loading.insert(key)

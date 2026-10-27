@@ -78,7 +78,7 @@ public enum Meal: String, Codable, CaseIterable, Identifiable, Sendable {
 /// A food you can log. Values are per 100 g (or 100 ml for drinks).
 public struct Food: Codable, Hashable, Identifiable, Sendable {
     public enum Source: String, Codable, Sendable {
-        case builtIn, openFoodFacts, custom, quick
+        case builtIn, openFoodFacts, custom, quick, usda, recipe
     }
 
     public var id: String

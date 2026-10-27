@@ -187,6 +187,10 @@ public enum CoachAPI {
     - Weights are in kilograms. Write for someone reading on a phone: short sentences, no jargon \
     without a word of explanation, no markdown.
     - If the log is too short to judge something, say so instead of guessing.
+    - If food is included, use it too: protein well under about 1.6 g per kg of body weight, or \
+    eating far below the calorie goal, slows muscle gain and recovery. Mention it briefly and \
+    specifically (e.g. "about 90 g of protein a day, aim for 130 g"), without moralising about food. \
+    Days with little logged may just be incomplete logs.
     - If sleep is included, use it for recovery: after short nights or a run of sleep debt, \
     suggest keeping the weights but cutting a set or two and staying away from failure, and say \
     when poor sleep may explain a stall.
@@ -274,6 +278,7 @@ public enum CoachAPI {
         load: [String],
         weekly: [(muscle: String, sets: Double, usual: Double?)],
         sleep: [String] = [],
+        nutrition: [String] = [],
         now: Date,
         calendar: Calendar = .current
     ) -> String {
@@ -299,6 +304,12 @@ public enum CoachAPI {
             lines.append("")
             lines.append("Sleep, newest first:")
             lines.append(contentsOf: sleep.map { "- \($0)" })
+        }
+
+        if !nutrition.isEmpty {
+            lines.append("")
+            lines.append("Food log, newest first:")
+            lines.append(contentsOf: nutrition.map { "- \($0)" })
         }
 
         lines.append("")

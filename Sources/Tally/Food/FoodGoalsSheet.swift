@@ -16,6 +16,9 @@ struct FoodGoalsSheet: View {
     @State private var customKcal: Double? = nil
     @State private var waterGoal: Int
     @State private var countsExercise: Bool
+    @State private var target: Double? = nil
+    @State private var savesToHealth = false
+    @State private var remindsMeals = false
 
     init() {
         // Filled from the store in onAppear; State needs a starting value.
@@ -34,6 +37,7 @@ struct FoodGoalsSheet: View {
         draft.age = min(max(age ?? profile.age, 14), 100)
         draft.heightCm = min(max(height ?? profile.heightCm, 120), 230)
         draft.weightKg = min(max(weight ?? profile.weightKg, 35), 250)
+        draft.targetKg = profile.goal == .maintain ? nil : target.flatMap { (35...250).contains($0) ? $0 : nil }
         return draft
     }
 
@@ -87,6 +91,7 @@ struct FoodGoalsSheet: View {
                             ForEach(NutritionProfile.weeklyRates, id: \.self) { Text("\($0.formatted()) kg").tag($0) }
                         }
                         .font(Typo.body(16))
+                        LabeledNumber(label: "Goal weight", unit: "kg", value: $target, placeholder: "–")
                     }
                 } header: {
                     Text("Goal").eyebrow(11)
@@ -174,12 +179,45 @@ struct FoodGoalsSheet: View {
                         .font(Typo.body(16))
                     Stepper("Water: \(waterGoal) glasses (\(Water.litres(glasses: waterGoal).formatted()) L)", value: $waterGoal, in: 1...20)
                         .font(Typo.body(16))
+                    Toggle("Meal reminders", isOn: $remindsMeals)
+                        .font(Typo.body(16))
+                    if health.isConnected {
+                        Toggle("Save food to Apple Health", isOn: $savesToHealth)
+                            .font(Typo.body(16))
+                    }
                 } header: {
                     Text("More").eyebrow(11)
                 } footer: {
                     Text(health.isConnected
                         ? "Exercise calories are your active energy from Apple Health, added to the day's budget."
                         : "Connect Apple Health in Settings to add exercise calories to the day's budget.")
+                        .font(Typo.body(12.5))
+                        .foregroundStyle(Theme.ink3)
+                }
+                .cardRow()
+
+                Section {
+                    if store.hasRecipeKey {
+                        HStack {
+                            Label("Spoonacular recipes on", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(Theme.good)
+                            Spacer()
+                            Button("Remove", role: .destructive) { store.setKey("", account: FoodKeys.spoonacularAccount) }
+                        }
+                        .font(Typo.body(15))
+                    } else {
+                        RecipeKeySetup()
+                    }
+                    KeyField(
+                        title: "USDA key (optional)",
+                        isSet: store.hasUSDAKey,
+                        link: USDAFoods.signUpURL,
+                        onSave: { store.setKey($0, account: FoodKeys.usdaAccount) }
+                    )
+                } header: {
+                    Text("Online data").eyebrow(11)
+                } footer: {
+                    Text("Food search uses Open Food Facts for packaged food and USDA FoodData Central for everyday foods. USDA works without a key, but a free key allows far more searches.")
                         .font(Typo.body(12.5))
                         .foregroundStyle(Theme.ink3)
                 }
@@ -214,6 +252,9 @@ struct FoodGoalsSheet: View {
         customKcal = store.customKcal
         waterGoal = store.waterGoal
         countsExercise = store.countsExercise
+        target = profile.targetKg
+        savesToHealth = store.savesToHealth
+        remindsMeals = store.remindsMeals
     }
 
     private func save() {
@@ -221,6 +262,8 @@ struct FoodGoalsSheet: View {
         store.customKcal = usesCustom ? customKcal.flatMap { $0 >= 800 ? $0.rounded() : nil } : nil
         store.waterGoal = waterGoal
         store.countsExercise = countsExercise
+        store.savesToHealth = savesToHealth && health.isConnected
+        if remindsMeals != store.remindsMeals { store.remindsMeals = remindsMeals }
         dismiss()
     }
 }
@@ -242,5 +285,44 @@ private struct LabeledNumberInt: View {
                 .foregroundStyle(Theme.ink3)
                 .frame(width: 34, alignment: .leading)
         }
+    }
+}
+
+/// An optional API key: shows whether one is saved, a sign-up link and a field to paste it.
+private struct KeyField: View {
+    let title: String
+    let isSet: Bool
+    let link: URL
+    let onSave: (String) -> Void
+    @State private var key = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title).font(Typo.body(15, .semibold))
+                Spacer()
+                if isSet {
+                    Button("Remove", role: .destructive) { onSave("") }
+                        .font(Typo.body(14))
+                } else {
+                    Link("Get one", destination: link).font(Typo.body(14, .semibold))
+                }
+            }
+            if !isSet {
+                HStack(spacing: 8) {
+                    SecureField("Paste key", text: $key)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(Typo.body(15))
+                        .padding(.horizontal, 12)
+                        .frame(height: 40)
+                        .background(Theme.paper, in: .rect(cornerRadius: 12))
+                    Button("Save") { onSave(key); key = "" }
+                        .buttonStyle(.smallPrimary)
+                        .disabled(key.trimmingCharacters(in: .whitespaces).count < 10)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }

@@ -62,6 +62,11 @@ final class HealthManager {
     private static let shareTypes: Set<HKSampleType> = [
         HKObjectType.workoutType(),
         HKQuantityType(.activeEnergyBurned),
+        HKQuantityType(.bodyMass),
+        HKQuantityType(.dietaryEnergyConsumed),
+        HKQuantityType(.dietaryCarbohydrates),
+        HKQuantityType(.dietaryProtein),
+        HKQuantityType(.dietaryFatTotal),
     ]
 
     func connect() async {
@@ -137,6 +142,25 @@ final class HealthManager {
         return await Self.sleepSegments(since: start, store: store)
     }
 
+    /// Saves each entry's calories and macros, tagged with the entry's ID so they can be removed later.
+    func saveFood(_ entries: [FoodEntry]) async {
+        guard isAvailable, isConnected, !entries.isEmpty else { return }
+        let items = entries.map { FoodSample(id: $0.id.uuidString, name: $0.food.name, date: $0.healthDate, nutrients: $0.nutrients) }
+        await Self.saveFood(items, store: store)
+    }
+
+    /// Removes what `saveFood` saved for these entries.
+    func deleteFood(_ ids: [UUID]) async {
+        guard isAvailable, isConnected, !ids.isEmpty else { return }
+        await Self.deleteFood(ids.map(\.uuidString), store: store)
+    }
+
+    /// Saves a body weight reading and adds it to `weights`.
+    func saveWeight(_ kg: Double, date: Date) async {
+        guard isAvailable, isConnected, await Self.saveWeight(kg, date: date, store: store) else { return }
+        weights = (weights + [Weight(date: date, kg: kg)]).sorted { $0.date < $1.date }
+    }
+
     // MARK: Queries
 
     private nonisolated static func sum(
@@ -208,6 +232,59 @@ final class HealthManager {
             }
             return stage.map { SleepSegment(start: sample.startDate, end: sample.endDate, stage: $0) }
         }
+    }
+
+    struct FoodSample: Sendable {
+        let id: String
+        let name: String
+        let date: Date
+        let nutrients: Nutrients
+    }
+
+    /// Food is saved as one sample per nutrient: energy, carbs, protein and fat.
+    private nonisolated static func foodQuantities(_ nutrients: Nutrients) -> [(HKQuantityTypeIdentifier, HKUnit, Double)] {
+        [
+            (.dietaryEnergyConsumed, .kilocalorie(), nutrients.kcal),
+            (.dietaryCarbohydrates, .gram(), nutrients.carbs),
+            (.dietaryProtein, .gram(), nutrients.protein),
+            (.dietaryFatTotal, .gram(), nutrients.fat),
+        ]
+    }
+
+    private nonisolated static func saveFood(_ items: [FoodSample], store: HKHealthStore) async {
+        var samples: [HKQuantitySample] = []
+        for item in items {
+            let metadata: [String: Any] = [HKMetadataKeyExternalUUID: item.id, HKMetadataKeyFoodType: item.name]
+            for (id, unit, value) in foodQuantities(item.nutrients) where value > 0 {
+                samples.append(HKQuantitySample(
+                    type: HKQuantityType(id),
+                    quantity: HKQuantity(unit: unit, doubleValue: value),
+                    start: item.date,
+                    end: item.date,
+                    metadata: metadata
+                ))
+            }
+        }
+        guard !samples.isEmpty else { return }
+        try? await store.save(samples)
+    }
+
+    private nonisolated static func deleteFood(_ ids: [String], store: HKHealthStore) async {
+        let predicate = HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeyExternalUUID, allowedValues: ids)
+        for (id, _, _) in foodQuantities(.zero) {
+            // Fails with "no data" when nothing was saved for these entries, which is fine.
+            _ = try? await store.deleteObjects(of: HKQuantityType(id), predicate: predicate)
+        }
+    }
+
+    private nonisolated static func saveWeight(_ kg: Double, date: Date, store: HKHealthStore) async -> Bool {
+        let sample = HKQuantitySample(
+            type: HKQuantityType(.bodyMass),
+            quantity: HKQuantity(unit: .gramUnit(with: .kilo), doubleValue: kg),
+            start: date,
+            end: date
+        )
+        return (try? await store.save(sample)) != nil
     }
 
     private nonisolated static func deleteWorkout(id: UUID, store: HKHealthStore) async -> Bool {

@@ -55,7 +55,11 @@ struct TallyApp: App {
                 .id(accent)
                 .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
-                .onAppear { rest.requestPermission() }
+                .onAppear {
+                    rest.requestPermission()
+                    food.health = health
+                    food.scheduleMealReminders()
+                }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }
                 .onChange(of: health.isConnected) {
                     Task {
