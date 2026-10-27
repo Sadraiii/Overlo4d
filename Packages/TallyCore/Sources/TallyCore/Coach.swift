@@ -388,18 +388,21 @@ public enum CoachAPI {
         var error: Detail
     }
 
+    /// The error to show for a failed Messages API response.
+    static func error(status: Int, data: Data) -> CoachError {
+        let detail = try? JSONDecoder().decode(ErrorResponse.self, from: data).error
+        switch (status, detail?.type ?? "") {
+        case (401, _), (_, "authentication_error"), (403, "permission_error"): return .invalidKey
+        case (402, _), (_, "billing_error"): return .noCredit(detail?.message ?? "")
+        case (429, _), (_, "rate_limit_error"): return .rateLimited
+        case (529, _), (_, "overloaded_error"), (500..., _): return .overloaded
+        default: return .api(detail?.message ?? "Request failed (\(status)).")
+        }
+    }
+
     /// Reads a Messages API response into feedback, or the error to show.
     public static func parse(status: Int, data: Data) throws -> CoachFeedback {
-        guard (200..<300).contains(status) else {
-            let detail = try? JSONDecoder().decode(ErrorResponse.self, from: data).error
-            switch (status, detail?.type ?? "") {
-            case (401, _), (_, "authentication_error"), (403, "permission_error"): throw CoachError.invalidKey
-            case (402, _), (_, "billing_error"): throw CoachError.noCredit(detail?.message ?? "")
-            case (429, _), (_, "rate_limit_error"): throw CoachError.rateLimited
-            case (529, _), (_, "overloaded_error"), (500..., _): throw CoachError.overloaded
-            default: throw CoachError.api(detail?.message ?? "Request failed (\(status)).")
-            }
-        }
+        guard (200..<300).contains(status) else { throw error(status: status, data: data) }
         guard let response = try? JSONDecoder().decode(Response.self, from: data) else { throw CoachError.badResponse }
         switch response.stop_reason {
         case "refusal": throw CoachError.refused
