@@ -8,11 +8,15 @@ struct PlansTab: View {
     @State private var editingPlan: Plan?
     @State private var deletingPlan: Plan?
     @State private var openedPlan: UUID?
+    @State private var openedProgram: UUID?
+    @State private var newProgram = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 10) {
+                    ProgramsSection(onOpen: { openedProgram = $0 }, onNew: { newProgram = true })
+
                     ForEach(gym.plans) { plan in
                         PlanCard(
                             plan: plan,
@@ -42,6 +46,10 @@ struct PlansTab: View {
                 Button("New plan", systemImage: "plus") { editingPlan = Plan(name: "", exercises: []) }
             }
             .navigationDestination(item: $openedPlan) { PlanDetailView(planID: $0) }
+            .navigationDestination(item: $openedProgram) { ProgramDetailView(programID: $0) }
+            .sheet(isPresented: $newProgram) {
+                NewProgramSheet { openedProgram = $0.id }
+            }
             .navigationDestination(for: UUID.self) { id in
                 if let workout = gym.workout(id) {
                     WorkoutDetailView(workout: workout)

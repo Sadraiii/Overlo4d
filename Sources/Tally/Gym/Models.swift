@@ -153,6 +153,8 @@ struct Workout: Codable, Identifiable, Hashable, Sendable {
     var linkedHealthID: UUID?
     /// The workout Tally itself saved to Apple Health for this session.
     var savedHealthID: UUID?
+    /// The strength-program day this workout was started from, if any.
+    var programDay: ProgramDayRef?
 
     var duration: TimeInterval { (endedAt ?? .now).timeIntervalSince(startedAt) }
     var allSets: [WorkoutSet] { exercises.flatMap(\.sets) }

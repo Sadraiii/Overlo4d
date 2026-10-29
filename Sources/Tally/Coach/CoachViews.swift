@@ -123,6 +123,7 @@ struct CoachView: View {
                 }
                 .buttonStyle(.plain)
                 CoachFeedbackPanel(scope: .overall, askTitle: "Review my training")
+                CoachProgramRow()
 
                 if let last = gym.workouts.first {
                     Button {

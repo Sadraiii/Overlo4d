@@ -131,7 +131,7 @@ final class GymStore {
     }
 
     /// Starts a workout from template exercises (an empty list, a plan or a past workout).
-    func start(name: String, exercises templates: [WorkoutExercise], restSeconds: Int? = nil, planID: UUID? = nil) {
+    func start(name: String, exercises templates: [WorkoutExercise], restSeconds: Int? = nil, planID: UUID? = nil, programDay: ProgramDayRef? = nil) {
         guard activeWorkout == nil else { isPresentingWorkout = true; return }
         let exercises = templates.map { template in
             WorkoutExercise(
@@ -143,7 +143,7 @@ final class GymStore {
             )
         }
         .withRenewedSupersets()
-        begin(Workout(name: name, startedAt: .now, exercises: exercises, planID: planID))
+        begin(Workout(name: name, startedAt: .now, exercises: exercises, planID: planID, programDay: programDay))
     }
 
     /// Rest timer used for exercises added to a workout (set on the start sheet).

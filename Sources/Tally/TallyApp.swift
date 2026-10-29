@@ -29,6 +29,7 @@ struct TallyApp: App {
     @State private var coach = CoachStore()
     @State private var food = FoodStore()
     @State private var sleep = SleepStore()
+    @State private var programs = ProgramStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -50,6 +51,7 @@ struct TallyApp: App {
                 .environment(coach)
                 .environment(food)
                 .environment(sleep)
+                .environment(programs)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
