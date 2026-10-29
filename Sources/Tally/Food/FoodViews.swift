@@ -146,6 +146,10 @@ struct FoodDiaryView: View {
 
                 WaterCard(day: day)
 
+                if day == food.today {
+                    FastingCard()
+                }
+
                 ForEach(Meal.allCases) { meal in
                     MealSection(
                         meal: meal,

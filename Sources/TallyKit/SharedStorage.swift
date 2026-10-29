@@ -4,12 +4,14 @@ import Foundation
 public enum WidgetKind {
     public static let reps = "PlusUltraReps"
     public static let training = "PlusUltraTraining"
+    public static let food = "OverloadFood"
 }
 
 /// JSON files in the App Group container, shared between the app and the widgets.
 public enum SharedStorage {
     public static let repsFile = "reps.json"
     public static let activityFile = "activity.json"
+    public static let foodFile = "food-widget.json"
 
     /// xtool rewrites App Group IDs at signing time (e.g. `group.XTL-ABCD1234.com.mahmud.plusultra`),
     /// so the real ID is read from the bundle's provisioning profile rather than hardcoded.

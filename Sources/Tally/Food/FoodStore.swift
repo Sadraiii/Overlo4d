@@ -1,7 +1,9 @@
 import Foundation
 import Observation
 import TallyCore
+import TallyKit
 import UserNotifications
+import WidgetKit
 
 /// The food log, saved to food.json next to gym.json.
 @MainActor
@@ -10,6 +12,7 @@ final class FoodStore {
     private(set) var diary: FoodDiary
     /// Set at launch. Used for body weight and, when turned on, to save food to Apple Health.
     @ObservationIgnored weak var health: HealthManager?
+    @ObservationIgnored private var lastSnapshot: FoodSnapshot?
 
     private static let fileURL = URL.documentsDirectory.appending(path: "food.json")
 
@@ -23,6 +26,7 @@ final class FoodStore {
             }
         }
         self.diary = diary
+        writeSnapshot()
     }
 
     private func save() {
@@ -35,6 +39,33 @@ final class FoodStore {
         body(&diary)
         save()
         syncHealth(from: before, to: diary.entries)
+        writeSnapshot()
+    }
+
+    /// Today's totals for the food widget. Only reloads the widget when something it shows changed.
+    private func writeSnapshot() {
+        let today = self.today
+        let summary = diary.summary(for: today)
+        let snapshot = FoodSnapshot(
+            day: today.rawValue,
+            goalKcal: summary.goal.kcal,
+            eatenKcal: summary.eaten.kcal,
+            exerciseKcal: summary.exercise,
+            carbs: summary.eaten.carbs,
+            protein: summary.eaten.protein,
+            fat: summary.eaten.fat,
+            goalCarbs: summary.goal.carbs,
+            goalProtein: summary.goal.protein,
+            goalFat: summary.goal.fat,
+            water: diary.water[today] ?? 0,
+            waterGoal: diary.waterGoal,
+            fastStart: diary.fasting.current,
+            fastHours: diary.fasting.planHours
+        )
+        guard snapshot != lastSnapshot else { return }
+        lastSnapshot = snapshot
+        snapshot.save()
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetKind.food)
     }
 
     /// Mirrors added, changed and removed entries to Apple Health. Changed entries are replaced.
@@ -69,6 +100,18 @@ final class FoodStore {
 
     func log(_ food: Food, grams: Double, meal: Meal, day: DayKey) {
         change { $0.log(FoodEntry(day: day, meal: meal, food: food, grams: grams)) }
+        breakFastIfEating(on: day)
+    }
+
+    /// Eating today ends a running fast, as in Lifesum.
+    private func breakFastIfEating(on day: DayKey) {
+        guard day == today, diary.fasting.isFasting else { return }
+        endFast()
+    }
+
+    /// When the last food was logged, for starting a fast from the last meal.
+    var lastMealTime: Date? {
+        diary.entries.filter { $0.day >= today.adding(days: -1) && $0.loggedAt <= .now }.map(\.loggedAt).max()
     }
 
     func update(_ entry: FoodEntry) { change { $0.update(entry) } }
@@ -102,6 +145,7 @@ final class FoodStore {
 
     func log(_ saved: SavedMeal, to meal: Meal, on day: DayKey) {
         change { _ = $0.log(saved, to: meal, on: day) }
+        breakFastIfEating(on: day)
     }
 
     func deleteSavedMeal(_ id: UUID) { change { $0.deleteSavedMeal(id) } }
@@ -204,6 +248,54 @@ final class FoodStore {
             change { $0.remindsMeals = newValue }
             scheduleMealReminders()
         }
+    }
+
+    // MARK: Fasting
+
+    var fasting: FastingLog { diary.fasting }
+
+    func startFast(at date: Date = .now) {
+        change { $0.fasting.start(at: date) }
+        scheduleFastNotification()
+    }
+
+    /// Ends the fast. Returns it when it was long enough to keep.
+    @discardableResult
+    func endFast(at date: Date = .now) -> FastingLog.Fast? {
+        var fast: FastingLog.Fast?
+        change { fast = $0.fasting.end(at: date) }
+        scheduleFastNotification()
+        return fast
+    }
+
+    func setFastingPlan(_ hours: Int) {
+        change { $0.fasting.planHours = hours }
+        scheduleFastNotification()
+    }
+
+    func deleteFast(_ id: UUID) {
+        change { $0.fasting.history.removeAll { $0.id == id } }
+    }
+
+    private static let fastNotificationID = "food.fast"
+
+    /// A notification when the running fast reaches its goal.
+    private func scheduleFastNotification() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.fastNotificationID])
+        guard let goal = diary.fasting.goalDate, goal > .now else { return }
+        Task {
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Fast complete"
+        content.body = "\(FastingLog.label(hours: diary.fasting.planHours)) done. Break it with protein and vegetables."
+        content.sound = .default
+        center.add(UNNotificationRequest(
+            identifier: Self.fastNotificationID,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: goal.timeIntervalSinceNow, repeats: false)
+        ))
     }
 
     // MARK: Reminders

@@ -27,6 +27,7 @@ public struct FoodDiary: Codable, Equatable, Sendable {
     public var remindsMeals = false
     /// Packaged-food search shows products sold in Denmark, with Danish names. On by default on Danish phones.
     public var danishProducts = FoodDiary.isDanishPhone
+    public var fasting = FastingLog()
 
     public static let maxRecents = 40
 
@@ -37,7 +38,7 @@ public struct FoodDiary: Codable, Equatable, Sendable {
     // Missing keys decode to defaults so the file can grow without breaking old saves.
     private enum CodingKeys: String, CodingKey {
         case entries, customFoods, recents, water, exercise, profile, customKcal, waterGoal, countsExercise
-        case savedMeals, weights, savesToHealth, remindsMeals, danishProducts
+        case savedMeals, weights, savesToHealth, remindsMeals, danishProducts, fasting
     }
 
     public init(from decoder: Decoder) throws {
@@ -56,6 +57,7 @@ public struct FoodDiary: Codable, Equatable, Sendable {
         savesToHealth = try container.decodeIfPresent(Bool.self, forKey: .savesToHealth) ?? false
         remindsMeals = try container.decodeIfPresent(Bool.self, forKey: .remindsMeals) ?? false
         danishProducts = try container.decodeIfPresent(Bool.self, forKey: .danishProducts) ?? Self.isDanishPhone
+        fasting = try container.decodeIfPresent(FastingLog.self, forKey: .fasting) ?? FastingLog()
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -75,6 +77,7 @@ public struct FoodDiary: Codable, Equatable, Sendable {
         try container.encode(savesToHealth, forKey: .savesToHealth)
         try container.encode(remindsMeals, forKey: .remindsMeals)
         try container.encode(danishProducts, forKey: .danishProducts)
+        try container.encode(fasting, forKey: .fasting)
     }
 
     // MARK: Goals

@@ -484,3 +484,55 @@ private let egg = Food(id: "egg", name: "Egg", per100: Nutrients(kcal: 143, carb
         #expect(Spoonacular.recipeURL(id: 5, apiKey: "k")?.absoluteString == "https://api.spoonacular.com/recipes/5/information?includeNutrition=true&apiKey=k")
     }
 }
+
+@Suite struct FastingTests {
+    let start = Date(timeIntervalSince1970: 1_800_000_000)
+
+    @Test func runsAFastToItsGoal() throws {
+        var log = FastingLog()
+        #expect(!log.isFasting && log.progress(at: start) == 0)
+        log.start(at: start)
+        #expect(log.isFasting)
+        #expect(log.goalDate == start.addingTimeInterval(16 * 3600))
+        #expect(log.progress(at: start.addingTimeInterval(8 * 3600)) == 0.5)
+
+        let ended = log.end(at: start.addingTimeInterval(17 * 3600))
+        let fast = try #require(ended)
+        #expect(fast.hours == 17 && fast.reachedGoal && fast.goalHours == 16)
+        #expect(!log.isFasting && log.history.count == 1)
+    }
+
+    @Test func dropsFastsUnderAnHourAndCountsTheStreak() {
+        var log = FastingLog()
+        log.start(at: start)
+        let short = log.end(at: start.addingTimeInterval(1800))
+        #expect(short == nil)
+        #expect(log.history.isEmpty && !log.isFasting)
+
+        for (index, hours) in [12.0, 16, 17].enumerated() {
+            let begin = start.addingTimeInterval(Double(index) * 86_400)
+            log.start(at: begin)
+            log.end(at: begin.addingTimeInterval(hours * 3600))
+        }
+        #expect(log.streak == 2)
+        #expect(log.averageHours() == 15)
+    }
+
+    @Test func labelsAndStages() {
+        #expect(FastingLog.label(hours: 16) == "16:8")
+        #expect(FastingLog.label(hours: 23) == "OMAD")
+        #expect(FastingStage.at(hours: 2) == .digesting)
+        #expect(FastingStage.at(hours: 13) == .fatBurning)
+        #expect(FastingStage.at(hours: 30) == .deepFast)
+        #expect(FastingStage.allCases.map(\.startHours) == [0, 4, 8, 12, 18])
+    }
+
+    @Test func diaryKeepsTheFast() throws {
+        var diary = FoodDiary()
+        diary.fasting.planHours = 18
+        diary.fasting.start(at: start)
+        let decoded = try JSONDecoder().decode(FoodDiary.self, from: JSONEncoder().encode(diary))
+        #expect(decoded.fasting == diary.fasting)
+        #expect(try JSONDecoder().decode(FoodDiary.self, from: Data(#"{}"#.utf8)).fasting.planHours == 16)
+    }
+}

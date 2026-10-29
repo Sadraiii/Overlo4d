@@ -11,6 +11,7 @@ struct TallyWidgets: WidgetBundle {
     var body: some Widget {
         RepsWidget()
         TrainingWidget()
+        FoodWidget()
         WorkoutLiveActivity()
     }
 }
