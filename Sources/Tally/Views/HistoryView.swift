@@ -154,6 +154,14 @@ struct WorkoutDetailView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
 
+            if !WorkoutMuscles(workout, gym: gym).entries.isEmpty {
+                Section {
+                    WorkoutMusclesCard(workout: workout)
+                        .padding(.vertical, 6)
+                }
+                .cardRow()
+            }
+
             ForEach(workout.exercises) { exercise in
                 let def = gym.exercise(exercise.exerciseID)
                 Section {

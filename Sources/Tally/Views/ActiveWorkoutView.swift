@@ -50,6 +50,14 @@ struct ActiveWorkoutView: View {
                     )
                 }
 
+                if !WorkoutMuscles(draft, gym: gym).entries.isEmpty {
+                    Section {
+                        WorkoutMusclesCard(workout: draft)
+                            .padding(.vertical, 6)
+                    }
+                    .cardRow()
+                }
+
                 Section {
                     VStack(spacing: 14) {
                         AddExerciseButton { showingPicker = true }

@@ -52,6 +52,13 @@ struct WorkoutSummaryView: View {
                 }
                 WorkoutHealthTiles(workout: workout, stats: $workoutHealth)
 
+                if !WorkoutMuscles(workout, gym: gym).entries.isEmpty {
+                    WorkoutMusclesCard(workout: workout)
+                        .padding(16)
+                        .background(Theme.card, in: .rect(cornerRadius: 18))
+                        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+                }
+
                 if !records.isEmpty {
                     SectionHead("Records")
                     VStack(spacing: 0) {
