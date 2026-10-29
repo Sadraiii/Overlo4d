@@ -240,7 +240,7 @@ struct WorkoutDetailView: View {
     }
 }
 
-/// Edit a finished workout: name, date, sets.
+/// Edit a finished workout: name, date and times, sets.
 struct EditWorkoutView: View {
     @Environment(GymStore.self) private var gym
     @Environment(\.dismiss) private var dismiss
@@ -253,12 +253,7 @@ struct EditWorkoutView: View {
                 Section {
                     TextField("Name", text: $workout.name)
                         .font(Typo.display(28))
-                    DatePicker("Started", selection: $workout.startedAt)
-                    DatePicker(
-                        "Ended",
-                        selection: Binding(get: { workout.endedAt ?? workout.startedAt }, set: { workout.endedAt = $0 }),
-                        in: workout.startedAt...
-                    )
+                    WorkoutTimesRows(workout: $workout)
                     TextField("Note", text: $workout.notes, axis: .vertical)
                 }
                 .font(Typo.body(15))

@@ -152,16 +152,24 @@ struct ActiveWorkoutView: View {
     }
 }
 
-/// Status, editable name, big elapsed timer and running totals.
+/// Status, editable name and times, big elapsed timer and running totals.
 struct WorkoutHeader: View {
     @Binding var draft: Workout
+    @State private var editingTimes = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 StatusPill(text: "In progress", live: true)
                 Spacer()
-                Text("Started \(draft.startedAt.formatted(date: .omitted, time: .shortened))").eyebrow(11)
+                Button { editingTimes = true } label: {
+                    HStack(spacing: 5) {
+                        Text(timesLabel).eyebrow(11)
+                        Image(systemName: "pencil").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.ink3)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit workout time")
             }
             TextField("Workout", text: $draft.name)
                 .font(Typo.display(34))
@@ -179,6 +187,13 @@ struct WorkoutHeader: View {
             .animation(.snappy, value: draft.completedSets.count)
         }
         .padding(.horizontal, 4)
+        .sheet(isPresented: $editingTimes) { WorkoutTimesSheet(workout: $draft) }
+    }
+
+    private var timesLabel: String {
+        let started = "Started \(draft.startedAt.formatted(date: .omitted, time: .shortened))"
+        guard let end = draft.endedAt else { return started }
+        return "\(started) · ends \(end.formatted(date: .omitted, time: .shortened))"
     }
 }
 

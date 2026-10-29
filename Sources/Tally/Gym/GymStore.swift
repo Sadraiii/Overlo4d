@@ -161,10 +161,14 @@ final class GymStore {
     }
 
     func updateActive(_ workout: Workout, restEndsAt: Date?) {
-        guard activeWorkout != nil else { return }
-        if activeWorkout != workout {
+        guard let previous = activeWorkout else { return }
+        if previous != workout {
             activeWorkout = workout
             save()
+        }
+        if previous.startedAt != workout.startedAt {
+            // The lock screen timer counts from the start, which a Live Activity can't change.
+            LiveActivityManager.shared.start(for: workout, names: name(of:))
         }
         LiveActivityManager.shared.update(for: workout, restEndsAt: restEndsAt, names: name(of:))
     }
@@ -180,7 +184,8 @@ final class GymStore {
     /// Saves the workout to history, keeping only completed sets. Returns false if nothing was completed.
     func finishWorkout(_ draft: Workout) -> Bool {
         var workout = draft
-        workout.endedAt = .now
+        // An end time set during the workout is kept, unless it is still to come.
+        workout.endedAt = max(workout.startedAt, min(draft.endedAt ?? .now, .now))
         workout.exercises = workout.exercises.compactMap { exercise in
             var exercise = exercise
             exercise.sets = exercise.sets.filter { $0.isDone && $0.hasValues }

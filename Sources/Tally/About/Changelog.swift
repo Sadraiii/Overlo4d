@@ -42,6 +42,7 @@ enum Changelog {
             "Edit a program after making it: name, training maxes, day names and accessories.",
             "Ask the coach now knows your strength program and coaches within it.",
             "Workouts show the muscles they work on the body figure, with sets per muscle, while you train, on the summary and in History.",
+            "Edit a workout's date, start, end and duration, during the workout (tap the start time) or later in History. Workouts past midnight are handled.",
         ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",
