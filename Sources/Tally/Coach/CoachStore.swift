@@ -23,6 +23,10 @@ enum CoachGoal: String, CaseIterable, Identifiable {
 
     static let storageKey = "coach.goal"
 
+    static var current: CoachGoal {
+        UserDefaults.standard.string(forKey: storageKey).flatMap(CoachGoal.init(rawValue:)) ?? .muscle
+    }
+
     var id: String { rawValue }
 
     var label: String {
@@ -54,6 +58,14 @@ final class CoachStore {
     private(set) var loading: Set<String> = []
     private(set) var errors: [String: CoachError] = [:]
 
+    // The chat with the coach (see CoachStore+Chat.swift). Set only from there.
+    var chat: [CoachChatMessage]
+    /// `propose_plan_change` calls the user has applied, by tool call ID.
+    var chatApplied: Set<String>
+    /// What the coach is doing, e.g. "Reading your workouts…"; nil when idle.
+    var chatStatus: String? = nil
+    var chatError: CoachError? = nil
+
     private var modelID: String
 
     var model: CoachModel {
@@ -70,6 +82,9 @@ final class CoachStore {
         hasKey = Keychain.read(Self.keyAccount)?.isEmpty == false
         modelID = UserDefaults.standard.string(forKey: Self.modelKey) ?? CoachModel.haiku.rawValue
         saved = (try? Data(contentsOf: Self.fileURL)).flatMap { try? JSONDecoder().decode([String: Saved].self, from: $0) } ?? [:]
+        let chatFile = (try? Data(contentsOf: Self.chatURL)).flatMap { try? JSONDecoder().decode(ChatFile.self, from: $0) }
+        chat = chatFile?.messages ?? []
+        chatApplied = chatFile?.applied ?? []
     }
 
     // MARK: API key
@@ -83,6 +98,9 @@ final class CoachStore {
         errors = errors.filter { $0.value != .invalidKey && $0.value != .missingKey }
         return true
     }
+
+    /// The saved key, read when a request is made.
+    var apiKey: String? { Keychain.read(Self.keyAccount) }
 
     func removeKey() {
         Keychain.delete(Self.keyAccount)
@@ -105,7 +123,7 @@ final class CoachStore {
             return
         }
         let focus: Workout? = if case .workout(let id) = scope { gym.workout(id) } else { nil }
-        let goal = (UserDefaults.standard.string(forKey: CoachGoal.storageKey).flatMap(CoachGoal.init(rawValue:)) ?? .muscle).label
+        let goal = CoachGoal.current.label
         let isSleep = scope == .sleep
         let prompt = gym.coachPrompt(focus: focus, goal: goal, sleep: sleep, nutrition: nutrition, sleepReview: isSleep)
         let model = self.model

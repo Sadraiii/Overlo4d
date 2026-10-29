@@ -27,6 +27,7 @@ enum Changelog {
             "Spots weekend lie-ins that throw your body clock off on Mondays.",
             "Optional morning check-in and caffeine cut-off reminders.",
             "Exercise details: primary, secondary and tertiary muscles each in their own colour on the body figure, plus grip and force type.",
+            "Ask the coach: chat with the AI coach. It looks up your workouts, progress, plans, sleep and food itself, and can propose plan changes you apply with one tap.",
             "Food search adds everyday foods from USDA FoodData Central, with lab-measured nutrition.",
             "Recipes from Spoonacular with calories and macros per serving. Log a serving in one tap (needs a free key).",
             "Save a meal you eat often and log it again in one tap.",

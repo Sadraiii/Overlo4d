@@ -90,6 +90,7 @@ struct HomeTab: View {
             .navigationDestination(isPresented: $ui.showingFood) { FoodDiaryView() }
             .navigationDestination(for: RecapRoute.self) { RecapView(weekStart: $0.weekStart) }
             .navigationDestination(for: CoachRoute.self) { _ in CoachView() }
+            .navigationDestination(for: CoachChatRoute.self) { _ in CoachChatView() }
             .navigationDestination(for: SleepRoute.self) { _ in SleepView() }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
             .navigationDestination(isPresented: $showingRecords) { RecordsView() }

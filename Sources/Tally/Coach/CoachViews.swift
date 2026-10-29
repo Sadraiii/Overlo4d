@@ -103,6 +103,25 @@ struct CoachView: View {
                 }
 
                 SectionHead("AI feedback")
+                NavigationLink(value: CoachChatRoute()) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                            .foregroundStyle(Theme.accent)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Ask the coach").font(Typo.body(15, .semibold))
+                            Text("Questions about your training, sleep or food, and changes to your plans")
+                                .font(Typo.body(13))
+                                .foregroundStyle(Theme.ink3)
+                                .lineLimit(2)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
+                    }
+                    .foregroundStyle(Theme.ink)
+                    .card(padding: 14, cornerRadius: 16)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
                 CoachFeedbackPanel(scope: .overall, askTitle: "Review my training")
 
                 if let last = gym.workouts.first {
@@ -504,7 +523,7 @@ struct CoachSettingsSection: View {
                 }
                 .background(Theme.card, in: .rect(cornerRadius: 16))
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
-                Text("When you ask for feedback, your last 4 weeks of workouts and notes, and your last 2 weeks of sleep, are sent to Anthropic. Requests are billed to your API account.")
+                Text("When you ask for feedback, your last 4 weeks of workouts and notes, and your last 2 weeks of sleep, are sent to Anthropic. In Ask the coach, only what the coach looks up for your question is sent. Requests are billed to your API account.")
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)
