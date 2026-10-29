@@ -39,6 +39,8 @@ enum Changelog {
             "Food widget for the home and lock screen: calories left, macros, water and your fast.",
             "Strength programs: Juggernaut 16 weeks, a 4–8 week block, or one the AI coach writes for you, with phases, deloads and the weights filled in for every day.",
             "Rep-out sets in a program raise your training max for the next weeks automatically.",
+            "Edit a program after making it: name, training maxes, day names and accessories.",
+            "Ask the coach now knows your strength program and coaches within it.",
         ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",

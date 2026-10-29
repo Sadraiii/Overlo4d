@@ -7,6 +7,7 @@ struct CoachToolbox {
     let gym: GymStore
     let sleep: SleepStore
     let food: FoodStore
+    let programs: ProgramStore
     var now: Date = .now
 
     func run(_ call: CoachToolCall) -> CoachToolResult {
@@ -28,6 +29,9 @@ struct CoachToolbox {
             return CoachToolResult(id: call.id, text: food.coachLines().map { "- \($0)" }.joined(separator: "\n"))
         case .getPlans:
             return CoachToolResult(id: call.id, text: plans())
+        case .getPrograms:
+            let text = programs.programs.map { $0.coachText(logs: programs.logs(for: $0, gym: gym)) }.joined(separator: "\n\n")
+            return CoachToolResult(id: call.id, text: text.isEmpty ? "No strength programs yet. They can make one in Plans or on the Coach screen." : text)
         case .proposePlanChange:
             guard let proposal = PlanProposal(input: call.input) else {
                 return CoachToolResult(id: call.id, text: "The proposal needs a plan and at least one complete change.", isError: true)

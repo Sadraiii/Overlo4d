@@ -166,3 +166,24 @@ import Testing
         #expect(body["fallbacks"] as? String == "default")
     }
 }
+
+@Suite struct ProgramCoachTextTests {
+    @Test func setsTextGroupsAndMarks() {
+        typealias S = StrengthProgram.MainSet
+        #expect(StrengthProgram.setsText([S(50, 5, warmup: true), S(67.5, 10), S(67.5, 10), S(75, 10, amrap: true)]) == "(50 % × 5), 2 × 67.5 % × 10, 75 % × 10+")
+    }
+
+    @Test func describesWhereTheyAre() {
+        let program = ProgramTemplates.juggernaut(oneRepMaxes: [ProgramTemplates.squat: 150, ProgramTemplates.bench: 100], start: .distantPast)
+        var logs = (0..<3).flatMap { w in (0..<4).map { ProgramLog(week: w, day: $0) } }
+        logs[8].topReps = [ProgramTemplates.squat: 13]
+        let text = program.coachText(logs: logs)
+        #expect(text.contains("12 of 64 days done"))
+        #expect(text.contains("Now: week 4, 10s wave · Deload. Next day: Squat day."))
+        #expect(text.contains("- Squat (Barbell): 142.5 kg (135 kg)"))
+        #expect(text.contains("W3 10s wave · Realization: (50 % × 5), (60 % × 3), (70 % × 1), 75 % × 10+, beat 10 reps"))
+        #expect(text.contains("W4 10s wave · Deload (deload)"))
+        #expect(text.contains("← current"))
+        #expect(text.contains("- W3 Squat (Barbell): 13 reps (target 10)"))
+    }
+}

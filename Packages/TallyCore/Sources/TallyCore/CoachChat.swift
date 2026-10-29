@@ -140,6 +140,7 @@ public enum CoachTool: String, CaseIterable, Sendable {
     case getSleep = "get_sleep"
     case getFood = "get_food"
     case getPlans = "get_plans"
+    case getPrograms = "get_programs"
     case proposePlanChange = "propose_plan_change"
 
     /// Shown while the tool runs, e.g. "Reading your workouts…".
@@ -152,6 +153,7 @@ public enum CoachTool: String, CaseIterable, Sendable {
         case .getSleep: "Reading your sleep…"
         case .getFood: "Reading your food log…"
         case .getPlans: "Reading your plans…"
+        case .getPrograms: "Reading your strength programs…"
         case .proposePlanChange: "Writing a plan change…"
         }
     }
@@ -181,6 +183,8 @@ public enum CoachTool: String, CaseIterable, Sendable {
             "The last week of the food diary: calories and macros per day against the goals, and body weight. Empty if the user doesn't log food."
         case .getPlans:
             "The user's saved workout plans with each exercise and its target sets."
+        case .getPrograms:
+            "The user's multi-week strength programs (e.g. Juggernaut or a coach-written block): where they are in each, current training maxes, every week's main-lift percentages, the days with accessories, rep-out results and the progression rules. Main-lift weights are a percentage of the training max. Use it for questions about their program or what to do this week."
         case .proposePlanChange:
             "Proposes changes to one of the user's saved plans. Nothing changes until the user taps Apply under your message, so explain the change in your reply too. Use exact plan and exercise names from get_plans and search_exercises. Actions: add (append `exercise` with `sets` sets of `reps`), remove (`exercise`), replace (`exercise` with `new_exercise`, keeping its sets), set_sets (set `exercise` to `sets` sets of `reps`). Use 0 for sets or reps you don't set and an empty string for an unused new_exercise."
         }
@@ -196,7 +200,7 @@ public enum CoachTool: String, CaseIterable, Sendable {
             Self.object(["query": ["type": "string", "description": "Part of a name or a muscle, e.g. row or hamstrings."]], required: ["query"])
         case .getWeeklySets:
             Self.object(["weeks": ["type": "integer", "description": "How many weeks back, 1-12."]], required: ["weeks"])
-        case .getSleep, .getFood, .getPlans:
+        case .getSleep, .getFood, .getPlans, .getPrograms:
             Self.object([:], required: [])
         case .proposePlanChange:
             Self.object([
@@ -309,6 +313,9 @@ public enum CoachChat {
     ranges, a deload or a different variation.
     - When they ask for a plan change, or one clearly follows from your advice, call \
     propose_plan_change; the app shows it with an Apply button. Say in your reply what you proposed.
+    - If they follow a strength program, read it with get_programs before advising on their main lifts, \
+    and coach within it (this week's percentages, the next rep-out set) instead of against it. \
+    Programs are changed by the user in the app (Edit on the program), so tell them what to change there.
     - You can't examine anyone. If they mention pain or injury, tell them to get it checked by a \
     professional and don't prescribe around it.
     - Write for someone reading on a phone: short paragraphs, plain words, no headings or tables. \

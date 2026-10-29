@@ -137,6 +137,7 @@ struct CoachChatView: View {
     @Environment(GymStore.self) private var gym
     @Environment(SleepStore.self) private var sleep
     @Environment(FoodStore.self) private var food
+    @Environment(ProgramStore.self) private var programs
     @State private var draft = ""
     @State private var applyError: String?
     @FocusState private var typing: Bool
@@ -322,7 +323,7 @@ struct CoachChatView: View {
 
     private func send(_ text: String) {
         draft = ""
-        let toolbox = CoachToolbox(gym: gym, sleep: sleep, food: food)
+        let toolbox = CoachToolbox(gym: gym, sleep: sleep, food: food, programs: programs)
         Task { await coach.send(text, toolbox: toolbox) }
     }
 }

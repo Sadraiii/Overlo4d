@@ -95,6 +95,7 @@ struct ProgramDetailView: View {
 
     @State private var week: Int?
     @State private var deleting = false
+    @State private var editing: StrengthProgram?
 
     var body: some View {
         Group {
@@ -106,6 +107,12 @@ struct ProgramDetailView: View {
         }
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let program = store.program(programID) {
+                Button("Edit", systemImage: "pencil") { editing = program }
+            }
+        }
+        .sheet(item: $editing) { ProgramEditor(program: $0) }
     }
 
     private func content(_ program: StrengthProgram) -> some View {

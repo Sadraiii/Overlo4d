@@ -372,3 +372,73 @@ public enum ProgramTemplates {
         )
     }
 }
+
+extension StrengthProgram {
+    /// "(50 % × 5), 3 × 67.5 % × 10, 75 % × 10+": ramp-up sets in brackets, + for a rep-out.
+    public static func setsText(_ sets: [MainSet]) -> String {
+        var groups: [(set: MainSet, count: Int)] = []
+        for set in sets {
+            if let last = groups.last, last.set == set {
+                groups[groups.count - 1].count += 1
+            } else {
+                groups.append((set, 1))
+            }
+        }
+        return groups.map { group in
+            let percent = group.set.percent.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US_POSIX")))
+            var text = (group.count > 1 ? "\(group.count) × " : "") + "\(percent) % × \(group.set.reps)"
+            if group.set.amrap { text += "+" }
+            return group.set.warmup ? "(\(text))" : text
+        }
+        .joined(separator: ", ")
+    }
+
+    /// The program as text for the chat coach.
+    public func coachText(logs: [ProgramLog]) -> String {
+        let kg: (Double) -> String = { $0.formatted(.number.precision(.fractionLength(0...2)).locale(Locale(identifier: "en_US_POSIX"))) + " kg" }
+        let progress = progress(logs: logs)
+        let next = next(logs: logs)
+        var lines = ["## \(name): \(weeks.count) weeks × \(days.count) days, \(progress.done) of \(progress.total) days done"]
+        if !summary.isEmpty { lines.append(summary) }
+        if let next {
+            lines.append("Now: week \(next.week + 1), \(weeks[next.week].phase). Next day: \(days[next.day].name).")
+        } else {
+            lines.append("Finished.")
+        }
+        let current = next?.week ?? weeks.count
+        if !lifts.isEmpty {
+            lines.append("Training maxes now (at the start):")
+            for lift in lifts {
+                let now = trainingMax(for: lift.exercise, week: current, logs: logs)
+                lines.append("- \(lift.exercise): \(kg(now)) (\(kg(lift.trainingMax))), +\(kg(lift.increment)) per rep beaten on a rep-out")
+            }
+        }
+        lines.append("Days:")
+        for day in days {
+            var line = "- \(day.name): main " + (day.lifts.isEmpty ? "none" : day.lifts.joined(separator: ", "))
+            if !day.accessories.isEmpty {
+                line += "; accessories " + day.accessories.map { "\($0.exercise) \($0.sets) × \($0.reps)" }.joined(separator: ", ")
+            }
+            lines.append(line)
+        }
+        lines.append("Weeks (main-lift sets as % of training max):")
+        for (index, week) in weeks.enumerated() {
+            var line = "- W\(index + 1) \(week.phase)\(week.isDeload ? " (deload)" : ""): \(Self.setsText(week.sets))"
+            if let target = week.amrapTarget { line += ", beat \(target) reps" }
+            if index == next?.week { line += "  ← current" }
+            lines.append(line)
+        }
+        let repOuts = logs.filter { weeks.indices.contains($0.week) && weeks[$0.week].amrapTarget != nil }
+            .sorted { ($0.week, $0.day) < ($1.week, $1.day) }
+            .flatMap { log in log.topReps.sorted { $0.key < $1.key }.map { "- W\(log.week + 1) \($0.key): \($0.value) reps (target \(weeks[log.week].amrapTarget ?? 0))" } }
+        if !repOuts.isEmpty {
+            lines.append("Rep-out results:")
+            lines += repOuts
+        }
+        if !rules.isEmpty {
+            lines.append("Rules:")
+            lines += rules.map { "- \($0)" }
+        }
+        return lines.joined(separator: "\n")
+    }
+}
