@@ -97,6 +97,9 @@ struct ExportSheet: View {
                         }
                     }
                     summary
+                    if format != .backup {
+                        muscles
+                    }
                     if format == .log, let text, !workouts.isEmpty {
                         preview(text)
                     }
@@ -193,6 +196,41 @@ struct ExportSheet: View {
                 }
             }
         }
+    }
+
+    /// Working sets per muscle group in the period, as chips.
+    @ViewBuilder
+    private var muscles: some View {
+        let muscles = WorkoutExport.muscles(workouts, gym: gym)
+        if !muscles.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Muscles worked").eyebrow(11.5)
+                FlowLayout(spacing: 6) {
+                    ForEach(muscles.prefix(6), id: \.muscle) { entry in
+                        chip(entry.muscle, count: entry.sets)
+                    }
+                    if muscles.count > 6 {
+                        chip("+\(muscles.count - 6)")
+                    }
+                }
+            }
+        }
+    }
+
+    private func chip(_ label: String, count: Int? = nil) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+            if let count {
+                Text("\(count)").monospacedDigit().opacity(0.7)
+            }
+        }
+        .font(Typo.body(12.5, .semibold))
+        .foregroundStyle(Theme.accent)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Theme.accentSoft, in: .capsule)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(count.map { "\(label), \($0) sets" } ?? "\(label) more muscle groups")
     }
 
     private func dateRange(_ first: Date, _ last: Date) -> String {

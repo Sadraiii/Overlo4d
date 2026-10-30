@@ -175,24 +175,40 @@ public enum TrainingLog {
         /// Lines under the title: date and time, totals.
         public var details: [String]
         public var notes: String
+        /// Working sets per muscle group, most first.
+        public var muscles: [MuscleSets]
         public var exercises: [Exercise]
 
-        public init(title: String, details: [String], notes: String = "", exercises: [Exercise]) {
+        public init(title: String, details: [String], notes: String = "", muscles: [MuscleSets] = [], exercises: [Exercise]) {
             self.title = title
             self.details = details
             self.notes = notes
+            self.muscles = muscles
             self.exercises = exercises
+        }
+    }
+
+    public struct MuscleSets: Sendable, Equatable {
+        public var muscle: String
+        public var sets: Int
+
+        public init(muscle: String, sets: Int) {
+            self.muscle = muscle
+            self.sets = sets
         }
     }
 
     public struct Exercise: Sendable, Equatable {
         public var name: String
+        /// The exercise's muscle group, e.g. "Chest"; empty when unknown.
+        public var muscle: String
         public var superset: String?
         public var notes: String
         public var sets: [SetLine]
 
-        public init(name: String, superset: String? = nil, notes: String = "", sets: [SetLine]) {
+        public init(name: String, muscle: String = "", superset: String? = nil, notes: String = "", sets: [SetLine]) {
             self.name = name
+            self.muscle = muscle
             self.superset = superset
             self.notes = notes
             self.sets = sets
@@ -212,15 +228,35 @@ public enum TrainingLog {
         }
     }
 
+    /// Sets added up per muscle group, most first, leaving out groups with no sets or no name.
+    public static func muscleSets(_ exercises: [(muscle: String, sets: Int)]) -> [MuscleSets] {
+        var totals: [String: Int] = [:]
+        for exercise in exercises where !exercise.muscle.isEmpty && exercise.sets > 0 {
+            totals[exercise.muscle, default: 0] += exercise.sets
+        }
+        return totals
+            .map { MuscleSets(muscle: $0.key, sets: $0.value) }
+            .sorted { ($1.sets, $0.muscle) < ($0.sets, $1.muscle) }
+    }
+
+    /// "Chest 7 · Triceps 5 · Shoulders 4"
+    public static func muscleLine(_ muscles: [MuscleSets]) -> String {
+        muscles.map { "\($0.muscle) \($0.sets)" }.joined(separator: " · ")
+    }
+
     public static func text(_ workout: Workout) -> String {
         var lines = [workout.title.uppercased()]
         lines += workout.details
+        if !workout.muscles.isEmpty { lines.append("Muscles: \(muscleLine(workout.muscles))") }
         let notes = workout.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         if !notes.isEmpty { lines.append("Note: \(notes)") }
         let width = workout.exercises.flatMap(\.sets).map(\.label.count).max() ?? 1
         for exercise in workout.exercises {
             lines.append("")
-            lines.append(exercise.superset.map { "\(exercise.name) · superset \($0)" } ?? exercise.name)
+            var heading = [exercise.name]
+            if !exercise.muscle.isEmpty { heading.append(exercise.muscle) }
+            if let superset = exercise.superset { heading.append("superset \(superset)") }
+            lines.append(heading.joined(separator: " · "))
             for set in exercise.sets {
                 let label = String(repeating: " ", count: max(width - set.label.count, 0)) + set.label
                 lines.append("  \(label)  \(set.value)\(set.isRecord ? "  PR" : "")")

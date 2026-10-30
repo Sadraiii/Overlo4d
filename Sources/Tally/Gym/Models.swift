@@ -155,6 +155,8 @@ struct Workout: Codable, Identifiable, Hashable, Sendable {
     var savedHealthID: UUID?
     /// The strength-program day this workout was started from, if any.
     var programDay: ProgramDayRef?
+    /// Set once the date, start, end or duration was changed by hand.
+    var timesEdited: Bool?
 
     var duration: TimeInterval { (endedAt ?? .now).timeIntervalSince(startedAt) }
     var allSets: [WorkoutSet] { exercises.flatMap(\.sets) }

@@ -43,6 +43,7 @@ enum Changelog {
             "Ask the coach now knows your strength program and coaches within it.",
             "Workouts show the muscles they work on the body figure, with sets per muscle, while you train, on the summary and in History.",
             "Edit a workout's date, start, end and duration, during the workout (tap the start time) or later in History. Workouts past midnight are handled.",
+            "Export: the training log shows sets per muscle group for each workout and the muscle group beside every exercise, marks edited times, and the export screen shows the muscles worked in the period.",
         ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",

@@ -144,6 +144,37 @@ private func day(_ text: String) -> Date {
         """)
     }
 
+    @Test func musclesShowUnderTheWorkoutAndBesideEachExercise() {
+        let workout = TrainingLog.Workout(
+            title: "Push",
+            details: ["Tue 28 Oct 2026 · 17:30–18:45 (edited)"],
+            muscles: [.init(muscle: "Chest", sets: 7), .init(muscle: "Shoulders", sets: 4)],
+            exercises: [
+                TrainingLog.Exercise(name: "Bench Press", muscle: "Chest", superset: "A", sets: [
+                    TrainingLog.SetLine(label: "1", value: "80 kg × 8"),
+                ]),
+            ]
+        )
+        #expect(TrainingLog.text(workout) == """
+        PUSH
+        Tue 28 Oct 2026 · 17:30–18:45 (edited)
+        Muscles: Chest 7 · Shoulders 4
+
+        Bench Press · Chest · superset A
+          1  80 kg × 8
+        """)
+    }
+
+    @Test func muscleSetsAddUpPerGroupMostFirst() {
+        let muscles = TrainingLog.muscleSets([
+            ("Chest", 4), ("Shoulders", 4), ("Chest", 3), ("Triceps", 5), ("", 2), ("Core", 0),
+        ])
+        #expect(muscles == [
+            .init(muscle: "Chest", sets: 7), .init(muscle: "Triceps", sets: 5), .init(muscle: "Shoulders", sets: 4),
+        ])
+        #expect(TrainingLog.muscleLine(muscles) == "Chest 7 · Triceps 5 · Shoulders 4")
+    }
+
     @Test func setLabelsLineUp() {
         let workout = TrainingLog.Workout(title: "Legs", details: [], exercises: [
             TrainingLog.Exercise(name: "Calf Raise", sets: (1...10).map { TrainingLog.SetLine(label: "\($0)", value: "20 reps") }),

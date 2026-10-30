@@ -57,6 +57,7 @@ struct WorkoutTimesRows: View {
         let new = isLive ? new.clampedForLiveWorkout(now: .now) : new
         workout.startedAt = new.start
         workout.endedAt = new.end
+        workout.timesEdited = true
     }
 }
 

@@ -46,6 +46,16 @@ enum WorkoutExport {
         Data(WorkoutCSV.document(sets(workouts, gym: gym)).utf8)
     }
 
+    /// Working sets per muscle group across the workouts, most first.
+    static func muscles(_ workouts: [Workout], gym: GymStore) -> [TrainingLog.MuscleSets] {
+        TrainingLog.muscleSets(workouts.flatMap { workout in
+            workout.exercises.map { exercise in
+                (muscle: gym.exercise(exercise.exerciseID)?.muscle.label ?? "",
+                 sets: exercise.sets.filter { $0.isDone && $0.type != .warmup }.count)
+            }
+        })
+    }
+
     /// One workout set by set, as on the History screen.
     static func log(_ workout: Workout, gym: GymStore) -> TrainingLog.Workout {
         let supersets = WorkoutCSV.supersetLabels(workout.exercises.supersetIDs)
@@ -60,14 +70,18 @@ enum WorkoutExport {
             title: workout.name,
             details: [
                 "\(workout.startedAt.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).year())) · "
-                    + "\(workout.startedAt.formatted(date: .omitted, time: .shortened))–\(end.formatted(date: .omitted, time: .shortened))",
+                    + "\(workout.startedAt.formatted(date: .omitted, time: .shortened))–\(end.formatted(date: .omitted, time: .shortened))"
+                    + (workout.timesEdited == true ? " (edited)" : ""),
                 totals.joined(separator: " · "),
             ],
             notes: workout.notes,
+            muscles: muscles([workout], gym: gym),
             exercises: workout.exercises.enumerated().map { index, exercise in
-                let kind = gym.exercise(exercise.exerciseID)?.kind ?? .weightReps
+                let def = gym.exercise(exercise.exerciseID)
+                let kind = def?.kind ?? .weightReps
                 return TrainingLog.Exercise(
                     name: gym.name(of: exercise.exerciseID),
+                    muscle: def?.muscle.label ?? "",
                     superset: supersets[index],
                     notes: exercise.notes,
                     sets: exercise.sets.enumerated().map { number, set in
