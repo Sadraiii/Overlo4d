@@ -1,8 +1,15 @@
 import Foundation
 import TallyCore
 
-/// Exercise animations from Workout API. The user's key lives in the Keychain; the exercise list and
-/// every GIF are saved on the phone after the first download, so each one is fetched only once.
+/// What to show for an exercise: a Workout API animation, or the two Free Exercise DB photos.
+enum ExerciseMedia: Hashable {
+    case workoutAPI(code: String)
+    case photos(id: String)
+}
+
+/// Exercise animations from Workout API, with Free Exercise DB photos for the rest. The user's key lives in
+/// the Keychain; the exercise list, every GIF and every photo are saved on the phone after the first
+/// download, so each one is fetched only once.
 @MainActor
 @Observable
 final class ExerciseMediaStore {
@@ -81,7 +88,8 @@ final class ExerciseMediaStore {
         isLoadingCatalogue = true
         defer { isLoadingCatalogue = false }
         do {
-            let data = try await fetch(WorkoutAPI.exercisesURL)
+            guard let key = Keychain.read(Self.keyAccount) else { return }
+            let data = try await fetch(WorkoutAPI.exercisesURL, key: key)
             let list = WorkoutAPI.parseExercises(data)
             guard !list.isEmpty else { catalogueError = "Workout API sent no exercises."; return }
             try? data.write(to: Self.catalogueURL, options: .atomic)
@@ -109,6 +117,16 @@ final class ExerciseMediaStore {
         return code
     }
 
+    /// The user's pick, else a Workout API match (with a key), else the built-in exercise's photos.
+    func media(for exercise: ExerciseDef) -> ExerciseMedia? {
+        if let chosen = overrides[exercise.name.lowercased()] {
+            return chosen.isEmpty ? nil : .workoutAPI(code: chosen)
+        }
+        if hasKey, let code = code(for: exercise) { return .workoutAPI(code: code) }
+        if !exercise.isCustom, let id = FreeExerciseDB.ids[exercise.name] { return .photos(id: id) }
+        return nil
+    }
+
     func catalogueName(_ code: String) -> String? {
         catalogue.first { $0.code == code }?.name
     }
@@ -125,6 +143,23 @@ final class ExerciseMediaStore {
 
     // MARK: Animations
 
+    /// Start and end photos from Free Exercise DB, from disk or downloaded and saved. Needs no key.
+    func photos(_ id: String) async -> [Data]? {
+        var frames: [Data] = []
+        for frame in 0..<2 {
+            let name = "photos-\(id)-\(frame).jpg"
+            if let data = try? Data(contentsOf: Self.folder.appending(path: name)) {
+                frames.append(data)
+                continue
+            }
+            guard failures[name] == nil,
+                  let data = await download(name, url: FreeExerciseDB.imageURL(id: id, frame: frame), key: nil)
+            else { return nil }
+            frames.append(data)
+        }
+        return frames
+    }
+
     static func fileName(_ code: String, _ variant: WorkoutAPI.Variant) -> String { "\(code)-\(variant.rawValue).gif" }
 
     /// The saved GIF, without going online.
@@ -132,18 +167,23 @@ final class ExerciseMediaStore {
         try? Data(contentsOf: Self.folder.appending(path: Self.fileName(code, variant)))
     }
 
-    /// The GIF from disk, or downloaded and saved. At most three downloads run at once.
+    /// The GIF from disk, or downloaded and saved.
     func animation(_ code: String, _ variant: WorkoutAPI.Variant) async -> Data? {
         if let data = cached(code, variant) { return data }
         let name = Self.fileName(code, variant)
-        guard hasKey, failures[name] == nil else { return nil }
+        guard hasKey, failures[name] == nil, let key = Keychain.read(Self.keyAccount) else { return nil }
+        return await download(name, url: WorkoutAPI.animationURL(code: code, variant: variant), key: key)
+    }
+
+    /// Downloads a file once into the folder. At most three downloads run at once.
+    private func download(_ name: String, url: URL, key: String?) async -> Data? {
         if let running = downloads[name] { return await running.value }
         let task = Task<Data?, Never> {
             while activeDownloads >= 3 { try? await Task.sleep(for: .milliseconds(150)) }
             activeDownloads += 1
             defer { activeDownloads -= 1 }
             do {
-                let data = try await fetch(WorkoutAPI.animationURL(code: code, variant: variant))
+                let data = try await fetch(url, key: key)
                 try? data.write(to: Self.folder.appending(path: name), options: .atomic)
                 return data
             } catch {
@@ -160,13 +200,13 @@ final class ExerciseMediaStore {
     /// Size of the saved animations, for Settings.
     var cacheBytes: Int {
         let files = (try? FileManager.default.contentsOfDirectory(at: Self.folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-        return files.filter { $0.pathExtension == "gif" }
+        return files.filter { $0.pathExtension == "gif" || $0.pathExtension == "jpg" }
             .reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
     }
 
     func clearCache() {
         let files = (try? FileManager.default.contentsOfDirectory(at: Self.folder, includingPropertiesForKeys: nil)) ?? []
-        for file in files where file.pathExtension == "gif" { try? FileManager.default.removeItem(at: file) }
+        for file in files where file.pathExtension == "gif" || file.pathExtension == "jpg" { try? FileManager.default.removeItem(at: file) }
         AnimatedGIF.clearMemory()
         failures = [:]
     }
@@ -178,11 +218,13 @@ final class ExerciseMediaStore {
         var errorDescription: String? { message }
     }
 
-    private func fetch(_ url: URL) async throws -> Data {
-        guard let key = Keychain.read(Self.keyAccount), !key.isEmpty else { throw Failure(message: "Add a Workout API key in Settings.") }
+    /// `key` nil for Free Exercise DB, which is public.
+    private func fetch(_ url: URL, key: String?) async throws -> Data {
         var request = URLRequest(url: url, timeoutInterval: 30)
-        request.setValue(key, forHTTPHeaderField: WorkoutAPI.keyHeader)
-        request.setValue("en-US", forHTTPHeaderField: "Accept-Language")
+        if let key {
+            request.setValue(key, forHTTPHeaderField: WorkoutAPI.keyHeader)
+            request.setValue("en-US", forHTTPHeaderField: "Accept-Language")
+        }
         let data: Data, response: URLResponse
         do {
             (data, response) = try await URLSession.shared.data(for: request)
@@ -190,7 +232,9 @@ final class ExerciseMediaStore {
             throw Failure(message: "You're offline.")
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else { throw Failure(message: WorkoutAPI.failure(status: status)) }
+        guard (200..<300).contains(status) else {
+            throw Failure(message: key == nil ? "Photos aren't available right now." : WorkoutAPI.failure(status: status))
+        }
         return data
     }
 }

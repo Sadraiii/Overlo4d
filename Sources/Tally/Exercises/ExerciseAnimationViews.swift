@@ -39,6 +39,17 @@ enum AnimatedGIF {
         return value < 0.02 ? 0.1 : value
     }
 
+    /// Two photos (start and end position) flipping back and forth, or the first one only.
+    static func flipbook(_ frames: [Data], key: String, animated: Bool) -> UIImage? {
+        let cacheKey = "\(key)-\(animated)" as NSString
+        if let image = memory.object(forKey: cacheKey) { return image }
+        let images = frames.compactMap { UIImage(data: $0)?.preparingForDisplay() }
+        guard let first = images.first else { return nil }
+        let image = animated && images.count > 1 ? UIImage.animatedImage(with: images, duration: 2.4) : first
+        if let image { memory.setObject(image, forKey: cacheKey) }
+        return image
+    }
+
     static func clearMemory() { memory.removeAllObjects() }
 }
 
@@ -63,9 +74,10 @@ private struct GIFImageView: UIViewRepresentable {
     }
 }
 
-/// A Workout API animation, loaded from the phone or downloaded once. Shows `placeholder` until it's ready.
+/// A Workout API animation or Free Exercise DB photos, loaded from the phone or downloaded once.
+/// Shows `placeholder` until it's ready.
 struct ExerciseAnimation<Placeholder: View>: View {
-    let code: String
+    let media: ExerciseMedia
     var variant: WorkoutAPI.Variant = .basic
     /// false shows the first frame only, for small badges in lists.
     var animated = true
@@ -73,8 +85,14 @@ struct ExerciseAnimation<Placeholder: View>: View {
 
     @State private var image: UIImage?
 
-    private var media: ExerciseMediaStore { .shared }
-    private var key: String { ExerciseMediaStore.fileName(code, variant) }
+    private var store: ExerciseMediaStore { .shared }
+
+    private var key: String {
+        switch media {
+        case .workoutAPI(let code): ExerciseMediaStore.fileName(code, variant)
+        case .photos(let id): "photos-\(id)"
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -86,12 +104,20 @@ struct ExerciseAnimation<Placeholder: View>: View {
         }
         .task(id: "\(key)-\(animated)") {
             image = nil
-            guard let data = await media.animation(code, variant) else { return }
-            // Decoding every frame takes a moment, so keep it off the main thread while lists scroll.
             let key = key, animated = animated
-            image = await Task.detached(priority: .userInitiated) {
-                AnimatedGIF.image(data, key: key, animated: animated)
-            }.value
+            switch media {
+            case .workoutAPI(let code):
+                guard let data = await store.animation(code, variant) else { return }
+                // Decoding every frame takes a moment, so keep it off the main thread while lists scroll.
+                image = await Task.detached(priority: .userInitiated) {
+                    AnimatedGIF.image(data, key: key, animated: animated)
+                }.value
+            case .photos(let id):
+                guard let frames = await store.photos(id) else { return }
+                image = await Task.detached(priority: .userInitiated) {
+                    AnimatedGIF.flipbook(frames, key: key, animated: animated)
+                }.value
+            }
         }
     }
 }
@@ -104,23 +130,17 @@ struct ExerciseDemoCard: View {
     @AppStorage("workoutapi.variant") private var variantRaw = WorkoutAPI.Variant.basic.rawValue
     @State private var choosing = false
 
-    private var media: ExerciseMediaStore { .shared }
+    private var store: ExerciseMediaStore { .shared }
     private var variant: WorkoutAPI.Variant { WorkoutAPI.Variant(rawValue: variantRaw) ?? .basic }
 
     var body: some View {
-        if media.hasKey {
+        let media = store.media(for: exercise)
+        if media != nil || store.hasKey {
             VStack(alignment: .leading, spacing: 12) {
-                if let code = media.code(for: exercise) {
-                    ExerciseAnimation(code: code, variant: variant) {
-                        if let failure = media.failures[ExerciseMediaStore.fileName(code, variant)] {
-                            Text(failure)
-                                .font(Typo.body(13))
-                                .foregroundStyle(Theme.ink3)
-                                .multilineTextAlignment(.center)
-                                .padding(24)
-                        } else {
-                            ProgressView()
-                        }
+                switch media {
+                case .workoutAPI(let code):
+                    ExerciseAnimation(media: .workoutAPI(code: code), variant: variant) {
+                        loading(ExerciseMediaStore.fileName(code, variant))
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: height)
@@ -137,20 +157,40 @@ struct ExerciseDemoCard: View {
                         Button("Change") { choosing = true }
                             .font(Typo.body(14, .semibold))
                     }
-                } else {
+                case .photos(let id):
+                    ExerciseAnimation(media: .photos(id: id)) {
+                        loading("photos-\(id)-0.jpg")
+                    }
+                    .aspectRatio(1.5, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .background(Theme.fill)
+                    .clipShape(.rect(cornerRadius: 16))
+                    .accessibilityLabel("Start and end position of \(exercise.name)")
+
+                    HStack {
+                        Text("Start and end position · Free Exercise DB")
+                            .font(Typo.body(12.5))
+                            .foregroundStyle(Theme.ink3)
+                        Spacer()
+                        if store.hasKey && !store.catalogue.isEmpty {
+                            Button("Change") { choosing = true }
+                                .font(Typo.body(14, .semibold))
+                        }
+                    }
+                case nil:
                     HStack(spacing: 10) {
                         Image(systemName: "play.rectangle")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Theme.ink3)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(media.catalogue.isEmpty ? "Loading animations…" : "No animation found")
+                            Text(store.catalogue.isEmpty ? "Loading animations…" : "No animation found")
                                 .font(Typo.body(15, .semibold))
-                            if let error = media.catalogueError, media.catalogue.isEmpty {
+                            if let error = store.catalogueError, store.catalogue.isEmpty {
                                 Text(error).font(Typo.body(12.5)).foregroundStyle(Theme.ink3)
                             }
                         }
                         Spacer()
-                        if !media.catalogue.isEmpty {
+                        if !store.catalogue.isEmpty {
                             Button("Choose") { choosing = true }
                                 .buttonStyle(.smallPrimary)
                         }
@@ -158,8 +198,21 @@ struct ExerciseDemoCard: View {
                 }
             }
             .card(padding: 12)
-            .task { await media.loadCatalogue() }
+            .task { await store.loadCatalogue() }
             .sheet(isPresented: $choosing) { AnimationChooser(exercise: exercise) }
+        }
+    }
+
+    @ViewBuilder
+    private func loading(_ file: String) -> some View {
+        if let failure = store.failures[file] {
+            Text(failure)
+                .font(Typo.body(13))
+                .foregroundStyle(Theme.ink3)
+                .multilineTextAlignment(.center)
+                .padding(24)
+        } else {
+            ProgressView()
         }
     }
 }
@@ -220,7 +273,7 @@ struct AnimationChooser: View {
                             media.choose(item.code, for: exercise); dismiss()
                         } label: {
                             HStack(spacing: 12) {
-                                ExerciseAnimation(code: item.code, animated: false) { Theme.fill }
+                                ExerciseAnimation(media: .workoutAPI(code: item.code), animated: false) { Theme.fill }
                                     .frame(width: 44, height: 44)
                                     .background(.white, in: .rect(cornerRadius: 10))
                                 row(item.name, detail: nil, selected: !media.isAutomatic(exercise) && current == item.code)
@@ -300,14 +353,14 @@ struct ExerciseMediaSettingsSection: View {
                     .padding(14)
                 }
                 .card(padding: 0, cornerRadius: 18)
-                Text("Animations come from Workout API (\(media.catalogue.count) exercises). Each one is downloaded the first time you open it and then kept on this iPhone.")
+                Text("Animations come from Workout API (\(media.catalogue.count) exercises). Exercises it doesn't have show start and end photos from Free Exercise DB. Each one is downloaded the first time you open it and then kept on this iPhone.")
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Connect Workout API").font(Typo.body(15, .semibold))
-                    Text("Shows an animation of how each exercise is done. Your key stays in this iPhone's Keychain.")
+                    Text("Without a key, exercises show start and end photos from Free Exercise DB. A Workout API key adds animated drawings with the muscles highlighted. Your key stays in this iPhone's Keychain.")
                         .font(Typo.body(13))
                         .foregroundStyle(Theme.ink2)
                         .fixedSize(horizontal: false, vertical: true)

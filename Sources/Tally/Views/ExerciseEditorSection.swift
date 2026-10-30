@@ -41,7 +41,7 @@ struct ExerciseEditorSection: View {
                     ExerciseBadge(exercise: def, size: 42)
                 }
                 .buttonStyle(.plain)
-                .disabled(def == nil || !ExerciseMediaStore.shared.hasKey)
+                .disabled(def.flatMap(ExerciseMediaStore.shared.media(for:)) == nil)
                 if let def {
                     NavigationLink(value: def) {
                         VStack(alignment: .leading, spacing: 2) {

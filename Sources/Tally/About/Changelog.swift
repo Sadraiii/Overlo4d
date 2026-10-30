@@ -36,6 +36,7 @@ enum Changelog {
             "Food goals show your daily deficit and the date you'd reach your goal weight.",
             "New look: cleaner white cards, sentence-case headings, a calmer Home with a greeting, a simpler week card, one row of tools and Today and Training sections.",
             "Exercise animations from Workout API: add your key in Settings to see how each exercise is done on its screen, as a still in exercise lists, and in a sheet from the badge during a workout. Switch between Movement and Muscles, or pick a different animation if the match is off. Each one is downloaded once and kept on the phone.",
+            "Every built-in exercise (except burpees) now shows how it's done even without a key: start and end photos from the public-domain Free Exercise DB, flipping back and forth.",
             "Muscle view remade: the body is one soft figure, muscles are shaded in your accent colour (primary, secondary, tertiary), and the Muscles worked card has a bigger figure with sets bars. Tap a muscle on the figure or in the list to pick it out.",
         ]),
         ChangelogEntry(version: "0.8", date: DateComponents(year: 2026, month: 10, day: 27), changes: [

@@ -73,3 +73,16 @@ private let catalogue = [
         #expect(!names.contains("Dumbbell Curl"))
     }
 }
+
+@Suite struct FreeExerciseDBTests {
+    @Test func photoURLsPointAtTheRepo() {
+        #expect(FreeExerciseDB.imageURL(id: "Pullups", frame: 1).absoluteString
+            == "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pullups/1.jpg")
+    }
+
+    @Test func builtInExercisesHavePhotos() {
+        #expect(FreeExerciseDB.ids["Pull-ups"] == "Pullups")
+        #expect(FreeExerciseDB.ids.count >= 128)
+        #expect(FreeExerciseDB.ids.values.allSatisfy { !$0.isEmpty && !$0.contains(" ") })
+    }
+}
