@@ -151,8 +151,7 @@ struct ProgramDetailView: View {
                         }
                     }
                     .padding(.horizontal, 14)
-                    .background(Theme.card, in: .rect(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                    .card(padding: 0, cornerRadius: 18)
                 }
 
                 SectionHead("Weeks")
@@ -210,7 +209,7 @@ struct ProgramDetailView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .card(padding: 14, cornerRadius: 16)
+                    .card(padding: 14, cornerRadius: 20)
                 }
 
                 Button("Delete program", systemImage: "trash", role: .destructive) { deleting = true }
@@ -269,7 +268,7 @@ struct ProgramDayCard: View {
             .disabled(gym.activeWorkout != nil)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 
     /// "60 × 5, 70 × 3, 80 × 8+ kg" for main lifts (warm-ups in brackets), "3 × 10" for accessories.
@@ -482,7 +481,7 @@ struct CoachProgramRow: View {
                 Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
             }
             .foregroundStyle(Theme.ink)
-            .card(padding: 14, cornerRadius: 16)
+            .card(padding: 14, cornerRadius: 20)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)

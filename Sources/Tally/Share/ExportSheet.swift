@@ -160,8 +160,7 @@ struct ExportSheet: View {
                     .buttonStyle(.plain)
                 }
             }
-            .background(Theme.card, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            .card(padding: 0, cornerRadius: 18)
             .sensoryFeedback(.selection, trigger: format)
         }
     }
@@ -256,7 +255,7 @@ struct ExportSheet: View {
                         .foregroundStyle(Theme.ink3)
                 }
             }
-            .card(padding: 14, cornerRadius: 16)
+            .card(padding: 14, cornerRadius: 20)
         }
     }
 
@@ -351,8 +350,7 @@ struct ExportSettingsSection: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .background(Theme.card, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            .card(padding: 0, cornerRadius: 18)
         }
         .sheet(isPresented: $exporting) { ExportSheet() }
     }

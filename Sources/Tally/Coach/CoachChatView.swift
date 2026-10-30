@@ -217,7 +217,7 @@ struct CoachChatView: View {
                         .font(Typo.body(14, .semibold))
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .card(padding: 12, cornerRadius: 14)
+                        .card(padding: 12, cornerRadius: 20)
                 }
                 .buttonStyle(.plain)
             }
@@ -281,7 +281,7 @@ struct CoachChatView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
         .sensoryFeedback(.success, trigger: applied)
     }
 
@@ -302,8 +302,7 @@ struct CoachChatView: View {
                 .font(Typo.body(15))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Theme.card, in: .rect(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Theme.line, lineWidth: 1))
+                .card(padding: 0, cornerRadius: 20)
             Button {
                 send(draft)
             } label: {

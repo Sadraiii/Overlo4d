@@ -47,20 +47,21 @@ struct HistoryView: View {
                             }
                         }
                     } header: {
-                        // Dark month band, as in Outdoor Office's schedule.
+                        // Month heading on the page background, with the workout count.
                         HStack(alignment: .firstTextBaseline) {
                             Text(group.month.formatted(.dateTime.month(.wide).year()))
-                                .font(Typo.body(14.5, .semibold))
+                                .font(Typo.title(19))
+                                .foregroundStyle(Theme.ink)
                             Spacer()
                             Text("\(group.items.count) \(group.items.count == 1 ? "workout" : "workouts")")
-                                .font(Typo.body(12.5, .medium))
-                                .opacity(0.7)
+                                .font(Typo.body(13, .medium))
+                                .foregroundStyle(Theme.ink3)
                         }
-                        .foregroundStyle(Theme.bandInk)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 11)
+                        .padding(.horizontal, 18)
+                        .padding(.top, 14)
+                        .padding(.bottom, 4)
                         .frame(maxWidth: .infinity)
-                        .background(Theme.band)
+                        .background(Theme.paper)
                         .listRowInsets(EdgeInsets())
                     }
                 }
@@ -252,7 +253,7 @@ struct EditWorkoutView: View {
             List {
                 Section {
                     TextField("Name", text: $workout.name)
-                        .font(Typo.display(28))
+                        .font(Typo.title(20))
                     WorkoutTimesRows(workout: $workout)
                     TextField("Note", text: $workout.notes, axis: .vertical)
                 }

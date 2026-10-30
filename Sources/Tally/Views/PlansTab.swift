@@ -133,8 +133,7 @@ struct PlanCard: View {
             }
         }
         .padding(16)
-        .background(Theme.card, in: .rect(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+        .card(padding: 0, cornerRadius: 18)
         .contentShape(.rect)
         .onTapGesture(perform: onOpen)
     }

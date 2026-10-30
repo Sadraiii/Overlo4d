@@ -23,7 +23,7 @@ public struct GoalRing: View {
     }
 }
 
-/// A week of day squares (first weekday → last): filled on days with a workout, dashed outline for today.
+/// A week of day circles (first weekday → last): filled on days with a workout, accent ring for today.
 public struct WeekStrip: View {
     let days: [Bool]
     let todayIndex: Int?
@@ -46,13 +46,13 @@ public struct WeekStrip: View {
 
     public var body: some View {
         let symbols = Self.weekdaySymbols
-        let radius = size * 0.28
+        let radius = size / 2
         HStack(spacing: 0) {
             ForEach(0..<7, id: \.self) { index in
                 VStack(spacing: 5) {
                     if showsLabels {
-                        Text(symbols[index].uppercased())
-                            .font(Typo.body(max(9, size * 0.34), .semibold))
+                        Text(symbols[index])
+                            .font(Typo.body(max(10, size * 0.36), .medium))
                             .foregroundStyle(index == todayIndex ? Theme.accent : Theme.ink3)
                     }
                     ZStack {
@@ -63,9 +63,9 @@ public struct WeekStrip: View {
                                 .foregroundStyle(Theme.accentInk)
                         } else if index == todayIndex {
                             RoundedRectangle(cornerRadius: radius)
-                                .strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                                .strokeBorder(Theme.accent, lineWidth: 2)
                         } else {
-                            RoundedRectangle(cornerRadius: radius).fill(Theme.line)
+                            RoundedRectangle(cornerRadius: radius).fill(Theme.fill)
                         }
                     }
                     .frame(width: size, height: size)
@@ -119,7 +119,7 @@ public struct Tally: View {
     }
 }
 
-/// Race-bib style date badge (weekday, day, month), as in Outdoor Office.
+/// Compact date badge (weekday, day, month) on a soft grey tile.
 public struct Bib: View {
     public enum Size { case small, regular, large }
 
@@ -132,37 +132,25 @@ public struct Bib: View {
     }
 
     public var body: some View {
-        let width: CGFloat = switch size { case .small: 40; case .regular: 56; case .large: 76 }
-        let number: CGFloat = switch size { case .small: 20; case .regular: 31; case .large: 46 }
-        let caption: CGFloat = switch size { case .small: 8; case .regular: 10.5; case .large: 12 }
+        let width: CGFloat = switch size { case .small: 40; case .regular: 52; case .large: 72 }
+        let number: CGFloat = switch size { case .small: 19; case .regular: 26; case .large: 40 }
+        let caption: CGFloat = switch size { case .small: 9; case .regular: 11; case .large: 12.5 }
 
-        VStack(spacing: size == .small ? 1 : 3) {
-            Text(date.formatted(.dateTime.weekday(.abbreviated)).uppercased())
-                .font(Typo.body(caption, .bold))
-                .tracking(1)
+        VStack(spacing: size == .small ? 0 : 1) {
+            Text(date.formatted(.dateTime.weekday(.abbreviated)))
+                .font(Typo.body(caption, .semibold))
+                .foregroundStyle(Theme.accent)
             Text(date.formatted(.dateTime.day()))
-                .font(Typo.display(number))
+                .font(Typo.title(number))
                 .monospacedDigit()
-            Text(date.formatted(.dateTime.month(.abbreviated)).uppercased())
-                .font(Typo.body(caption, .bold))
-                .tracking(1)
+                .foregroundStyle(Theme.ink)
+            Text(date.formatted(.dateTime.month(.abbreviated)))
+                .font(Typo.body(caption, .medium))
+                .foregroundStyle(Theme.ink3)
         }
-        .foregroundStyle(Color(light: 0x121412, dark: 0x121412))
         .frame(width: width)
-        .padding(.top, size == .small ? 6 : 12)
-        .padding(.bottom, size == .small ? 5 : 9)
-        .background(Color(light: 0xFAFAF6, dark: 0xE9EAE4), in: .rect(cornerRadius: size == .small ? 7 : 10))
-        .overlay(alignment: .top) {
-            if size != .small {
-                HStack {
-                    Circle().strokeBorder(.black.opacity(0.3), lineWidth: 1.3).frame(width: 5, height: 5)
-                    Spacer()
-                    Circle().strokeBorder(.black.opacity(0.3), lineWidth: 1.3).frame(width: 5, height: 5)
-                }
-                .padding(5)
-            }
-        }
-        .overlay(RoundedRectangle(cornerRadius: size == .small ? 7 : 10).strokeBorder(.black.opacity(0.13), lineWidth: 1))
+        .padding(.vertical, size == .small ? 5 : 8)
+        .background(Theme.fill, in: .rect(cornerRadius: size == .small ? 9 : 14))
     }
 }
 

@@ -61,8 +61,7 @@ struct BackupSettingsSection: View {
                     .buttonStyle(.plain)
                 }
             }
-            .background(Theme.card, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            .card(padding: 0, cornerRadius: 18)
 
             Text(footnote)
                 .font(Typo.body(13))

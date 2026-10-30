@@ -172,7 +172,7 @@ struct WorkoutHeader: View {
                 .accessibilityLabel("Edit workout time")
             }
             TextField("Workout", text: $draft.name)
-                .font(Typo.display(34))
+                .font(Typo.title(26))
                 .foregroundStyle(Theme.ink)
             Text(draft.startedAt, style: .timer)
                 .font(Typo.display(72))
@@ -197,7 +197,7 @@ struct WorkoutHeader: View {
     }
 }
 
-/// Floating rest countdown, styled like Outdoor Office's sign-up dock.
+/// Floating rest countdown above the bottom edge.
 struct RestDock: View {
     @Environment(RestTimer.self) private var rest
 
@@ -226,8 +226,8 @@ struct RestDock: View {
             .padding(.trailing, 8)
             .padding(.vertical, 8)
             .background(Theme.card, in: .capsule)
-            .overlay(Capsule().strokeBorder(Theme.line2, lineWidth: 1))
-            .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
+            .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
+            .shadow(color: .black.opacity(0.14), radius: 20, y: 8)
             .task(id: end) {
                 // Hide the dock when the countdown reaches zero.
                 try? await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow)))

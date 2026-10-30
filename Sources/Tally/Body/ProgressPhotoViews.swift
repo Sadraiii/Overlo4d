@@ -104,7 +104,7 @@ struct AddPhotosSheet: View {
                 VStack(alignment: .leading, spacing: 14) {
                     DatePicker("Date", selection: $date, in: ...Date.now, displayedComponents: .date)
                         .font(Typo.body(15))
-                        .card(padding: 12, cornerRadius: 16)
+                        .card(padding: 12, cornerRadius: 20)
 
                     ForEach(PhotoPose.allCases) { pose in
                         PoseSlot(pose: pose, day: day)
@@ -182,7 +182,7 @@ private struct PoseSlot: View {
             }
             Spacer(minLength: 0)
         }
-        .card(padding: 12, cornerRadius: 16)
+        .card(padding: 12, cornerRadius: 20)
         .onChange(of: item) {
             guard let item else { return }
             Task {
@@ -406,7 +406,7 @@ struct CompareView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .card(padding: 10, cornerRadius: 14)
+            .card(padding: 10, cornerRadius: 20)
         }
     }
 

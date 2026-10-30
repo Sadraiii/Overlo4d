@@ -39,7 +39,7 @@ extension View {
             .monospacedDigit()
             .foregroundStyle(Theme.ink)
             .frame(height: 40)
-            .background(Theme.paper, in: .rect(cornerRadius: 12))
+            .background(Theme.fill, in: .rect(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
     }
 }

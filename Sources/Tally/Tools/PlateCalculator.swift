@@ -73,8 +73,7 @@ struct PlateCalculatorSheet: View {
                                     .padding(.vertical, 10)
                                 }
                             }
-                            .background(Theme.card, in: .rect(cornerRadius: 16))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                            .card(padding: 0, cornerRadius: 18)
                         }
                         if load.leftover > 0.01 {
                             Text("\(Fmt.weight(load.leftover)) kg can't be made with standard plates. Loaded: \(Fmt.weight((target ?? 0) - load.leftover)) kg.")

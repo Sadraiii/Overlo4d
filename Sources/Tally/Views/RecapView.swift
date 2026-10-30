@@ -83,14 +83,14 @@ struct RecapView: View {
                                 .foregroundStyle(Theme.ink2)
                         }
                     }
-                    .card(padding: 14, cornerRadius: 16)
+                    .card(padding: 14, cornerRadius: 20)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Muscles").display(16)
                     MuscleVolumeCard(weeklySets: gym.weeklyMuscleSets(in: recap.week), caption: "Working sets this week")
                 }
-                .card(padding: 14, cornerRadius: 16)
+                .card(padding: 14, cornerRadius: 20)
 
                 if let improvement = recap.mostImproved, let def = gym.exercise(improvement.exerciseID) {
                     VStack(alignment: .leading, spacing: 10) {
@@ -100,7 +100,7 @@ struct RecapView: View {
                             .font(Typo.body(14, .semibold))
                             .foregroundStyle(Theme.good)
                     }
-                    .card(padding: 14, cornerRadius: 16)
+                    .card(padding: 14, cornerRadius: 20)
                 }
 
                 if !records.isEmpty {
@@ -125,8 +125,7 @@ struct RecapView: View {
                             .padding(.vertical, 12)
                         }
                     }
-                    .background(Theme.card, in: .rect(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+                    .card(padding: 0, cornerRadius: 18)
                 }
             }
             .padding(.horizontal, 16)
@@ -161,8 +160,7 @@ struct RecapTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Theme.card, in: .rect(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+        .card(padding: 0, cornerRadius: 18)
     }
 }
 

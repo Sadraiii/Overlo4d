@@ -22,21 +22,27 @@ extension Color {
     }
 }
 
-/// Colours from the Outdoor Office design system.
+/// Overload colours: a near-white page, white cards and soft neutral greys, with one accent colour.
 public enum Theme {
-    public static let paper = Color(light: 0xEEF0EB, dark: 0x0F120F)
-    public static let card = Color(light: 0xFAFBF8, dark: 0x191D19)
-    public static let ink = Color(light: 0x151815, dark: 0xECEFE8)
-    public static let ink2 = Color(light: 0x4A504A, dark: 0xB4BAB1)
-    public static let ink3 = Color(light: 0x737A72, dark: 0x8A9288)
-    public static let line = Color(light: 0xDADED6, dark: 0x2A302A)
-    public static let line2 = Color(light: 0xC5CBC2, dark: 0x3A413A)
+    public static let paper = Color(light: 0xF3F4F1, dark: 0x0B0D0B)
+    public static let card = Color(light: 0xFFFFFF, dark: 0x171A17)
+    public static let ink = Color(light: 0x111411, dark: 0xEEF0EC)
+    public static let ink2 = Color(light: 0x4F554F, dark: 0xB2B8AF)
+    public static let ink3 = Color(light: 0x868C85, dark: 0x858C83)
+    public static let line = Color(light: 0xE9EBE6, dark: 0x252925)
+    public static let line2 = Color(light: 0xD4D8D1, dark: 0x363C36)
+    /// Background of inputs, chips and icon wells inside cards.
+    public static let fill = Color(light: 0xF1F2EF, dark: 0x222622)
     public static let good = Color(light: 0x2C7748, dark: 0x6CCB8C)
-    public static let goodSoft = Color(light: 0xD8EEDF, dark: 0x16301F)
+    public static let goodSoft = Color(light: 0xDDF1E3, dark: 0x16301F)
     public static let danger = Color(light: 0xB0382C, dark: 0xF0897D)
     public static let hot = Color(light: 0xC4561A, dark: 0xF5A167)
     public static let band = Color(light: 0x2E332E, dark: 0x262B26)
     public static let bandInk = Color(light: 0xF3F4F0, dark: 0xECEFE8)
+    /// Card shadow; clear in dark mode, where the lighter card colour does the work.
+    public static let shadow = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? .clear : UIColor(white: 0, alpha: 0.05)
+    })
 
     public static var accentChoice: Accent {
         Accent(rawValue: SharedStorage.defaults.string(forKey: Accent.storageKey) ?? "") ?? .violet
@@ -105,7 +111,7 @@ public enum AppearanceMode: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Outdoor Office type: Big Shoulders Display for headings and numbers, Schibsted Grotesk for text.
+/// Overload type: Schibsted Grotesk for headings and text, Big Shoulders Display (condensed) for big numbers.
 public enum Typo {
     public enum Weight {
         case regular, medium, semibold, bold
@@ -120,9 +126,14 @@ public enum Typo {
         }
     }
 
-    /// Condensed display face. Use with uppercase text.
+    /// Condensed face for numbers (timers, totals, weights).
     public static func display(_ size: CGFloat, black: Bool = false, relativeTo style: Font.TextStyle = .title) -> Font {
         .custom(black ? "BigShouldersDisplayThin-Black" : "BigShouldersDisplayThin-ExtraBold", size: size, relativeTo: style)
+    }
+
+    /// Bold sentence-case heading.
+    public static func title(_ size: CGFloat, relativeTo style: Font.TextStyle = .title2) -> Font {
+        .custom("SchibstedGrotesk-Bold", size: size, relativeTo: style)
     }
 
     public static func body(_ size: CGFloat, _ weight: Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {

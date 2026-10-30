@@ -132,7 +132,7 @@ struct ShareSheet: View {
                 .foregroundStyle(Theme.ink)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .card(padding: 14, cornerRadius: 16)
+                .card(padding: 14, cornerRadius: 20)
         } else {
             imagePreview
         }

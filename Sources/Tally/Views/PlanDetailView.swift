@@ -132,7 +132,7 @@ private struct VolumeTrend: View {
             }
             .frame(height: 140)
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 
@@ -187,7 +187,7 @@ struct ExerciseComparison: View {
                 }
             }
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 

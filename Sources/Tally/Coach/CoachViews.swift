@@ -79,13 +79,13 @@ struct CoachView: View {
                         .font(Typo.body(14))
                         .foregroundStyle(Theme.ink3)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .card(padding: 14, cornerRadius: 16)
+                        .card(padding: 14, cornerRadius: 20)
                 } else if report.flags.isEmpty {
                     Label("Nothing stands out. Volume and recovery look fine.", systemImage: "checkmark.circle.fill")
                         .font(Typo.body(14, .semibold))
                         .foregroundStyle(Theme.good)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .card(padding: 14, cornerRadius: 16)
+                        .card(padding: 14, cornerRadius: 20)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(report.flags.enumerated()), id: \.offset) { index, flag in
@@ -93,8 +93,7 @@ struct CoachView: View {
                             LoadFlagRow(flag: flag)
                         }
                     }
-                    .background(Theme.card, in: .rect(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                    .card(padding: 0, cornerRadius: 18)
                 }
 
                 if !report.lastWeek.isEmpty {
@@ -118,7 +117,7 @@ struct CoachView: View {
                         Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
                     }
                     .foregroundStyle(Theme.ink)
-                    .card(padding: 14, cornerRadius: 16)
+                    .card(padding: 14, cornerRadius: 20)
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
@@ -143,7 +142,7 @@ struct CoachView: View {
                             Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
                         }
                         .foregroundStyle(Theme.ink)
-                        .card(padding: 14, cornerRadius: 16)
+                        .card(padding: 14, cornerRadius: 20)
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
@@ -230,7 +229,7 @@ struct WeeklySetsCard: View {
                 .font(Typo.body(12))
                 .foregroundStyle(Theme.ink3)
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 
     private func legend(_ color: Color, _ text: String) -> some View {
@@ -266,7 +265,7 @@ struct CoachFeedbackPanel: View {
                     Text(scope == .sleep ? "Claude is reading your sleep…" : "Claude is reading your log…").font(Typo.body(14, .semibold)).foregroundStyle(Theme.ink2)
                 }
                 .frame(maxWidth: .infinity, minHeight: 58)
-                .card(padding: 14, cornerRadius: 16)
+                .card(padding: 14, cornerRadius: 20)
             } else if let saved = coach.feedback(for: scope) {
                 CoachFeedbackContent(feedback: saved.feedback, nextTitle: scope == .sleep ? "Tonight" : "Next session")
                 HStack {
@@ -313,7 +312,7 @@ struct CoachFeedbackContent: View {
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .card(padding: 14, cornerRadius: 16)
+                .card(padding: 14, cornerRadius: 20)
 
             if !feedback.warnings.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -339,7 +338,7 @@ struct CoachFeedbackContent: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .card(padding: 14, cornerRadius: 16)
+                .card(padding: 14, cornerRadius: 20)
             }
 
             if !feedback.changes.isEmpty {
@@ -361,7 +360,7 @@ struct CoachFeedbackContent: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .card(padding: 14, cornerRadius: 16)
+                .card(padding: 14, cornerRadius: 20)
             }
 
             if !feedback.nextSession.isEmpty {
@@ -458,7 +457,7 @@ struct CoachKeyPrompt: View {
                     .font(Typo.body(15))
                     .padding(.horizontal, 12)
                     .frame(minHeight: 44)
-                    .background(Theme.paper, in: .rect(cornerRadius: 12))
+                    .background(Theme.fill, in: .rect(cornerRadius: 12))
                 Button("Save") {
                     rejected = !coach.setKey(key)
                     if !rejected { key = "" }
@@ -474,7 +473,7 @@ struct CoachKeyPrompt: View {
             Link("Get a key at platform.claude.com", destination: URL(string: "https://platform.claude.com/settings/keys")!)
                 .font(Typo.body(13, .semibold))
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 
@@ -522,8 +521,7 @@ struct CoachSettingsSection: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
                 }
-                .background(Theme.card, in: .rect(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                .card(padding: 0, cornerRadius: 18)
                 Text("When you ask for feedback, your last 4 weeks of workouts and notes, and your last 2 weeks of sleep, are sent to Anthropic. In Ask the coach, only what the coach looks up for your question is sent. Requests are billed to your API account.")
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)

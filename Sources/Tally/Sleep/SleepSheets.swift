@@ -127,8 +127,7 @@ struct SleepLogSheet: View {
                         .padding(.horizontal, 14).padding(.vertical, 6)
                     }
                     .font(Typo.body(15, .semibold))
-                    .background(Theme.card, in: .rect(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                    .card(padding: 0, cornerRadius: 18)
 
                     if valid {
                         Text("\(Fmt.sleep(max(0, length - Double(awakeMinutes) * 60))) asleep, including time to fall asleep.")
@@ -282,8 +281,7 @@ struct SleepSettingsSheet: View {
                             .padding(14)
                         }
                         .font(Typo.body(15, .semibold))
-                        .background(Theme.card, in: .rect(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                         Text("Bedtime is your alarm minus the goal and 15 minutes to fall asleep. Most adults need 7 to 9 hours. Keep the same alarm on weekends.")
                             .font(Typo.body(12.5))
                             .foregroundStyle(Theme.ink3)
@@ -313,8 +311,7 @@ struct SleepSettingsSheet: View {
                                 .padding(14)
                         }
                         .font(Typo.body(15, .semibold))
-                        .background(Theme.card, in: .rect(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                         Text("Morning check-in asks how you slept 30 minutes after your alarm. Caffeine cut-off comes at \(SleepStore.clock(sleep.bedtimeMinutes - 8 * 60)), 8 hours before bed.")
                             .font(Typo.body(12.5))
                             .foregroundStyle(Theme.ink3)
@@ -348,8 +345,7 @@ struct SleepSettingsSheet: View {
                             }
                             .padding(14)
                         }
-                        .background(Theme.card, in: .rect(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                     }
 
                     if health.isAvailable {

@@ -12,7 +12,7 @@ struct HealthCard: View {
         } else if health.isConnected {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Today").eyebrow()
+                    Text("Activity").eyebrow()
                     Spacer()
                     Label("Apple Health", systemImage: "heart.fill")
                         .font(Typo.body(12, .semibold))
@@ -31,7 +31,7 @@ struct HealthCard: View {
                     .font(.system(size: 18))
                     .foregroundStyle(Theme.danger)
                     .frame(width: 42, height: 42)
-                    .background(Theme.line, in: .rect(cornerRadius: 13))
+                    .background(Theme.fill, in: .rect(cornerRadius: 13))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Apple Health").font(Typo.body(15, .semibold))
                     Text("Steps, energy and body weight")
@@ -115,7 +115,7 @@ struct WeightCard: View {
                     .frame(height: 130)
                 }
             }
-            .card(padding: 14, cornerRadius: 16)
+            .card(padding: 14, cornerRadius: 20)
         }
     }
 }
@@ -147,8 +147,7 @@ struct HealthSettingsSection: View {
                         .foregroundStyle(Theme.ink3)
                         .padding(14)
                 }
-                .background(Theme.card, in: .rect(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                .card(padding: 0, cornerRadius: 18)
             }
         }
     }

@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  Mockups of the app's screens for the README, laid out like the SwiftUI views with the app's colours,
+  Mockups of the app's screens (2026-10 redesign) for the README, laid out like the SwiftUI views with the app's colours,
   fonts and muscle figure. They are not simulator captures. Render with: node scripts/mockups/render.js
 -->
 <html>
@@ -16,16 +16,16 @@
 
 /* Theme.swift, violet accent */
 .light {
-  --paper: #EEF0EB; --card: #FAFBF8; --ink: #151815; --ink2: #4A504A; --ink3: #737A72;
-  --line: #DADED6; --line2: #C5CBC2; --good: #2C7748; --goodSoft: #D8EEDF; --danger: #B0382C;
-  --hot: #C4561A; --accent: #5A3E8A; --accentInk: #FFFFFF; --accentSoft: #E8E1F2; --glass: rgba(250,251,248,.82);
-  --body: #C5CBC2; --muscle: #DADED6; --sec: #B9A6D8;
+  --paper: #F3F4F1; --card: #FFFFFF; --ink: #111411; --ink2: #4F554F; --ink3: #868C85;
+  --line: #E9EBE6; --line2: #D4D8D1; --fill: #F1F2EF; --good: #2C7748; --goodSoft: #DDF1E3; --danger: #B0382C;
+  --hot: #C4561A; --accent: #5A3E8A; --accentInk: #FFFFFF; --accentSoft: #E8E1F2; --glass: rgba(255,255,255,.8);
+  --body: #D4D8D1; --muscle: #E4E7E1; --sec: #B9A6D8; --shadow: 0 4px 14px rgba(0,0,0,.05);
 }
 .dark {
-  --paper: #0F120F; --card: #191D19; --ink: #ECEFE8; --ink2: #B4BAB1; --ink3: #8A9288;
-  --line: #2A302A; --line2: #3A413A; --good: #6CCB8C; --goodSoft: #16301F; --danger: #F0897D;
-  --hot: #F5A167; --accent: #B9A0E6; --accentInk: #1B1229; --accentSoft: #2A2240; --glass: rgba(30,34,30,.82);
-  --body: #3A413A; --muscle: #2A302A; --sec: #5E4E80;
+  --paper: #0B0D0B; --card: #171A17; --ink: #EEF0EC; --ink2: #B2B8AF; --ink3: #858C83;
+  --line: #252925; --line2: #363C36; --fill: #222622; --good: #6CCB8C; --goodSoft: #16301F; --danger: #F0897D;
+  --hot: #F5A167; --accent: #B9A0E6; --accentInk: #1B1229; --accentSoft: #2A2240; --glass: rgba(30,34,30,.8);
+  --body: #363C36; --muscle: #2A2F2A; --sec: #5E4E80; --shadow: none;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,7 +34,7 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
   width: 390px; height: 844px; position: relative; overflow: hidden;
   background: var(--paper); color: var(--ink); font-family: Body; font-size: 15px;
 }
-.content { padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
+.content { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
 
 /* Status bar and Dynamic Island */
 .status { height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 46px; font-weight: 600; font-size: 16.5px; }
@@ -42,45 +42,34 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 124px; height: 36px; background: #000; border-radius: 20px; }
 
 /* Text styles from Components.swift */
-.display { font-family: Display; text-transform: uppercase; line-height: .95; letter-spacing: .2px; }
-.eyebrow { font-weight: 600; font-size: 12px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink3); }
+.num { font-family: Display; line-height: .95; letter-spacing: .2px; font-variant-numeric: tabular-nums; }
+.title { font-weight: 700; letter-spacing: -.2px; line-height: 1.15; }
+.eyebrow { font-weight: 500; font-size: 13.5px; color: var(--ink3); }
 .muted { color: var(--ink3); }
 .ink2 { color: var(--ink2); }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; }
+.card { background: var(--card); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: 22px; padding: 16px; box-shadow: var(--shadow); }
 .row { display: flex; align-items: center; }
 .between { justify-content: space-between; }
 .pill { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 12px; padding: 6px 10px; border-radius: 99px; background: var(--accentSoft); color: var(--accent); }
 .pill.live { background: var(--goodSoft); color: var(--good); }
 .pill.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 25%, transparent); }
 .streak { font-weight: 700; font-size: 12px; color: var(--hot); background: color-mix(in srgb, var(--hot) 16%, transparent); padding: 4px 8px; border-radius: 99px; }
-.btn-big { height: 58px; border-radius: 29px; background: var(--accent); color: var(--accentInk); font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn-big { height: 58px; border-radius: 29px; background: var(--accent); color: var(--accentInk); font-weight: 700; font-size: 17px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .btn { height: 40px; border-radius: 20px; padding: 0 16px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line2); }
 .btn.primary { background: var(--accent); color: var(--accentInk); border-color: transparent; }
 .section { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; }
-.section .display { font-size: 25px; }
+.section { padding: 14px 2px 0; }
+.section .title { font-size: 19px; }
 .section a { color: var(--accent); font-weight: 600; font-size: 14px; }
-
-/* Ticket divider */
-.ticket { position: relative; height: 16px; margin: 0 -16px; }
-.ticket::before { content: ""; position: absolute; left: 16px; right: 16px; top: 7px; border-top: 1.5px dashed var(--line2); }
-.ticket::after, .ticket i { content: ""; position: absolute; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); }
-.ticket::after { left: -8px; } .ticket i { right: -8px; }
-
-/* Bib */
-.bib { width: 56px; padding: 12px 0 9px; background: #FAFAF6; border-radius: 10px; color: #121412; text-align: center; position: relative; box-shadow: 0 1px 0 rgba(0,0,0,.08); }
-.dark .bib { background: #E9EAE4; }
-.bib small { display: block; font-weight: 700; font-size: 10.5px; letter-spacing: 1px; }
-.bib b { display: block; font-family: Display; font-size: 31px; line-height: 1; margin: 3px 0; }
-.bib::before, .bib::after { content: ""; position: absolute; top: 5px; width: 5px; height: 5px; border-radius: 50%; border: 1.3px solid rgba(0,0,0,.3); }
-.bib::before { left: 5px; } .bib::after { right: 5px; }
 
 /* Week strip */
 .week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; }
 .week span { font-weight: 600; font-size: 11px; color: var(--ink3); display: block; margin-bottom: 5px; }
 .week span.today { color: var(--accent); }
-.week i { display: flex; margin: 0 auto; width: 32px; height: 32px; border-radius: 9px; background: var(--line); align-items: center; justify-content: center; color: var(--accentInk); font-style: normal; font-weight: 700; }
+.week span { font-weight: 500 !important; font-size: 12px !important; }
+.week i { display: flex; margin: 0 auto; width: 34px; height: 34px; border-radius: 50%; background: var(--fill); align-items: center; justify-content: center; color: var(--accentInk); font-style: normal; font-weight: 700; }
 .week i.on { background: var(--accent); }
-.week i.today { background: transparent; border: 1.5px dashed var(--line2); }
+.week i.today { background: transparent; border: 2px solid var(--accent); }
 
 /* Tally marks */
 .tally { display: flex; gap: 12px; height: 20px; }
@@ -98,28 +87,28 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 
 /* Tiles */
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.tile { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 12px 12px; }
+.tile { background: var(--card); box-shadow: var(--shadow); border-radius: 18px; padding: 14px 12px 12px; }
 .tile .display { font-size: 32px; }
 .tile .eyebrow { font-size: 10.5px; margin-top: 4px; }
 
 /* Set rows */
 .sets { font-variant-numeric: tabular-nums; }
 .sets .h, .sets .r { display: grid; grid-template-columns: 32px 1fr 66px 58px 40px; gap: 6px; align-items: center; text-align: center; }
-.sets .h { font-weight: 600; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink3); padding: 4px 0 6px; }
+.sets .h { font-weight: 500; font-size: 12.5px; color: var(--ink3); padding: 4px 0 6px; }
 .sets .r { height: 44px; border-radius: 12px; margin-bottom: 4px; }
 .sets .r.done { background: var(--goodSoft); }
 .sets .n { font-family: Display; font-size: 19px; }
 .sets .n.w { color: var(--hot); font-family: Body; font-weight: 700; font-size: 13px; }
 .sets .prev { color: var(--ink3); font-size: 13.5px; }
-.sets .f { height: 36px; border-radius: 10px; background: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
+.sets .f { height: 36px; border-radius: 10px; background: var(--fill); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
 .sets .done .f { background: transparent; }
 .sets .ph { color: var(--ink3); font-weight: 500; }
-.check { width: 34px; height: 34px; border-radius: 10px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: var(--line); color: var(--ink3); }
+.check { width: 34px; height: 34px; border-radius: 10px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: var(--fill); color: var(--ink3); }
 .done .check { background: var(--good); color: #fff; }
 .dark .done .check { color: #0F120F; }
 .check svg { width: 16px; height: 16px; }
 
-.badge { width: 46px; height: 46px; border-radius: 12px; background: var(--paper); flex: none; display: flex; align-items: center; justify-content: center; }
+.badge { width: 46px; height: 46px; border-radius: 13px; background: var(--fill); flex: none; display: flex; align-items: center; justify-content: center; }
 .slot { width: 5px; height: 44px; border-radius: 3px; }
 
 /* Calendar */
@@ -141,20 +130,33 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 .flag .dot { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
 .zone { height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
 .zone b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
-.large { font-weight: 700; font-size: 34px; letter-spacing: -.4px; padding: 2px 0 4px; }
+.large { font-weight: 700; font-size: 32px; letter-spacing: -.6px; padding: 6px 2px 4px; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--line); border-radius: 12px; padding: 3px; font-weight: 600; font-size: 14px; text-align: center; }
 .seg span { padding: 7px; border-radius: 9px; color: var(--ink2); }
 .seg span.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.stat .eyebrow { font-size: 10.5px; }
-.stat .display { font-size: 28px; margin-top: 3px; }
-.tool { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; font-weight: 600; flex: 1; }
-.tool i { width: 34px; height: 34px; border-radius: 10px; background: var(--line); display: flex; align-items: center; justify-content: center; font-style: normal; }
-.wcard { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
-.wcard .display { font-size: 23px; }
-.wcard .meta { font-size: 13px; color: var(--ink2); margin: 6px 0 5px; }
-.wcard .ex { font-size: 13px; color: var(--ink2); line-height: 1.55; }
-.wcard .ex b { font-family: Display; font-weight: 400; font-size: 16px; color: var(--ink); margin-right: 5px; }
-.dock { position: absolute; left: 16px; right: 16px; bottom: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; background: var(--card); border: 1px solid var(--line2); border-radius: 40px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.stat .eyebrow { font-size: 12.5px; }
+.stat .num { font-size: 28px; margin-top: 3px; }
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tool { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 0; background: var(--card); border-radius: 18px; box-shadow: var(--shadow); font-weight: 600; font-size: 12.5px; }
+.tool i { width: 38px; height: 38px; border-radius: 50%; background: var(--accentSoft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-style: normal; }
+.tool svg { width: 18px; height: 18px; }
+.wcard { display: flex; gap: 14px; align-items: flex-start; background: var(--card); box-shadow: var(--shadow); border-radius: 20px; padding: 14px; }
+.wcard .title { font-size: 17px; }
+.wcard .meta { font-size: 13px; color: var(--ink3); margin: 4px 0 6px; }
+.wcard .ex { font-size: 13px; color: var(--ink2); line-height: 1.6; }
+.wcard .ex b { font-weight: 600; color: var(--ink); margin-right: 5px; }
+.bib { width: 52px; padding: 8px 0; background: var(--fill); border-radius: 14px; text-align: center; flex: none; }
+.bib small { display: block; font-weight: 600; font-size: 11px; color: var(--accent); }
+.bib b { display: block; font-weight: 700; font-size: 26px; line-height: 1.1; color: var(--ink); }
+.bib em { display: block; font-style: normal; font-weight: 500; font-size: 11px; color: var(--ink3); }
+.ring { position: relative; width: 64px; height: 64px; flex: none; }
+.ring svg { transform: rotate(-90deg); }
+.ring span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+.macro { flex: 1; }
+.macro .mbar { height: 6px; margin: 6px 0 4px; }
+.mhead { font-size: 18px; font-weight: 700; }
+.dock { position: absolute; left: 16px; right: 16px; bottom: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 40px; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.btn { border-width: 1px; background: var(--card); }
 .dock .btn { height: 44px; border-radius: 22px; }
 .mbar { height: 8px; border-radius: 4px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .mbar b { display: block; height: 100%; border-radius: 4px; }
@@ -185,93 +187,111 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 <!-- 1. Home -->
 <section class="phone light" id="home" data-tab="home">
   <div class="content">
-    <div class="row" style="gap:10px;height:42px">
-      <img src="../../Resources/Seal.png" width="38" height="38">
-      <span class="display" style="font-size:21px;letter-spacing:1.5px">Overload</span>
-      <span style="margin-left:auto;color:var(--ink2)"><svg width="22" height="18" viewBox="0 0 22 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 3h12M17 3h4M1 9h4M9 9h12M1 15h10M15 15h6"/><circle cx="15" cy="3" r="2"/><circle cx="7" cy="9" r="2"/><circle cx="13" cy="15" r="2"/></svg></span>
+    <div class="row between" style="padding:6px 0 4px">
+      <div><div class="muted" style="font-weight:500;font-size:14px">Thursday 22 October</div><div class="title" style="font-size:30px;letter-spacing:-.6px">Good evening</div></div>
+      <span style="width:42px;height:42px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M10.3 2.8h3.4l.5 2.4 1.9 1.1 2.3-.8 1.7 2.9-1.8 1.6v2l1.8 1.6-1.7 2.9-2.3-.8-1.9 1.1-.5 2.4h-3.4l-.5-2.4-1.9-1.1-2.3.8-1.7-2.9 1.8-1.6v-2L3.9 8.4l1.7-2.9 2.3.8 1.9-1.1z" stroke-linejoin="round"/></svg></span>
     </div>
 
-    <div class="card" style="border-radius:22px;box-shadow:0 10px 24px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:14px">
-      <div class="row between"><span class="pill">This week</span><span class="streak">4 wk</span></div>
-      <div class="row" style="gap:16px">
-        <div class="bib"><small>THU</small><b>22</b><small>OCT</small></div>
-        <div>
-          <div class="display" style="font-size:36px">2 workouts</div>
-          <div class="ink2" style="font-size:14px;margin-top:5px">1 h 51 min · 9,860 kg</div>
-        </div>
+    <div class="card" style="border-radius:26px;padding:18px;display:flex;flex-direction:column;gap:16px">
+      <div class="row between"><span class="eyebrow">This week</span><span class="streak">🔥 4 wk</span></div>
+      <div class="row" style="gap:8px;align-items:flex-end">
+        <span class="num" style="font-size:56px">2</span>
+        <div style="padding-bottom:4px"><div style="font-weight:600;font-size:16px">workouts</div><div class="muted" style="font-size:13px">1 h 51 min · 9,860 kg</div></div>
       </div>
       <div class="week">
         <div><span>M</span><i class="on">✓</i></div><div><span>T</span><i></i></div><div><span>W</span><i class="on">✓</i></div>
         <div><span class="today">T</span><i class="today"></i></div><div><span>F</span><i></i></div><div><span>S</span><i></i></div><div><span>S</span><i></i></div>
       </div>
-      <div class="ticket"><i></i></div>
       <div class="btn-big"><span style="font-size:22px;font-weight:500;margin-top:-2px">+</span> Start workout</div>
     </div>
 
-    <div class="card row" style="gap:14px;padding:15px">
+    <div class="tools">
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5"/></svg></i>Timer</div>
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="7" cy="12" r="5"/><circle cx="17" cy="12" r="5"/></svg></i>Plates</div>
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 5 6 19"/><circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="17" r="2.3"/></svg></i>1RM</div>
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg></i>Records</div>
+    </div>
+
+    <div class="section"><span class="title">Today</span></div>
+
+    <div class="card row" style="gap:16px;padding:15px">
+      <div class="ring"><svg width="64" height="64"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--fill)" stroke-width="8"/><circle cx="32" cy="32" r="27" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="105 400"/></svg><span>🍴</span></div>
       <div style="flex:1">
-        <div class="eyebrow">Reps today</div>
-        <div class="row" style="gap:6px;align-items:baseline;margin:6px 0 8px">
-          <span class="display" style="font-size:40px">35</span><span class="display muted" style="font-size:22px">/ 100</span>
-        </div>
-        <div class="tally">
-          <div class="g full"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></div>
-          <div class="g"><b class="on"></b><b class="on"></b><b></b><b></b></div>
-          <div class="g"><b></b><b></b><b></b><b></b></div>
-          <div class="g"><b></b><b></b><b></b><b></b></div>
-        </div>
+        <div class="eyebrow">Food today</div>
+        <div class="row" style="gap:6px;align-items:baseline;margin:3px 0 5px"><span class="num" style="font-size:36px">640</span><span class="muted" style="font-weight:600;font-size:14px">kcal left</span></div>
+        <div class="row" style="gap:10px;font-size:12px;font-weight:500;color:var(--ink2)"><span>● 98/150g</span><span>● 160/250g</span><span>● 52/70g</span></div>
       </div>
       <span class="muted">›</span>
     </div>
 
-    <div class="card">
-      <div class="row between"><span class="eyebrow">Today</span><span class="muted" style="font-size:12px;font-weight:600">♥ Apple Health</span></div>
-      <div class="row" style="gap:12px;margin-top:12px">
-        <div class="stat" style="flex:1"><div class="eyebrow">Steps</div><div class="display">6,412</div></div>
-        <div class="stat" style="flex:1"><div class="eyebrow">Active</div><div class="display">318 kcal</div></div>
-        <div class="stat" style="flex:1"><div class="eyebrow">Exercise</div><div class="display">24 min</div></div>
+    <div class="card row" style="gap:14px;padding:14px">
+      <span style="width:42px;height:42px;border-radius:13px;background:var(--accentSoft);color:var(--accent);display:flex;align-items:center;justify-content:center">☾</span>
+      <div style="flex:1"><div class="eyebrow" style="font-size:12.5px">Sleep</div><div style="font-weight:600">7 h 24 min asleep</div><div class="muted" style="font-size:13px">Bed by 23:00 tonight.</div></div>
+      <span class="title" style="width:42px;height:42px;border-radius:50%;border:4px solid var(--good);display:flex;align-items:center;justify-content:center;font-size:14px">84</span>
+    </div>
+  </div>
+</section>
+
+<!-- 1b. Home, dark -->
+<section class="phone dark" id="home-dark" data-tab="home">
+  <div class="content">
+    <div class="row between" style="padding:6px 0 4px">
+      <div><div class="muted" style="font-weight:500;font-size:14px">Thursday 22 October</div><div class="title" style="font-size:30px;letter-spacing:-.6px">Good evening</div></div>
+      <span style="width:42px;height:42px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M10.3 2.8h3.4l.5 2.4 1.9 1.1 2.3-.8 1.7 2.9-1.8 1.6v2l1.8 1.6-1.7 2.9-2.3-.8-1.9 1.1-.5 2.4h-3.4l-.5-2.4-1.9-1.1-2.3.8-1.7-2.9 1.8-1.6v-2L3.9 8.4l1.7-2.9 2.3.8 1.9-1.1z" stroke-linejoin="round"/></svg></span>
+    </div>
+    <div class="card" style="border-radius:26px;padding:18px;display:flex;flex-direction:column;gap:16px">
+      <div class="row between"><span class="pill live">In progress</span><span class="streak">🔥 4 wk</span></div>
+      <div><div class="title" style="font-size:23px">Upper A</div><div class="ink2" style="font-size:14px;margin-top:4px">⏱ 31:07 · 7 sets</div></div>
+      <div class="week">
+        <div><span>M</span><i class="on">✓</i></div><div><span>T</span><i></i></div><div><span>W</span><i class="on">✓</i></div>
+        <div><span class="today">T</span><i class="today"></i></div><div><span>F</span><i></i></div><div><span>S</span><i></i></div><div><span>S</span><i></i></div>
       </div>
+      <div class="btn-big">▶ Resume workout</div>
     </div>
-
-    <div class="row" style="gap:8px">
-      <div class="tool"><i>⏱</i>Timer<span class="muted" style="margin-left:auto">›</span></div>
-      <div class="tool"><i>◎</i>Plates<span class="muted" style="margin-left:auto">›</span></div>
+    <div class="tools">
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5"/></svg></i>Timer</div>
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="7" cy="12" r="5"/><circle cx="17" cy="12" r="5"/></svg></i>Plates</div>
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 5 6 19"/><circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="17" r="2.3"/></svg></i>1RM</div>
+      <div class="tool"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg></i>Records</div>
     </div>
-
-    <div class="section"><span class="display">Last workout</span></div>
-    <div class="wcard">
-      <div class="bib"><small>WED</small><b>21</b><small>OCT</small></div>
-      <div><div class="display">Lower A</div><div class="meta">58 min · 5,140 kg · 15 sets</div></div>
+    <div class="section"><span class="title">Today</span></div>
+    <div class="card">
+      <div class="row between"><span class="eyebrow">Activity</span><span class="muted" style="font-size:12px;font-weight:600">♥ Apple Health</span></div>
+      <div class="row" style="gap:12px;margin-top:10px">
+        <div class="stat" style="flex:1"><div class="eyebrow">Steps</div><div class="num">6,412</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Active</div><div class="num">318 kcal</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Exercise</div><div class="num">24 min</div></div>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- 2. Active workout -->
 <section class="phone light" id="workout">
-  <div class="content" style="gap:14px">
+  <div class="content" style="gap:12px">
     <div class="row between" style="height:42px">
-      <span style="color:var(--ink2);font-size:20px">⌄</span>
-      <span class="btn primary" style="height:36px">Finish</span>
+      <span style="width:38px;height:38px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;color:var(--ink2)">⌄</span>
+      <span class="btn primary" style="height:38px;background:var(--good);border-radius:19px">Finish</span>
     </div>
     <div style="padding:0 4px">
-      <div class="row between"><span class="pill live">In progress</span><span class="eyebrow" style="font-size:11px">Started 18:04</span></div>
-      <div class="display" style="font-size:34px;margin-top:10px">Upper A</div>
-      <div class="display" style="font-size:72px;margin-top:4px;font-variant-numeric:tabular-nums">31:07</div>
+      <div class="row between"><span class="pill live">In progress</span><span class="eyebrow" style="font-size:12.5px">Started 18:04 ✎</span></div>
+      <div class="title" style="font-size:26px;margin-top:10px">Upper A</div>
+      <div class="num" style="font-size:72px;margin-top:2px">31:07</div>
       <div class="row" style="gap:12px;margin-top:8px">
-        <div class="stat" style="flex:1"><div class="eyebrow">Volume</div><div class="display">3,180 kg</div></div>
-        <div class="stat" style="flex:1"><div class="eyebrow">Sets</div><div class="display">7/14</div></div>
-        <div class="stat" style="flex:1"><div class="eyebrow">Exercises</div><div class="display">4</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Volume</div><div class="num">3,180 kg</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Sets</div><div class="num">7/14</div></div>
+        <div class="stat" style="flex:1"><div class="eyebrow">Exercises</div><div class="num">4</div></div>
       </div>
     </div>
 
     <div class="card" style="padding:14px">
       <div class="row" style="gap:12px;margin-bottom:10px">
         <div class="badge"><svg class="fig" data-primary="chest,frontDelts" data-secondary="triceps" width="40" height="40"></svg></div>
-        <div class="display" style="font-size:22px;flex:1">Bench Press</div>
+        <div style="flex:1"><div class="title" style="font-size:17px">Bench Press</div><div class="muted" style="font-size:12px;font-weight:600">⏱ Rest 2:00</div></div>
         <span class="muted" style="font-size:18px">···</span>
       </div>
       <div class="sets">
-        <div class="h"><span>Set</span><span>Previous</span><span>Kg</span><span>Reps</span><span></span></div>
+        <div class="h"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div>
         <div class="r done"><span class="n">1</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
         <div class="r done"><span class="n">2</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
         <div class="r"><span class="n">3</span><span class="prev">70 × 7</span><span class="f ph">72.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
@@ -281,13 +301,13 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     <div class="card" style="padding:14px">
       <div class="row" style="gap:12px">
         <div class="badge"><svg class="fig" data-primary="lats,upperBack" data-secondary="biceps,rearDelts" width="40" height="40"></svg></div>
-        <div class="display" style="font-size:22px;flex:1">Lat Pulldown</div>
+        <div style="flex:1"><div class="title" style="font-size:17px">Lat Pulldown</div><div class="muted" style="font-size:12px;font-weight:600">⏱ Rest 2:00</div></div>
         <span class="muted" style="font-size:18px">···</span>
       </div>
     </div>
   </div>
   <div class="dock">
-    <div style="flex:1"><div class="eyebrow" style="font-size:11px">Rest</div><div class="display" style="font-size:30px">1:24</div></div>
+    <div style="flex:1"><div class="eyebrow" style="font-size:12.5px">Rest</div><div class="num" style="font-size:30px">1:24</div></div>
     <span class="btn">−15</span><span class="btn">+15</span><span class="btn primary">Skip</span>
   </div>
 </section>
@@ -298,24 +318,24 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     <div class="large">History</div>
     <div class="card">
       <div class="row between" style="margin-bottom:12px">
-        <span style="font-weight:600;font-size:16px">October 2026</span>
+        <span class="title" style="font-size:17px">October 2026</span>
         <span class="muted">‹ &nbsp; ›</span>
       </div>
       <div class="cal" id="cal"></div>
     </div>
-    <div class="row between" style="padding-top:6px"><span class="eyebrow">This week</span><span class="muted" style="font-size:12px">2 workouts</span></div>
+    <div class="row between" style="padding:8px 2px 0;align-items:baseline"><span class="title" style="font-size:19px">October 2026</span><span class="muted" style="font-size:13px;font-weight:500">9 workouts</span></div>
     <div class="wcard">
-      <div class="bib"><small>WED</small><b>21</b><small>OCT</small></div>
+      <div class="bib"><small>Wed</small><b>21</b><em>Oct</em></div>
       <div>
-        <div class="display">Lower A</div>
+        <div class="title">Lower A</div>
         <div class="meta">58 min · 5,140 kg · 15 sets</div>
         <div class="ex"><b>4×</b>Back Squat<br><b>3×</b>Romanian Deadlift<br><b>3×</b>Leg Press</div>
       </div>
     </div>
     <div class="wcard">
-      <div class="bib"><small>MON</small><b>19</b><small>OCT</small></div>
+      <div class="bib"><small>Mon</small><b>19</b><em>Oct</em></div>
       <div>
-        <div class="display">Upper A</div>
+        <div class="title">Upper A</div>
         <div class="meta">53 min · 4,720 kg · 14 sets</div>
         <div class="ex"><b>3×</b>Bench Press<br><b>3×</b>Lat Pulldown<br><b>3×</b>Seated Cable Row</div>
       </div>
@@ -328,20 +348,24 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
   <div class="content" style="gap:12px">
     <div class="large">Progress</div>
     <div class="seg"><span class="on">Overview</span><span>Exercises</span></div>
-    <div class="card" style="padding:14px;border-radius:16px">
-      <div class="row between" style="align-items:baseline"><span class="display" style="font-size:16px">Workouts per week</span><span class="muted" style="font-size:12.5px">Last 12 weeks</span></div>
+    <div class="tiles">
+      <div class="tile"><div class="num" style="font-size:32px">86</div><div class="eyebrow" style="font-size:12px;margin-top:4px">Workouts</div></div>
+      <div class="tile"><div class="num" style="font-size:32px;color:var(--hot)">🔥4</div><div class="eyebrow" style="font-size:12px;margin-top:4px">Week streak</div></div>
+      <div class="tile"><div class="num" style="font-size:32px">2</div><div class="eyebrow" style="font-size:12px;margin-top:4px">This week</div></div>
+    </div>
+    <div class="card" style="padding:14px">
+      <div class="row between" style="align-items:baseline"><span class="title" style="font-size:13.6px">Workouts per week</span><span class="muted" style="font-size:12.5px">Last 12 weeks</span></div>
       <div class="bars" style="height:90px;margin-top:12px" id="wk"></div>
     </div>
-    <div class="section"><span class="display">Muscles</span></div>
+    <div class="section"><span class="title">Muscles</span></div>
     <div class="card">
       <div class="row" style="justify-content:center;gap:6px">
-        <svg class="fig heat" data-view="front" width="100" height="200"></svg>
-        <svg class="fig heat" data-view="back" width="100" height="200"></svg>
+        <svg class="fig heat" data-view="front" width="90" height="180"></svg>
+        <svg class="fig heat" data-view="back" width="90" height="180"></svg>
       </div>
       <div style="margin-top:12px;font-size:14px">
         <div class="row between"><b style="font-weight:600">Chest</b><span class="muted">18 sets</span></div><div class="mbar"><b style="width:100%;background:#D2551F"></b></div>
         <div class="row between" style="margin-top:12px"><b style="font-weight:600">Back</b><span class="muted">16 sets</span></div><div class="mbar"><b style="width:89%;background:#2F7FD8"></b></div>
-        <div class="row between" style="margin-top:12px"><b style="font-weight:600">Legs</b><span class="muted">15 sets</span></div><div class="mbar"><b style="width:83%;background:#4C8A2B"></b></div>
       </div>
     </div>
   </div>
@@ -370,7 +394,7 @@ function draw(svg, view, fill) {
     const p = document.createElementNS(NS, 'path');
     p.setAttribute('d', d);
     p.setAttribute('fill', fill(m));
-    p.setAttribute('stroke', 'var(--paper)');
+    p.setAttribute('stroke', svg.classList.contains('heat') ? 'var(--card)' : 'var(--fill)');
     // Lines between the heads of one muscle are finer than the gaps between muscles.
     p.setAttribute('stroke-width', detail ? '1' : '2.2');
     p.setAttribute('stroke-linejoin', 'round');

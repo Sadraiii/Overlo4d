@@ -75,7 +75,7 @@ struct RecordsView: View {
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(10)
-                                    .background(Theme.paper, in: .rect(cornerRadius: 12))
+                                    .background(Theme.fill, in: .rect(cornerRadius: 12))
                                 }
                             }
                         }

@@ -67,7 +67,7 @@ struct ProgressTabView: View {
     }
 }
 
-/// Outdoor Office-style segmented control.
+/// Two- or three-way segmented control.
 struct Segmented<Value: Hashable & Identifiable & RawRepresentable<String> & CaseIterable>: View where Value.AllCases: RandomAccessCollection {
     @Binding var selection: Value
 
@@ -144,15 +144,14 @@ struct ProgressOverview: View {
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 16, weight: .semibold))
                         .frame(width: 34, height: 34)
-                        .background(Theme.line, in: .rect(cornerRadius: 10))
+                        .foregroundStyle(Theme.accent)
+                        .background(Theme.accentSoft, in: .rect(cornerRadius: 10))
                     Text("Weekly recaps").font(Typo.body(15, .semibold))
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
                 }
                 .foregroundStyle(Theme.ink)
-                .padding(10)
-                .background(Theme.card, in: .rect(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                .card(padding: 10, cornerRadius: 18)
             }
             .buttonStyle(.plain)
 
@@ -162,7 +161,7 @@ struct ProgressOverview: View {
                 Tile(value: "\(weeks.last?.workouts ?? 0)", label: "This week")
             }
 
-            // Workouts per week, as Outdoor Office's week bars.
+            // Workouts per week as bars.
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Workouts per week").display(16)
@@ -176,7 +175,7 @@ struct ProgressOverview: View {
                         VStack(spacing: 5) {
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(isNow && week.workouts == 0 ? .clear : Theme.paper)
+                                    .fill(isNow && week.workouts == 0 ? .clear : Theme.fill)
                                     .overlay {
                                         if isNow && week.workouts == 0 {
                                             RoundedRectangle(cornerRadius: 6)
@@ -204,7 +203,7 @@ struct ProgressOverview: View {
                     }
                 }
             }
-            .card(padding: 14, cornerRadius: 16)
+            .card(padding: 14, cornerRadius: 20)
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
@@ -224,7 +223,7 @@ struct ProgressOverview: View {
                 }
                 .frame(height: 150)
             }
-            .card(padding: 14, cornerRadius: 16)
+            .card(padding: 14, cornerRadius: 20)
 
             WeightCard()
 
@@ -260,8 +259,7 @@ struct ProgressOverview: View {
                         .padding(.vertical, 14)
                     }
                 }
-                .background(Theme.card, in: .rect(cornerRadius: 18))
-                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+                .card(padding: 0, cornerRadius: 18)
             }
         }
     }

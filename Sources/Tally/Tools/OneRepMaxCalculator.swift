@@ -73,8 +73,7 @@ struct OneRepMaxSheet: View {
                                     .padding(.vertical, 9)
                                 }
                             }
-                            .background(Theme.card, in: .rect(cornerRadius: 16))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                            .card(padding: 0, cornerRadius: 18)
                             Text("Epley formula, rounded to 2.5 kg.")
                                 .font(Typo.body(12.5))
                                 .foregroundStyle(Theme.ink3)

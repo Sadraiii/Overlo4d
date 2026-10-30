@@ -14,12 +14,13 @@ extension View {
             .background(ScreenBackground())
     }
 
-    /// Card with a hairline border.
-    func card(padding: CGFloat = 16, cornerRadius: CGFloat = 20) -> some View {
+    /// White card with a soft shadow (and a faint edge in dark mode).
+    func card(padding: CGFloat = 16, cornerRadius: CGFloat = 22) -> some View {
         self
             .padding(padding)
             .background(Theme.card, in: .rect(cornerRadius: cornerRadius))
-            .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Theme.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Theme.line.opacity(0.7), lineWidth: 1))
+            .shadow(color: Theme.shadow, radius: 12, y: 4)
     }
 
     /// Card colour for list rows.
@@ -27,22 +28,21 @@ extension View {
         listRowBackground(Theme.card)
     }
 
-    /// Small uppercase label, e.g. "THIS WEEK".
+    /// Small grey label, e.g. "This week".
     func eyebrow(_ size: CGFloat = 12) -> some View {
-        font(Typo.body(size, .semibold))
-            .tracking(size * 0.11)
-            .textCase(.uppercase)
+        font(Typo.body(size + 1.5, .medium))
             .foregroundStyle(Theme.ink3)
     }
 
-    /// Condensed uppercase heading.
+    /// Bold sentence-case heading. `size` is on the old condensed scale (40 ≈ a 28 pt title),
+    /// so call sites written for the condensed face keep their proportions.
     func display(_ size: CGFloat, black: Bool = false) -> some View {
-        font(Typo.display(size, black: black))
-            .textCase(.uppercase)
+        font(Typo.title(max(13, size * 0.6 + 4)))
+            .tracking(-0.2)
     }
 }
 
-/// Buttons from Outdoor Office: filled accent, ink, outline, done and quiet.
+/// Buttons: filled accent, ink, outline, done and quiet.
 struct OOButtonStyle: ButtonStyle {
     enum Kind { case primary, ink, outline, done, quiet, danger }
     enum Shape { case pill, rounded }
@@ -56,7 +56,7 @@ struct OOButtonStyle: ButtonStyle {
         let (background, foreground, border): (Color, Color, Color) = switch kind {
         case .primary: (Theme.accent, Theme.accentInk, .clear)
         case .ink: (Theme.ink, Theme.paper, .clear)
-        case .outline: (.clear, Theme.ink, Theme.line2)
+        case .outline: (Theme.card, Theme.ink, Theme.line2)
         case .done: (Theme.goodSoft, Theme.good, Theme.good.opacity(0.3))
         case .quiet: (.clear, Theme.ink2, .clear)
         case .danger: (.clear, Theme.danger, Theme.danger)
@@ -68,8 +68,7 @@ struct OOButtonStyle: ButtonStyle {
             .padding(.horizontal, height >= 54 ? 20 : 16)
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: height)
             .background(background, in: .rect(cornerRadius: radius))
-            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(border, lineWidth: 1.5))
-            .shadow(color: kind == .primary && height >= 54 ? Theme.accent.opacity(0.35) : .clear, radius: 12, y: 8)
+            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(border, lineWidth: 1))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -102,7 +101,8 @@ struct SectionHead<Trailing: View>: View {
                 .font(Typo.body(14, .semibold))
                 .foregroundStyle(Theme.accent)
         }
-        .padding(.top, 14)
+        .padding(.top, 18)
+        .padding(.horizontal, 2)
     }
 }
 
@@ -131,7 +131,7 @@ struct StatBlock: View {
     }
 }
 
-/// Small card with a big number, as on the Outdoor Office profile.
+/// Small card with a big number.
 struct Tile: View {
     let value: String
     let label: String
@@ -158,8 +158,9 @@ struct Tile: View {
         .padding(.horizontal, 12)
         .padding(.top, 14)
         .padding(.bottom, 12)
-        .background(Theme.card, in: .rect(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+        .background(Theme.card, in: .rect(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line.opacity(0.7), lineWidth: 1))
+        .shadow(color: Theme.shadow, radius: 10, y: 3)
     }
 }
 
@@ -212,33 +213,20 @@ struct StreakBadge: View {
     }
 }
 
-/// Dashed ticket divider with half-circle notches at the card edges.
+/// Hairline across a card. `inset` is kept for older call sites and no longer used.
 struct TicketDivider: View {
     var inset: CGFloat = 16
 
     var body: some View {
-        ZStack {
-            Line()
-                .stroke(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                .frame(height: 1.5)
-            HStack {
-                Circle().fill(Theme.paper).frame(width: 16, height: 16).offset(x: -inset - 8)
-                Spacer()
-                Circle().fill(Theme.paper).frame(width: 16, height: 16).offset(x: inset + 8)
-            }
-        }
-        .frame(height: 16)
-    }
-
-    private struct Line: Shape {
-        func path(in rect: CGRect) -> Path {
-            Path { $0.move(to: CGPoint(x: 0, y: rect.midY)); $0.addLine(to: CGPoint(x: rect.maxX, y: rect.midY)) }
-        }
+        Rectangle()
+            .fill(Theme.line)
+            .frame(height: 1)
+            .padding(.vertical, 4)
     }
 }
 
 extension MuscleGroup {
-    /// Category colours, in the style of Outdoor Office's sport bars.
+    /// Category colours for muscle groups.
     var color: Color {
         switch self {
         case .chest: Color(light: 0xD2551F, dark: 0xF2A66B)
@@ -266,11 +254,11 @@ struct ExerciseBadge: View {
             primary: Set(exercise?.primary ?? []),
             secondary: Set(exercise?.secondary ?? []),
             tertiary: Set(exercise?.tertiary ?? []),
-            gap: Theme.paper
+            gap: Theme.fill
         )
         .padding(size * 0.07)
         .frame(width: size, height: size)
-        .background(Theme.paper, in: .rect(cornerRadius: size * 0.26))
+        .background(Theme.fill, in: .rect(cornerRadius: size * 0.28))
         .accessibilityHidden(true)
     }
 }
@@ -316,12 +304,13 @@ struct FilterMenu<Value: Hashable & Identifiable>: View {
             .padding(.horizontal, 13)
             .frame(minHeight: 34)
             .background(isOn ? Theme.ink : Theme.card, in: .capsule)
+            .shadow(color: isOn ? .clear : Theme.shadow, radius: 6, y: 2)
             .overlay(Capsule().strokeBorder(isOn ? .clear : Theme.line2, lineWidth: 1))
         }
     }
 }
 
-/// Coloured vertical bar used on the right edge of cards (Outdoor Office "slot" bar).
+/// Coloured vertical bar used on the edge of cards.
 struct SlotBar: View {
     let color: Color
 

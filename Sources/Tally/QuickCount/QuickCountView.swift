@@ -151,7 +151,7 @@ struct WeekRepsCard: View {
                     let isToday = Calendar.current.isDateInToday(day.date)
                     VStack(spacing: 5) {
                         ZStack(alignment: .bottom) {
-                            RoundedRectangle(cornerRadius: 6).fill(Theme.paper)
+                            RoundedRectangle(cornerRadius: 6).fill(Theme.fill)
                             if day.reps > 0 {
                                 RoundedRectangle(cornerRadius: 6)
                                     .fill(day.reps >= model.dailyGoal ? Theme.good : Theme.accent)
@@ -167,7 +167,7 @@ struct WeekRepsCard: View {
                 }
             }
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 

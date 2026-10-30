@@ -55,8 +55,7 @@ struct WorkoutSummaryView: View {
                 if !WorkoutMuscles(workout, gym: gym).entries.isEmpty {
                     WorkoutMusclesCard(workout: workout)
                         .padding(16)
-                        .background(Theme.card, in: .rect(cornerRadius: 18))
-                        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                 }
 
                 if !records.isEmpty {
@@ -80,8 +79,7 @@ struct WorkoutSummaryView: View {
                             .padding(.vertical, 14)
                         }
                     }
-                    .background(Theme.card, in: .rect(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+                    .card(padding: 0, cornerRadius: 18)
                 }
 
                 VStack(spacing: 10) {

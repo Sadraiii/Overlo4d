@@ -36,8 +36,7 @@ struct StartWorkoutSheet: View {
                             .font(Typo.display(32))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
-                            .background(Theme.card, in: .rect(cornerRadius: 16))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                            .card(padding: 0, cornerRadius: 18)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -63,8 +62,7 @@ struct StartWorkoutSheet: View {
                                 )
                             }
                         }
-                        .background(Theme.card, in: .rect(cornerRadius: 18))
-                        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -271,8 +269,7 @@ struct RestSettingsSection: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
             }
-            .background(Theme.card, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            .card(padding: 0, cornerRadius: 18)
         }
     }
 }

@@ -112,14 +112,14 @@ struct TallyApp: App {
         }
     }
 
-    /// Navigation titles in the condensed display face, like Outdoor Office headings.
+    /// Navigation titles in bold Schibsted Grotesk, matching the in-page headings.
     private static func styleNavigationBars() {
         let appearance = UINavigationBar.appearance()
-        if let large = UIFont(name: "BigShouldersDisplayThin-ExtraBold", size: 44) {
-            appearance.largeTitleTextAttributes = [.font: large, .kern: 0.4]
+        if let large = UIFont(name: "SchibstedGrotesk-Bold", size: 32) {
+            appearance.largeTitleTextAttributes = [.font: large, .kern: -0.6]
         }
-        if let inline = UIFont(name: "BigShouldersDisplayThin-ExtraBold", size: 22) {
-            appearance.titleTextAttributes = [.font: inline, .kern: 0.6]
+        if let inline = UIFont(name: "SchibstedGrotesk-Bold", size: 17) {
+            appearance.titleTextAttributes = [.font: inline]
         }
     }
 }
@@ -208,8 +208,7 @@ struct WorkoutAccessory: View {
                     Circle().fill(Theme.good).frame(width: 8, height: 8)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(workout.name)
-                            .font(Typo.display(17))
-                            .textCase(.uppercase)
+                            .font(Typo.title(15))
                             .lineLimit(1)
                         Text("\(workout.completedSets.count) sets")
                             .font(Typo.body(12))

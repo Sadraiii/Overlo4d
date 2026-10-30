@@ -150,7 +150,7 @@ struct ExerciseEditorSection: View {
                     .font(Typo.body(14, .semibold))
                     .foregroundStyle(Theme.ink2)
                     .frame(maxWidth: .infinity, minHeight: 40)
-                    .background(Theme.paper, in: .rect(cornerRadius: 12))
+                    .background(Theme.fill, in: .rect(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
             }
             .buttonStyle(.plain)

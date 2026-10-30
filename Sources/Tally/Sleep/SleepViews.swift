@@ -140,7 +140,7 @@ struct SleepView: View {
                             .font(Typo.body(13, .semibold))
                             .foregroundStyle(Theme.ink3)
                     }
-                    .card(padding: 14, cornerRadius: 16)
+                    .card(padding: 14, cornerRadius: 20)
                 }
 
                 if let latest = nights.first {
@@ -174,7 +174,7 @@ struct SleepView: View {
                             .font(Typo.body(14, .semibold))
                             .foregroundStyle(nights.count < 3 ? Theme.ink3 : Theme.good)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .card(padding: 14, cornerRadius: 16)
+                            .card(padding: 14, cornerRadius: 20)
                     } else {
                         VStack(spacing: 0) {
                             ForEach(Array(report.flags.enumerated()), id: \.offset) { index, flag in
@@ -182,8 +182,7 @@ struct SleepView: View {
                                 SleepFlagRow(flag: flag, sleep: sleep)
                             }
                         }
-                        .background(Theme.card, in: .rect(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                     }
 
                     SectionHead("What affects your sleep")
@@ -207,8 +206,7 @@ struct SleepView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .background(Theme.card, in: .rect(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                    .card(padding: 0, cornerRadius: 18)
                 }
             }
             .padding(.horizontal, 16)
@@ -531,7 +529,7 @@ struct ReadinessRow: View {
             }
             Spacer(minLength: 0)
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 
@@ -581,8 +579,7 @@ struct TonightCard: View {
                 }
             }
         }
-        .background(Theme.card, in: .rect(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+        .card(padding: 0, cornerRadius: 18)
     }
 
     private func time(_ label: String, _ minutes: Int) -> some View {
@@ -632,7 +629,7 @@ struct SleepChart: View {
                 .font(Typo.body(12))
                 .foregroundStyle(Theme.ink3)
         }
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 
@@ -733,7 +730,7 @@ struct TagEffectsCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 
     private static func text(_ effect: SleepTagEffect) -> String {
@@ -800,7 +797,7 @@ struct TrainingLinkCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .card(padding: 14, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 
     private static func summary(_ link: SleepTrainingLink) -> String {

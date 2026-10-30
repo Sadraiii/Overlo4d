@@ -194,7 +194,7 @@ struct ExerciseDetailView: View {
                             }
                             Spacer(minLength: 0)
                         }
-                        .card(padding: 12, cornerRadius: 16)
+                        .card(padding: 12, cornerRadius: 20)
                     }
                 }
             }

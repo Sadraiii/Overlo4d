@@ -18,20 +18,28 @@ struct HomeTab: View {
 
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 10) {
-                        Seal(size: 38)
-                        Text("Overload")
-                            .font(Typo.display(21))
-                            .tracking(1.5)
-                            .textCase(.uppercase)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                                .font(Typo.body(14, .medium))
+                                .foregroundStyle(Theme.ink3)
+                            Text(Self.greeting())
+                                .font(Typo.title(30))
+                                .tracking(-0.6)
+                                .foregroundStyle(Theme.ink)
+                        }
                         Spacer()
-                        Button("Settings", systemImage: "slider.horizontal.3") { ui.showingSettings = true }
+                        Button("Settings", systemImage: "gearshape") { ui.showingSettings = true }
                             .labelStyle(.iconOnly)
-                            .font(.system(size: 19))
-                            .foregroundStyle(Theme.ink2)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Theme.ink)
                             .frame(width: 42, height: 42)
+                            .background(Theme.card, in: .circle)
+                            .shadow(color: Theme.shadow, radius: 8, y: 2)
                     }
+                    .padding(.top, 6)
+                    .padding(.bottom, 4)
 
                     if seenVersion != AppVersion.number {
                         UpdateBanner(
@@ -46,28 +54,30 @@ struct HomeTab: View {
 
                     WeekCard(onStart: onStart)
 
-                    LastWeekCard()
+                    HStack(spacing: 8) {
+                        ToolButton(title: "Timer", symbol: "stopwatch") { showingTimer = true }
+                        ToolButton(title: "Plates", symbol: "circle.grid.2x1") { showingPlates = true }
+                        ToolButton(title: "1RM", symbol: "percent") { showingOneRepMax = true }
+                        ToolButton(title: "Records", symbol: "trophy") { showingRecords = true }
+                    }
+
+                    SectionHead("Today")
 
                     FoodCard { ui.showingFood = true }
 
                     SleepCard()
 
-                    BodyCard()
-
-                    CoachCard()
+                    HealthCard()
 
                     RepsCard { ui.showingReps = true }
 
-                    HealthCard()
+                    SectionHead("Training")
 
-                    HStack(spacing: 8) {
-                        ToolButton(title: "Timer", symbol: "stopwatch") { showingTimer = true }
-                        ToolButton(title: "Plates", symbol: "circle.grid.2x1") { showingPlates = true }
-                    }
-                    HStack(spacing: 8) {
-                        ToolButton(title: "1RM", symbol: "percent") { showingOneRepMax = true }
-                        ToolButton(title: "Records", symbol: "trophy") { showingRecords = true }
-                    }
+                    LastWeekCard()
+
+                    CoachCard()
+
+                    BodyCard()
 
                     if let last = gym.workouts.first {
                         SectionHead("Last workout")
@@ -102,9 +112,18 @@ struct HomeTab: View {
             .sheet(isPresented: $showingChangelog) { ChangelogSheet() }
         }
     }
+
+    /// "Good morning" / "Good afternoon" / "Good evening" for the current hour.
+    static func greeting(at date: Date = .now) -> String {
+        switch Calendar.current.component(.hour, from: date) {
+        case 5..<12: "Good morning"
+        case 12..<18: "Good afternoon"
+        default: "Good evening"
+        }
+    }
 }
 
-/// This week's training as a ticket card, with the start button.
+/// This week's training: workout count, the week's days and the start button.
 struct WeekCard: View {
     @Environment(GymStore.self) private var gym
     let onStart: () -> Void
@@ -114,12 +133,12 @@ struct WeekCard: View {
         let thisWeek = gym.workouts.filter { gym.weekStart($0.startedAt) == gym.weekStart(.now) }
         let active = gym.activeWorkout
 
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
                 if active != nil {
                     StatusPill(text: "In progress", live: true)
                 } else {
-                    StatusPill(text: "This week")
+                    Text("This week").eyebrow()
                 }
                 Spacer()
                 if snapshot.weekStreak > 0 {
@@ -127,32 +146,37 @@ struct WeekCard: View {
                 }
             }
 
-            HStack(spacing: 16) {
-                Bib(date: .now)
-                VStack(alignment: .leading, spacing: 5) {
-                    if let active {
-                        Text(active.name).display(32).lineLimit(2)
-                        HStack(spacing: 6) {
-                            Image(systemName: "timer")
-                            Text(active.startedAt, style: .timer).monospacedDigit()
-                            Text("· \(active.completedSets.count) sets")
-                        }
-                        .font(Typo.body(14))
-                        .foregroundStyle(Theme.ink2)
-                    } else {
-                        Text("\(thisWeek.count) \(thisWeek.count == 1 ? "workout" : "workouts")").display(36)
+            if let active {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(active.name).display(32).lineLimit(2)
+                    HStack(spacing: 6) {
+                        Image(systemName: "timer")
+                        Text(active.startedAt, style: .timer).monospacedDigit()
+                        Text("· \(active.completedSets.count) sets")
+                    }
+                    .font(Typo.body(14))
+                    .foregroundStyle(Theme.ink2)
+                }
+            } else {
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text("\(thisWeek.count)")
+                        .font(Typo.display(56))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(thisWeek.count == 1 ? "workout" : "workouts")
+                            .font(Typo.body(16, .semibold))
                         if !thisWeek.isEmpty {
-                            Text("\(Fmt.volume(thisWeek.reduce(0) { $0 + $1.volume })) · \(Fmt.duration(thisWeek.reduce(0) { $0 + $1.duration }))")
-                                .font(Typo.body(14))
-                                .foregroundStyle(Theme.ink2)
+                            Text("\(Fmt.duration(thisWeek.reduce(0) { $0 + $1.duration })) · \(Fmt.volume(thisWeek.reduce(0) { $0 + $1.volume }))")
+                                .font(Typo.body(13))
+                                .foregroundStyle(Theme.ink3)
                         }
                     }
                 }
+                .foregroundStyle(Theme.ink)
             }
 
-            WeekStrip(days: snapshot.trainedDays(), todayIndex: ActivitySnapshot.weekdayIndex(), size: 32)
-
-            TicketDivider()
+            WeekStrip(days: snapshot.trainedDays(), todayIndex: ActivitySnapshot.weekdayIndex(), size: 34)
 
             Button(action: onStart) {
                 Label(active == nil ? "Start workout" : "Resume workout", systemImage: active == nil ? "plus" : "play.fill")
@@ -160,8 +184,7 @@ struct WeekCard: View {
             .buttonStyle(.bigPrimary)
             .sensoryFeedback(.impact, trigger: gym.isPresentingWorkout)
         }
-        .card(padding: 16, cornerRadius: 22)
-        .shadow(color: .black.opacity(0.06), radius: 14, y: 10)
+        .card(padding: 18, cornerRadius: 26)
     }
 }
 
@@ -237,11 +260,11 @@ struct UpdateBanner: View {
                 .contentShape(.rect)
                 .buttonStyle(.plain)
         }
-        .card(padding: 12, cornerRadius: 16)
+        .card(padding: 12, cornerRadius: 20)
     }
 }
 
-/// Small shortcut on Home (Timer, Plates, 1RM, Records).
+/// Small square shortcut on Home (Timer, Plates, 1RM, Records).
 struct ToolButton: View {
     let title: String
     let symbol: String
@@ -249,25 +272,27 @@ struct ToolButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            VStack(spacing: 7) {
                 Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 34, height: 34)
-                    .background(Theme.line, in: .rect(cornerRadius: 10))
-                Text(title).font(Typo.body(15, .semibold))
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 38, height: 38)
+                    .background(Theme.accentSoft, in: .circle)
+                Text(title)
+                    .font(Typo.body(12.5, .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
             }
-            .foregroundStyle(Theme.ink)
-            .padding(10)
-            .background(Theme.card, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .card(padding: 0, cornerRadius: 18)
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
     }
 }
 
-/// A finished workout as a ticket: date bib, title, stats and exercises.
+/// A finished workout: date badge, title, stats and exercises.
 struct WorkoutCard: View {
     @Environment(GymStore.self) private var gym
     let workout: Workout
@@ -285,7 +310,8 @@ struct WorkoutCard: View {
                     ForEach(workout.exercises.prefix(3)) { exercise in
                         HStack(spacing: 6) {
                             Text("\(exercise.sets.count)×")
-                                .font(Typo.display(16))
+                                .font(Typo.body(13, .semibold))
+                                .monospacedDigit()
                                 .foregroundStyle(Theme.ink)
                             Text(gym.name(of: exercise.exerciseID))
                                 .font(Typo.body(13))
@@ -307,11 +333,11 @@ struct WorkoutCard: View {
             }
             Spacer(minLength: 0)
         }
-        .card(padding: 12, cornerRadius: 16)
+        .card(padding: 14, cornerRadius: 20)
     }
 }
 
-/// Dashed "+ Exercise" button, as in Outdoor Office's workout sheet.
+/// Dashed "+ Exercise" button at the end of a workout.
 struct AddExerciseButton: View {
     let action: () -> Void
 

@@ -26,6 +26,7 @@ enum Changelog {
             "Progress photos: front, side and back, from the camera or your library, with last time's photo shown to line up the pose. Kept in the app only.",
             "Compare two days side by side or with a slider, see how weight and measurements changed in between, and share the before and after.",
             "Ask the coach can read your measurements.",
+            "New look: cleaner white cards, sentence-case headings, a calmer Home with a greeting, a simpler week card, one row of tools and Today and Training sections.",
         ]),
         ChangelogEntry(version: "0.8", date: DateComponents(year: 2026, month: 10, day: 27), changes: [
             "Sleep: naps are kept apart from the night, so a nap on the sofa no longer spoils the score.",
@@ -195,8 +196,7 @@ struct AboutSection: View {
                 }
                 .buttonStyle(.plain)
             }
-            .background(Theme.card, in: .rect(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+            .card(padding: 0, cornerRadius: 18)
         }
     }
 }

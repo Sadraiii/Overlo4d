@@ -195,8 +195,7 @@ struct TimerSheet: View {
                                 .padding(.vertical, 10)
                             }
                         }
-                        .background(Theme.card, in: .rect(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line, lineWidth: 1))
+                        .card(padding: 0, cornerRadius: 18)
                     }
                 }
                 .padding(16)
@@ -316,7 +315,7 @@ struct StepperRow: View {
                     .frame(width: 42, height: 40)
             }
             .foregroundStyle(Theme.ink)
-            .background(Theme.paper, in: .rect(cornerRadius: 12))
+            .background(Theme.fill, in: .rect(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
             .buttonStyle(.plain)
         }

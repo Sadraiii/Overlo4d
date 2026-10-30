@@ -23,7 +23,7 @@ struct HealthWorkoutCard: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Theme.accent)
         }
-        .card(padding: 12, cornerRadius: 16)
+        .card(padding: 12, cornerRadius: 20)
     }
 
     static func details(_ workout: HealthWorkout) -> String {

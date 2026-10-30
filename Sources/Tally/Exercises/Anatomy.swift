@@ -561,7 +561,7 @@ struct MuscleVolumeCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.paper, in: .rect(cornerRadius: 14))
+        .background(Theme.fill, in: .rect(cornerRadius: 14))
     }
 
     private func row(_ muscle: Muscle, sets: Double, scale: Double) -> some View {
@@ -592,7 +592,7 @@ struct MuscleVolumeCard: View {
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 8)
-            .background(selected == muscle ? Theme.paper : .clear, in: .rect(cornerRadius: 10))
+            .background(selected == muscle ? Theme.fill : .clear, in: .rect(cornerRadius: 10))
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
