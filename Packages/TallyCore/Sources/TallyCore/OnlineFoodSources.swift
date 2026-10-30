@@ -57,7 +57,10 @@ public enum USDAFoods {
         return Food(
             id: "usda:\(id)",
             name: tidy(description),
-            per100: Nutrients(kcal: kcal.rounded(), carbs: carbs, protein: protein, fat: fat, fiber: grams(1079), sugar: grams(2000, 1063)),
+            per100: Nutrients(
+                kcal: kcal.rounded(), carbs: carbs, protein: protein, fat: fat, fiber: grams(1079), sugar: grams(2000, 1063),
+                saturatedFat: grams(1258), sodium: grams(1093).map { $0 / 1000 }
+            ),
             source: .usda
         )
     }
@@ -221,7 +224,9 @@ public enum Spoonacular {
                 protein: amount("Protein") ?? 0,
                 fat: amount("Fat") ?? 0,
                 fiber: amount("Fiber"),
-                sugar: amount("Sugar")
+                sugar: amount("Sugar"),
+                saturatedFat: amount("Saturated Fat"),
+                sodium: amount("Sodium").map { $0 / 1000 }
             ),
             servingGrams: servingGrams,
             ingredients: ingredients,

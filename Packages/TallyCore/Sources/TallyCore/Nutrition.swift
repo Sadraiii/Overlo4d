@@ -8,15 +8,27 @@ public struct Nutrients: Codable, Hashable, Sendable {
     public var fat: Double
     public var fiber: Double?
     public var sugar: Double?
+    /// Saturated fat, grams.
+    public var saturatedFat: Double?
+    /// Sodium, grams. Food labels in the EU list salt instead, which is sodium × 2.5.
+    public var sodium: Double?
 
-    public init(kcal: Double, carbs: Double = 0, protein: Double = 0, fat: Double = 0, fiber: Double? = nil, sugar: Double? = nil) {
+    public init(
+        kcal: Double, carbs: Double = 0, protein: Double = 0, fat: Double = 0, fiber: Double? = nil, sugar: Double? = nil,
+        saturatedFat: Double? = nil, sodium: Double? = nil
+    ) {
         self.kcal = kcal
         self.carbs = carbs
         self.protein = protein
         self.fat = fat
         self.fiber = fiber
         self.sugar = sugar
+        self.saturatedFat = saturatedFat
+        self.sodium = sodium
     }
+
+    /// Salt in grams, as EU labels show it.
+    public var salt: Double? { sodium.map { $0 * 2.5 } }
 
     public static let zero = Nutrients(kcal: 0)
 
@@ -27,7 +39,9 @@ public struct Nutrients: Codable, Hashable, Sendable {
             protein: protein * factor,
             fat: fat * factor,
             fiber: fiber.map { $0 * factor },
-            sugar: sugar.map { $0 * factor }
+            sugar: sugar.map { $0 * factor },
+            saturatedFat: saturatedFat.map { $0 * factor },
+            sodium: sodium.map { $0 * factor }
         )
     }
 
@@ -38,7 +52,9 @@ public struct Nutrients: Codable, Hashable, Sendable {
             protein: lhs.protein + rhs.protein,
             fat: lhs.fat + rhs.fat,
             fiber: add(lhs.fiber, rhs.fiber),
-            sugar: add(lhs.sugar, rhs.sugar)
+            sugar: add(lhs.sugar, rhs.sugar),
+            saturatedFat: add(lhs.saturatedFat, rhs.saturatedFat),
+            sodium: add(lhs.sodium, rhs.sodium)
         )
     }
 

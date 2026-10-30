@@ -26,6 +26,11 @@ enum Changelog {
             "Progress photos: front, side and back, from the camera or your library, with last time's photo shown to line up the pose. Kept in the app only.",
             "Compare two days side by side or with a slider, see how weight and measurements changed in between, and share the before and after.",
             "Ask the coach can read your measurements.",
+            "Food: a Nutrition screen for the day or the last 7 days, with your macro split against the goal and fibre, sugar, saturated fat and salt against daily guidelines.",
+            "Foods get a rating dot (great, good, OK now and then, best kept small) in search and on the food screen.",
+            "Saturated fat and salt are read from Open Food Facts, USDA and Spoonacular, and can be typed in for your own foods.",
+            "The week chart shows how far over or under your goal and maintenance you were, and the weight change that adds up to.",
+            "Food goals show your daily deficit and the date you'd reach your goal weight.",
             "New look: cleaner white cards, sentence-case headings, a calmer Home with a greeting, a simpler week card, one row of tools and Today and Training sections.",
         ]),
         ChangelogEntry(version: "0.8", date: DateComponents(year: 2026, month: 10, day: 27), changes: [

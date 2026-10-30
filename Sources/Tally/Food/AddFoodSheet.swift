@@ -419,10 +419,15 @@ struct FoodResultRow: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(food.name)
-                    .font(Typo.body(15, .medium))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
+                HStack(spacing: 7) {
+                    if let rating = FoodRating(food) {
+                        FoodRatingBadge(rating: rating)
+                    }
+                    Text(food.name)
+                        .font(Typo.body(15, .medium))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(2)
+                }
                 Text(detail)
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)
@@ -523,14 +528,12 @@ struct FoodAmountView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                    if nutrients.fiber != nil || nutrients.sugar != nil {
+                    NutrientDetails(nutrients: nutrients)
+                    if let rating = FoodRating(food) {
                         HStack {
-                            if let sugar = nutrients.sugar { Text("of which sugar \(Fmt.grams(sugar))") }
+                            FoodRatingBadge(rating: rating, showsLabel: true)
                             Spacer()
-                            if let fiber = nutrients.fiber { Text("Fibre \(Fmt.grams(fiber))") }
                         }
-                        .font(Typo.body(12.5))
-                        .foregroundStyle(Theme.ink3)
                     }
                 }
                 .card(padding: 16, cornerRadius: 20)
@@ -718,6 +721,8 @@ struct CustomFoodEditor: View {
     @State private var fat: Double?
     @State private var sugar: Double?
     @State private var fiber: Double?
+    @State private var saturatedFat: Double?
+    @State private var salt: Double?
     @State private var servingGrams: Double?
     @State private var servingLabel: String
     @State private var barcode: String
@@ -735,6 +740,8 @@ struct CustomFoodEditor: View {
         _fat = State(initialValue: food?.per100.fat)
         _sugar = State(initialValue: food?.per100.sugar)
         _fiber = State(initialValue: food?.per100.fiber)
+        _saturatedFat = State(initialValue: food?.per100.saturatedFat)
+        _salt = State(initialValue: food?.per100.salt)
         _servingGrams = State(initialValue: food?.servingGrams)
         _servingLabel = State(initialValue: food?.servingLabel ?? "")
         _barcode = State(initialValue: food?.barcode ?? barcode ?? "")
@@ -762,7 +769,9 @@ struct CustomFoodEditor: View {
                 LabeledNumber(label: "of which sugar", unit: "g", value: $sugar)
                 LabeledNumber(label: "Protein", unit: "g", value: $protein)
                 LabeledNumber(label: "Fat", unit: "g", value: $fat)
+                LabeledNumber(label: "of which saturated", unit: "g", value: $saturatedFat)
                 LabeledNumber(label: "Fibre", unit: "g", value: $fiber)
+                LabeledNumber(label: "Salt", unit: "g", value: $salt)
             } header: {
                 Text("Per 100 g").eyebrow(11)
             }
@@ -813,7 +822,10 @@ struct CustomFoodEditor: View {
             id: id,
             name: trimmedName,
             brand: trimmedBrand.isEmpty ? nil : trimmedBrand,
-            per100: Nutrients(kcal: energy, carbs: carbs ?? 0, protein: protein ?? 0, fat: fat ?? 0, fiber: fiber, sugar: sugar),
+            per100: Nutrients(
+                kcal: energy, carbs: carbs ?? 0, protein: protein ?? 0, fat: fat ?? 0, fiber: fiber, sugar: sugar,
+                saturatedFat: saturatedFat, sodium: salt.map { $0 / 2.5 }
+            ),
             servingGrams: serving,
             servingLabel: serving.map { trimmedLabel.isEmpty ? "\(Int($0)) g" : trimmedLabel },
             barcode: code.isEmpty ? nil : (Barcode.normalize(code) ?? code),

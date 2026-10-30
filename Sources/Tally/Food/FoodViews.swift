@@ -77,7 +77,7 @@ struct FoodCard: View {
                             .contentTransition(.numericText())
                             .foregroundStyle(summary.remaining < 0 ? Theme.danger : Theme.ink)
                         Text(summary.remaining < 0 ? "kcal over" : "kcal left")
-                            .font(Typo.display(19))
+                            .font(Typo.body(14, .semibold))
                             .foregroundStyle(Theme.ink3)
                     }
                     HStack(spacing: 10) {
@@ -131,6 +131,7 @@ struct FoodDiaryView: View {
     @State private var day = DayKey(.now)
     @State private var sheet: SheetKind?
     @State private var showingRecipes = false
+    @State private var showingNutrition = false
 
     var body: some View {
         let summary = food.summary(day)
@@ -143,6 +144,23 @@ struct FoodDiaryView: View {
                 }
 
                 FoodSummaryCard(summary: summary, showsExercise: food.countsExercise && health.isConnected)
+
+                Button { showingNutrition = true } label: {
+                    HStack {
+                        Label("Nutrition", systemImage: "chart.pie")
+                            .font(Typo.body(15, .semibold))
+                        Spacer()
+                        Text("Fibre, sugar, salt and more")
+                            .font(Typo.body(12.5))
+                            .foregroundStyle(Theme.ink3)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                    .foregroundStyle(Theme.ink)
+                    .card(padding: 14, cornerRadius: 18)
+                }
+                .buttonStyle(.plain)
 
                 WaterCard(day: day)
 
@@ -190,6 +208,7 @@ struct FoodDiaryView: View {
             .environment(health)
         }
         .navigationDestination(isPresented: $showingRecipes) { RecipesView(day: day) }
+        .navigationDestination(isPresented: $showingNutrition) { NutritionView(day: day) }
         .task {
             await health.refresh()
             food.recordExercise(health.today.activeEnergy, on: food.today)
@@ -547,6 +566,8 @@ struct CalorieWeekCard: View {
                 AxisMarks(position: .leading, values: .automatic(desiredCount: 3))
             }
             .frame(height: 140)
+
+            CalorieBalanceLine(balance: food.diary.balance(endingOn: endingOn, today: food.today), profile: food.diary.profile)
 
             let streak = food.diary.streak(today: food.today)
             if streak > 1 {

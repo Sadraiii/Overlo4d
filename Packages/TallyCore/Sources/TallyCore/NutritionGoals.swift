@@ -112,6 +112,22 @@ public struct NutritionProfile: Codable, Hashable, Sendable {
         return (value / 10).rounded() * 10
     }
 
+    /// Calories a day under (negative) or over (positive) maintenance, after the floor and rounding.
+    public var dailyChangeKcal: Double { dailyKcal - maintenanceKcal }
+
+    /// The weekly change the goal really gives, which is slower than planned when the floor kicks in.
+    public var effectiveWeeklyRateKg: Double { abs(dailyChangeKcal) * 7 / 7700 }
+
+    /// True when losing weight and the goal was raised to the safe minimum.
+    public var isAtFloor: Bool { goal == .lose && effectiveWeeklyRateKg < weeklyRateKg - 0.05 }
+
+    /// When the target weight is reached at the effective rate. Nil when keeping weight, without a target, or already there.
+    public func targetDate(from now: Date, calendar: Calendar = .current) -> Date? {
+        guard goal != .maintain, let targetKg else { return nil }
+        return WeightProgress(start: weightKg, current: weightKg, target: targetKg, weeklyRate: effectiveWeeklyRateKg)
+            .projectedDate(from: now, calendar: calendar)
+    }
+
     /// Calories and macro grams for a day.
     public var dailyGoal: Nutrients { macros.goal(kcal: dailyKcal) }
 }

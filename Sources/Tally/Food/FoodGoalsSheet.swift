@@ -96,11 +96,16 @@ struct FoodGoalsSheet: View {
                 } header: {
                     Text("Goal").eyebrow(11)
                 } footer: {
-                    if profile.goal == .lose && profile.weeklyRateKg > 0.75 {
-                        Text("Losing more than 0.75 kg a week makes it hard to keep muscle. Keep protein high.")
-                            .font(Typo.body(12.5))
-                            .foregroundStyle(Theme.ink3)
+                    VStack(alignment: .leading, spacing: 6) {
+                        if !usesCustom, profile.goal != .maintain {
+                            Text(planText)
+                        }
+                        if profile.goal == .lose && profile.weeklyRateKg > 0.75 {
+                            Text("Losing more than 0.75 kg a week makes it hard to keep muscle. Keep protein high.")
+                        }
                     }
+                    .font(Typo.body(12.5))
+                    .foregroundStyle(Theme.ink3)
                 }
                 .cardRow()
 
@@ -239,6 +244,20 @@ struct FoodGoalsSheet: View {
             }
             .onAppear(perform: load)
         }
+    }
+
+    /// "That's 550 kcal a day under maintenance. You'd reach 75 kg around 12 Feb."
+    private var planText: String {
+        let plan = draft
+        let change = Int(abs(plan.dailyChangeKcal).rounded())
+        var text = "That's \(change.formatted()) kcal a day \(plan.dailyChangeKcal < 0 ? "under" : "over") maintenance."
+        if plan.isAtFloor {
+            text += " Held at the safe minimum, so expect about \(plan.effectiveWeeklyRateKg.formatted(.number.precision(.fractionLength(1)))) kg a week."
+        }
+        if let date = plan.targetDate(from: .now), let target = plan.targetKg {
+            text += " You'd reach \(target.formatted()) kg around \(date.formatted(.dateTime.day().month(.abbreviated).year()))."
+        }
+        return text
     }
 
     private func load() {

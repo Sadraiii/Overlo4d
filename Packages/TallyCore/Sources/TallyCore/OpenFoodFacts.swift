@@ -81,7 +81,9 @@ public enum OpenFoodFacts {
                 protein: protein,
                 fat: fat,
                 fiber: number(nutriments["fiber_100g"]),
-                sugar: number(nutriments["sugars_100g"])
+                sugar: number(nutriments["sugars_100g"]),
+                saturatedFat: number(nutriments["saturated-fat_100g"]),
+                sodium: number(nutriments["sodium_100g"]) ?? number(nutriments["salt_100g"]).map { $0 / 2.5 }
             ),
             servingGrams: servingGrams,
             servingLabel: servingGrams == nil ? nil : servingLabel,
