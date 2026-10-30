@@ -17,5 +17,11 @@ const out = path.join(here, '../../docs/images');
     await phone.screenshot({ path: path.join(out, `screen-${id}.png`) });
   }
 
+  // Widgets: one image of all of them.
+  await page.goto('file://' + path.join(here, 'widgets.html'));
+  await page.evaluate(() => document.fonts.ready);
+  await page.setViewportSize({ width: 2200, height: 1000 });
+  await page.screenshot({ path: path.join(out, 'widgets.png'), fullPage: true });
+
   await browser.close();
 })();

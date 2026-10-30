@@ -18,9 +18,9 @@ struct WorkoutLiveActivity: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Text(context.attributes.workoutName)
-                        .font(Typo.display(18))
-                        .textCase(.uppercase)
+                        .font(Typo.title(15))
                         .lineLimit(1)
+                        .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(context.attributes.startedAt, style: .timer)
@@ -118,8 +118,7 @@ struct LockScreenActivityView: View {
                     WidgetLabel(text: "In progress")
                 }
                 Text(context.attributes.workoutName)
-                    .font(Typo.display(24))
-                    .textCase(.uppercase)
+                    .font(Typo.title(20))
                     .lineLimit(1)
                     .foregroundStyle(Theme.ink)
                 NextUp(state: context.state)
@@ -164,8 +163,7 @@ struct RestBanner: View {
                 }
                 Spacer()
                 Text(workoutName)
-                    .font(Typo.body(11.5, .semibold))
-                    .textCase(.uppercase)
+                    .font(Typo.body(12.5, .semibold))
                     .foregroundStyle(Theme.ink3)
                     .lineLimit(1)
             }
@@ -207,8 +205,7 @@ struct RestOverBanner: View {
                     WidgetLabel(text: "Rest over")
                 }
                 Text("Next set")
-                    .font(Typo.display(30))
-                    .textCase(.uppercase)
+                    .font(Typo.title(24))
                     .foregroundStyle(Theme.good)
                 NextUp(state: state)
             }
@@ -292,8 +289,7 @@ struct ActivityDetail: View {
                 }
                 Spacer()
                 Text("Go")
-                    .font(Typo.display(30))
-                    .textCase(.uppercase)
+                    .font(Typo.title(24))
                     .foregroundStyle(Theme.good)
             }
         case .training:

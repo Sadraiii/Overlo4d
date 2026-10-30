@@ -1,0 +1,358 @@
+<!doctype html>
+<!--
+  Mockups of the widgets (Sources/TallyWidget) laid out like the SwiftUI views, with the app's colours and fonts.
+  Not simulator captures. Render with: node scripts/mockups/render.js
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: Display; src: url(../../Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf); }
+@font-face { font-family: Body; font-weight: 400; src: url(../../Resources/Fonts/SchibstedGrotesk-Regular.ttf); }
+@font-face { font-family: Body; font-weight: 500; src: url(../../Resources/Fonts/SchibstedGrotesk-Medium.ttf); }
+@font-face { font-family: Body; font-weight: 600; src: url(../../Resources/Fonts/SchibstedGrotesk-SemiBold.ttf); }
+@font-face { font-family: Body; font-weight: 700; src: url(../../Resources/Fonts/SchibstedGrotesk-Bold.ttf); }
+
+.light {
+  --card: #FFFFFF; --ink: #111411; --ink2: #4F554F; --ink3: #868C85; --line: #E9EBE6; --fill: #F1F2EF;
+  --good: #2C7748; --hot: #C4561A; --accent: #5A3E8A; --accentInk: #FFFFFF; --accentSoft: #E8E1F2; --danger: #B0382C;
+}
+.dark {
+  --card: #171A17; --ink: #EEF0EC; --ink2: #B2B8AF; --ink3: #858C83; --line: #252925; --fill: #222622;
+  --good: #6CCB8C; --hot: #F5A167; --accent: #B9A0E6; --accentInk: #1B1229; --accentSoft: #2A2240; --danger: #F0897D;
+}
+/* StandBy: no container background, dark colours on black. */
+.standby { --card: transparent; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #d9dbd6; font-family: Body; padding: 36px; display: flex; gap: 36px; align-items: flex-start; width: max-content; }
+.col { display: flex; flex-direction: column; gap: 14px; }
+.panel { border-radius: 44px; padding: 26px 22px; position: relative; overflow: hidden; }
+.panel h2 { font-weight: 700; font-size: 17px; margin: 0 0 14px 4px; letter-spacing: -.2px; }
+.home-light { background: linear-gradient(160deg, #cfc6e4 0%, #e9e2d6 55%, #c9d8cf 100%); width: 382px; }
+.home-light h2 { color: #2b2533; }
+.home-dark { background: linear-gradient(160deg, #241d33 0%, #151915 60%, #13241b 100%); width: 382px; }
+.home-dark h2 { color: #eee; }
+.lock { background: linear-gradient(170deg, #3a2f55 0%, #1d2230 60%, #10151b 100%); width: 382px; color: #fff; }
+.lock h2 { color: #fff; }
+.stand { background: #000; width: 760px; border-radius: 36px; }
+.stand h2 { color: #ddd; }
+
+.grid { display: grid; grid-template-columns: 158px 158px; gap: 22px; }
+.w { background: var(--card); color: var(--ink); border-radius: 22px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.12); display: flex; flex-direction: column; }
+.s { width: 158px; height: 158px; }
+.m { width: 338px; height: 158px; grid-column: span 2; }
+.l { width: 338px; height: 354px; grid-column: span 2; }
+.standby .w { box-shadow: none; width: 330px; height: 330px; padding: 22px; }
+
+.num { font-family: Display; line-height: .9; font-variant-numeric: tabular-nums; }
+.head { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 13px; color: var(--ink2); white-space: nowrap; }
+.head svg { width: 12px; height: 12px; fill: var(--accent); flex: none; }
+.head .note { margin-left: auto; font-weight: 500; font-size: 12px; color: var(--ink3); }
+.label { font-weight: 500; font-size: 12.5px; color: var(--ink3); }
+.big { display: flex; align-items: baseline; gap: 4px; }
+.unit { font-weight: 600; color: var(--ink3); }
+.sub { font-weight: 600; font-size: 11.5px; color: var(--ink2); display: flex; align-items: center; gap: 4px; }
+.flame { color: var(--hot); }
+.spacer { flex: 1; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 11.5px; color: var(--hot); background: var(--fill); padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
+.chip.accent { color: var(--accent); }
+.chip svg { width: 11px; height: 11px; fill: currentColor; }
+
+.dots { display: flex; justify-content: space-between; }
+.dots div { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.dots span { font-weight: 500; color: var(--ink3); }
+.dots span.t { color: var(--accent); }
+.dots i { border-radius: 50%; background: var(--fill); display: flex; align-items: center; justify-content: center; color: var(--accentInk); font-style: normal; font-weight: 800; }
+.dots i.on { background: var(--accent); }
+.dots i.today { background: transparent; border: 2px solid var(--accent); }
+
+.bib { width: 40px; padding: 5px 0; background: var(--fill); border-radius: 9px; text-align: center; flex: none; }
+.bib small { display: block; font-weight: 600; font-size: 9px; color: var(--accent); }
+.bib b { display: block; font-weight: 700; font-size: 19px; line-height: 1.05; }
+.bib em { display: block; font-style: normal; font-weight: 500; font-size: 9px; color: var(--ink3); }
+.last { display: flex; align-items: center; gap: 10px; }
+.last .name { font-weight: 700; font-size: 15px; line-height: 1.15; }
+.last .det { font-weight: 500; font-size: 11.5px; color: var(--ink2); margin-top: 2px; }
+.well { background: var(--fill); border-radius: 16px; padding: 12px; }
+
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 54px; margin-top: 6px; }
+.bars div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 3px; font-weight: 600; font-size: 10px; color: var(--ink3); }
+.bars b { display: block; width: 100%; border-radius: 4px; background: var(--accentSoft); }
+.bars .cur { color: var(--accent); }
+.bars .cur b { background: var(--accent); }
+
+.ring { position: relative; flex: none; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring .c small { font-weight: 600; color: var(--ink3); }
+
+.macro { display: flex; flex-direction: column; gap: 3px; }
+.macro .r { display: flex; justify-content: space-between; font-size: 11.5px; }
+.macro .r b { font-weight: 600; color: var(--ink2); }
+.macro .r span { font-weight: 500; color: var(--ink3); font-variant-numeric: tabular-nums; }
+.meter { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 3px; }
+.ex { display: flex; justify-content: space-between; align-items: baseline; font-weight: 500; font-size: 13px; color: var(--ink2); }
+.ex .num { font-size: 20px; color: var(--ink); }
+.ex.zero, .ex.zero .num { color: var(--ink3); }
+.sep { height: 1px; background: var(--line); }
+
+.tally { display: flex; gap: 10px; height: 16px; }
+.tally .g { flex: 1; display: flex; justify-content: space-between; padding: 0 3px; position: relative; }
+.tally .g i { width: 3px; border-radius: 2px; background: var(--line); }
+.tally .g i.on { background: var(--ink); }
+.tally .g.full::after { content: ""; position: absolute; left: -3px; right: -3px; top: 6px; height: 2.4px; border-radius: 2px; background: var(--accent); transform: rotate(-21deg); }
+
+/* Lock screen accessories: white, vibrant */
+.clock { text-align: center; margin: 4px 0 6px; }
+.clock .date { font-weight: 600; font-size: 17px; opacity: .85; }
+.clock .time { font-family: Display; font-size: 92px; line-height: 1; letter-spacing: 1px; }
+.inline { text-align: center; font-weight: 600; font-size: 15px; opacity: .9; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.inline svg { width: 13px; height: 13px; fill: #fff; }
+.acc-row { display: flex; gap: 12px; justify-content: center; margin-top: 12px; }
+.circ { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,.14); position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #fff; }
+.circ svg.arc { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.circ .n { font-family: Display; font-size: 26px; line-height: .9; }
+.circ small { font-weight: 700; font-size: 9px; }
+.circ svg.ic { width: 11px; height: 11px; fill: #fff; position: absolute; bottom: 8px; }
+.rect { width: 160px; height: 72px; color: #fff; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.rect .t { display: flex; align-items: baseline; gap: 4px; font-weight: 700; font-size: 14px; }
+.rect .t .num { font-size: 24px; }
+.rect .t .sm { font-weight: 600; font-size: 13px; }
+.rect .lin { height: 5px; border-radius: 3px; background: rgba(255,255,255,.25); }
+.rect .lin i { display: block; height: 100%; border-radius: 3px; background: #fff; }
+.rect .s2 { font-size: 12px; opacity: .65; white-space: nowrap; overflow: hidden; }
+.rect .dots i { background: rgba(255,255,255,.2); }
+.rect .dots i.on { background: #fff; }
+.rect .dots i.today { border-color: #fff; background: transparent; }
+.la { margin-top: 18px; background: rgba(23,26,23,.92); border-radius: 22px; padding: 16px; color: #EEF0EC; }
+.la .top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; }
+.la .top .k { display: flex; gap: 6px; align-items: center; color: #858C83; font-weight: 500; }
+.la .top .k svg { width: 11px; height: 11px; fill: #B9A0E6; }
+.la .top .w2 { color: #858C83; font-weight: 600; }
+.la .mid { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+.la .mid .num { font-size: 52px; color: #B9A0E6; }
+.la .mid .nx { text-align: right; font-size: 13px; font-weight: 600; color: #B2B8AF; }
+.la .mid .nx span { display: block; font-weight: 400; font-size: 12px; color: #858C83; }
+.la .mid .nx em { display: block; font-style: normal; font-weight: 600; font-size: 11.5px; color: #858C83; margin-top: 3px; }
+.la .bar { height: 5px; border-radius: 3px; background: #252925; }
+.la .bar i { display: block; height: 100%; width: 62%; border-radius: 3px; background: #B9A0E6; }
+.caption { font-weight: 500; font-size: 12px; color: rgba(255,255,255,.6); margin: 14px 4px 0; }
+.home-light .caption { color: #4a4552; }
+.stand-row { display: flex; gap: 40px; justify-content: center; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="dumbbell" viewBox="0 0 24 24"><rect x="1" y="8" width="3" height="8" rx="1"/><rect x="4.5" y="5" width="4" height="14" rx="1.5"/><rect x="8.5" y="10.5" width="7" height="3"/><rect x="15.5" y="5" width="4" height="14" rx="1.5"/><rect x="20" y="8" width="3" height="8" rx="1"/></symbol>
+  <symbol id="fork" viewBox="0 0 24 24"><path d="M6 2h1.6v6.5h1.2V2h1.6v6.5h1.2V2h1.6v7.5a3.2 3.2 0 0 1-2.6 3.1V22H8.2v-9.4A3.2 3.2 0 0 1 6 9.5zM16.5 2c2.2 0 3.5 2.6 3.5 6.5 0 2.4-.9 3.9-2.3 4.4V22h-2.4V2z"/></symbol>
+  <symbol id="flame" viewBox="0 0 24 24"><path d="M12 1.5c1 3.7 6.5 6.7 6.5 12.6A6.5 6.5 0 0 1 5.5 14c0-3 1.6-4.9 3-6.3.2 2 1 3.3 2.3 3.8C10.4 7.8 11 4.4 12 1.5z"/></symbol>
+  <symbol id="figure" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2.5"/><path d="M5 8.5h14v2.4h-5.3V15l2.6 6.5h-2.6L12 16.6l-1.7 4.9H7.7l2.6-6.5v-4.1H5z"/></symbol>
+  <symbol id="drop" viewBox="0 0 24 24"><path d="M12 2s7 7.6 7 12.8A7 7 0 0 1 5 14.8C5 9.6 12 2 12 2z"/></symbol>
+  <symbol id="timer" viewBox="0 0 24 24"><path d="M9 1h6v2H9zM12 5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zm-1 4v5.4l4 2.4.9-1.5-3-1.8V9z"/></symbol>
+</svg>
+
+<div class="col">
+  <div class="panel home-light light">
+    <h2>Home Screen</h2>
+    <div class="grid">
+      <!-- Training, small -->
+      <div class="w s">
+        <div class="head"><svg><use href="#dumbbell"/></svg>This week</div>
+        <div class="spacer"></div>
+        <div class="big"><span class="num" style="font-size:50px">3</span><span class="unit" style="font-size:13px">workouts</span></div>
+        <div class="sub" style="margin-top:2px"><svg width="11" height="11" class="flame" style="fill:var(--hot)"><use href="#flame"/></svg>6 week streak</div>
+        <div class="spacer" style="min-height:6px"></div>
+        <div class="dots"><div><i class="on" style="width:14px;height:14px;font-size:6px">✓</i></div><div><i style="width:14px;height:14px"></i></div><div><i class="on" style="width:14px;height:14px;font-size:6px">✓</i></div><div><i style="width:14px;height:14px"></i></div><div><i class="on today" style="width:14px;height:14px;font-size:6px;background:var(--accent);border:none">✓</i></div><div><i style="width:14px;height:14px"></i></div><div><i style="width:14px;height:14px"></i></div></div>
+      </div>
+      <!-- Food, small -->
+      <div class="w s" style="gap:4px">
+        <div class="head"><svg><use href="#fork"/></svg>Food</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">
+          <div class="ring" style="width:96px;height:96px">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="var(--line)" stroke-width="9.5"/><circle cx="50" cy="50" r="44" fill="none" stroke="var(--accent)" stroke-width="9.5" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="108"/></svg>
+            <div class="c"><span class="num" style="font-size:29px">860</span><small style="font-size:9.5px">kcal left</small></div>
+          </div>
+        </div>
+        <div class="sub" style="justify-content:center">1,340 of 2,200 kcal</div>
+      </div>
+      <!-- Training, medium -->
+      <div class="w m">
+        <div class="head"><svg><use href="#dumbbell"/></svg>Training week</div>
+        <div style="flex:1;display:flex;align-items:center;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div class="big"><span class="num" style="font-size:50px">3</span><span class="unit" style="font-size:13px">workouts</span></div>
+            <span class="chip"><svg><use href="#flame"/></svg>6 wk</span>
+          </div>
+          <div class="spacer"></div>
+          <div class="last" style="max-width:170px">
+            <div class="bib"><small>Fri</small><b>30</b><em>Oct</em></div>
+            <div><div class="label">Last workout</div><div class="name">Push day</div><div class="det">8,420 kg · 18 sets</div></div>
+          </div>
+        </div>
+        <div class="dots" style="font-size:10px">
+          <div><span>M</span><i class="on" style="width:18px;height:18px;font-size:8px">✓</i></div><div><span>T</span><i style="width:18px;height:18px"></i></div><div><span>W</span><i class="on" style="width:18px;height:18px;font-size:8px">✓</i></div><div><span>T</span><i style="width:18px;height:18px"></i></div><div><span class="t">F</span><i class="on" style="width:18px;height:18px;font-size:8px">✓</i></div><div><span>S</span><i style="width:18px;height:18px"></i></div><div><span>S</span><i style="width:18px;height:18px"></i></div>
+        </div>
+      </div>
+      <!-- Food, large -->
+      <div class="w l" style="gap:12px">
+        <div class="head"><svg><use href="#fork"/></svg>Food today<span class="note">Friday</span></div>
+        <div style="display:flex;gap:18px;align-items:center">
+          <div class="ring" style="width:132px;height:132px">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45.5" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="50" cy="50" r="45.5" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="285.9" stroke-dashoffset="112"/></svg>
+            <div class="c"><span class="num" style="font-size:40px">860</span><small style="font-size:12px">kcal left</small></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+            <div class="ex"><span>◎ Goal</span><span class="num" style="font-size:22px">2,200</span></div>
+            <div class="ex"><span>⌇ Eaten</span><span class="num" style="font-size:22px">1,340</span></div>
+            <div class="ex"><span>♨ Exercise</span><span class="num" style="font-size:22px">0</span></div>
+          </div>
+        </div>
+        <div class="well" style="display:flex;flex-direction:column;gap:10px">
+          <div class="macro"><div class="r"><b>Carbs</b><span>150 / 275 g</span></div><div class="meter"><i style="width:55%;background:var(--accent)"></i></div></div>
+          <div class="macro"><div class="r"><b>Protein</b><span>95 / 110 g</span></div><div class="meter"><i style="width:86%;background:var(--good)"></i></div></div>
+          <div class="macro"><div class="r"><b>Fat</b><span>40 / 73 g</span></div><div class="meter"><i style="width:55%;background:var(--hot)"></i></div></div>
+        </div>
+        <div class="spacer"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;gap:3px;align-items:center">
+            <svg width="13" height="13" style="fill:var(--accent)"><use href="#drop"/></svg><svg width="13" height="13" style="fill:var(--accent)"><use href="#drop"/></svg><svg width="13" height="13" style="fill:var(--accent)"><use href="#drop"/></svg><svg width="13" height="13" style="fill:var(--accent)"><use href="#drop"/></svg><svg width="13" height="13" style="fill:none;stroke:var(--ink3);stroke-width:2"><use href="#drop"/></svg><svg width="13" height="13" style="fill:none;stroke:var(--ink3);stroke-width:2"><use href="#drop"/></svg><svg width="13" height="13" style="fill:none;stroke:var(--ink3);stroke-width:2"><use href="#drop"/></svg><svg width="13" height="13" style="fill:none;stroke:var(--ink3);stroke-width:2"><use href="#drop"/></svg>
+            <span class="sub" style="margin-left:3px">4/8</span>
+          </div>
+          <span class="chip accent"><svg><use href="#timer"/></svg>Fasting 9h 20m</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="panel home-dark dark">
+    <h2>Dark mode</h2>
+    <div class="grid">
+      <!-- Training, large -->
+      <div class="w l">
+        <div class="head"><svg><use href="#dumbbell"/></svg>Training week<span class="note">Friday</span></div>
+        <div style="display:flex;align-items:center;margin-top:6px">
+          <div class="big"><span class="num" style="font-size:56px">3</span><span class="unit" style="font-size:14.5px">workouts this week</span></div>
+          <div class="spacer"></div>
+          <span class="chip"><svg><use href="#flame"/></svg>6 wk</span>
+        </div>
+        <div class="dots" style="font-size:13px;margin-top:8px">
+          <div><span>M</span><i class="on" style="width:26px;height:26px;font-size:11px">✓</i></div><div><span>T</span><i style="width:26px;height:26px"></i></div><div><span>W</span><i class="on" style="width:26px;height:26px;font-size:11px">✓</i></div><div><span>T</span><i style="width:26px;height:26px"></i></div><div><span class="t">F</span><i class="on" style="width:26px;height:26px;font-size:11px">✓</i></div><div><span>S</span><i style="width:26px;height:26px"></i></div><div><span>S</span><i style="width:26px;height:26px"></i></div>
+        </div>
+        <div class="spacer" style="min-height:10px"></div>
+        <div class="well last" style="background:var(--fill)">
+          <div class="bib" style="background:var(--card)"><small>Fri</small><b>30</b><em>Oct</em></div>
+          <div><div class="label">Last workout</div><div class="name" style="font-size:17px">Push day</div><div class="det">8,420 kg · 18 sets · 54 min · 2 PRs</div></div>
+        </div>
+        <div class="spacer" style="min-height:10px"></div>
+        <div class="label">Last 8 weeks</div>
+        <div class="bars">
+          <div>2<b style="height:24px"></b></div><div>3<b style="height:36px"></b></div><div>2<b style="height:24px"></b></div><div>4<b style="height:40px"></b></div><div>3<b style="height:36px"></b></div><div>2<b style="height:24px"></b></div><div>3<b style="height:36px"></b></div><div class="cur">3<b style="height:36px"></b></div>
+        </div>
+      </div>
+      <!-- Reps, medium -->
+      <div class="w m" style="flex-direction:row;gap:16px">
+        <div style="width:136px;display:flex;flex-direction:column;gap:4px">
+          <div class="head"><svg><use href="#figure"/></svg>Reps today</div>
+          <div class="spacer"></div>
+          <div class="big"><span class="num" style="font-size:52px">73</span><span class="num" style="font-size:22px;color:var(--ink3)">/ 100</span></div>
+          <div class="sub">27 to go</div>
+          <div class="tally" style="margin-top:4px">
+            <div class="g full"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="g full"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="g full"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+            <div class="g"><i class="on"></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <div class="well" style="flex:1;display:flex;flex-direction:column;justify-content:space-around;padding:4px 12px">
+          <div class="ex"><span>Push-ups</span><span class="num">40</span></div><div class="sep"></div>
+          <div class="ex"><span>Pull-ups</span><span class="num">18</span></div><div class="sep"></div>
+          <div class="ex"><span>Squats</span><span class="num">15</span></div><div class="sep"></div>
+          <div class="ex zero"><span>Chin-ups</span><span class="num">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="panel lock">
+    <h2>Lock Screen</h2>
+    <div class="inline"><svg><use href="#flame"/></svg>3 this week · 6 wk streak</div>
+    <div class="clock"><div class="date">Friday 30 October</div><div class="time">9:41</div></div>
+    <div class="acc-row">
+      <div class="circ">
+        <svg class="arc" viewBox="0 0 72 72">
+          <g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round">
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-1.5"/>
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-29.3" opacity=".25"/>
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-57.1"/>
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-84.9" opacity=".25"/>
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-112.7"/>
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-140.5" opacity=".25"/>
+            <circle cx="36" cy="36" r="31" stroke-dasharray="25.1 169.7" stroke-dashoffset="-168.3" opacity=".25"/>
+          </g>
+        </svg>
+        <span class="n">3</span><small>6 wk</small>
+      </div>
+      <div class="circ">
+        <svg class="arc" viewBox="0 0 72 72"><circle cx="36" cy="36" r="31" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="5"/><circle cx="36" cy="36" r="31" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="194.8" stroke-dashoffset="76"/></svg>
+        <span class="n" style="font-size:22px">860</span><svg class="ic"><use href="#fork"/></svg>
+      </div>
+      <div class="circ">
+        <svg class="arc" viewBox="0 0 72 72"><circle cx="36" cy="36" r="31" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="5"/><circle cx="36" cy="36" r="31" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-dasharray="194.8" stroke-dashoffset="52.6"/></svg>
+        <span class="n" style="font-size:24px">73</span><svg class="ic"><use href="#figure"/></svg>
+      </div>
+    </div>
+    <div class="acc-row" style="gap:18px">
+      <div class="rect">
+        <div class="t"><svg width="11" height="11" style="fill:#fff"><use href="#dumbbell"/></svg>3 this week<span style="margin-left:auto;font-weight:600;font-size:12.5px">♨ 6</span></div>
+        <div class="dots"><div><i class="on" style="width:13px;height:13px"></i></div><div><i style="width:13px;height:13px"></i></div><div><i class="on" style="width:13px;height:13px"></i></div><div><i style="width:13px;height:13px"></i></div><div><i class="on" style="width:13px;height:13px"></i></div><div><i style="width:13px;height:13px"></i></div><div><i style="width:13px;height:13px"></i></div></div>
+        <div class="s2">Push day · Fri</div>
+      </div>
+      <div class="rect">
+        <div class="t"><span class="num">860</span><span class="sm">kcal left</span></div>
+        <div class="lin"><i style="width:61%"></i></div>
+        <div class="s2">Fasting 9h 20m</div>
+      </div>
+    </div>
+    <div class="la">
+      <div class="top"><span class="k"><svg><use href="#timer"/></svg>Rest</span><span class="w2">Push day</span></div>
+      <div class="mid"><span class="num">1:24</span><div class="nx">Next: Incline press<span>Set 3 of 4</span><em>11/18 sets</em></div></div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div class="caption">Rest timer Live Activity, now in the same sentence-case style.</div>
+  </div>
+</div>
+
+<div class="col">
+  <div class="panel stand dark standby">
+    <h2>StandBy</h2>
+    <div class="stand-row">
+      <div class="w" style="gap:4px">
+        <div class="head" style="font-size:17px"><svg style="width:15px;height:15px"><use href="#fork"/></svg>Food</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">
+          <div class="ring" style="width:220px;height:220px">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="var(--line)" stroke-width="8"/><circle cx="50" cy="50" r="45" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="282.7" stroke-dashoffset="110"/></svg>
+            <div class="c"><span class="num" style="font-size:68px">860</span><small style="font-size:18px">kcal left</small></div>
+          </div>
+        </div>
+        <div class="sub" style="justify-content:center;font-size:15px">1,340 of 2,200 kcal</div>
+      </div>
+      <div class="w">
+        <div class="head" style="font-size:17px"><svg style="width:15px;height:15px"><use href="#dumbbell"/></svg>This week</div>
+        <div class="spacer"></div>
+        <div class="big"><span class="num" style="font-size:130px">3</span><span class="unit" style="font-size:26px">workouts</span></div>
+        <div class="sub" style="font-size:16px;margin-top:6px"><svg width="15" height="15" style="fill:var(--hot)"><use href="#flame"/></svg>6 week streak</div>
+        <div class="spacer" style="min-height:14px"></div>
+        <div class="dots"><div><i class="on" style="width:28px;height:28px;font-size:12px">✓</i></div><div><i style="width:28px;height:28px"></i></div><div><i class="on" style="width:28px;height:28px;font-size:12px">✓</i></div><div><i style="width:28px;height:28px"></i></div><div><i class="on" style="width:28px;height:28px;font-size:12px">✓</i></div><div><i style="width:28px;height:28px"></i></div><div><i style="width:28px;height:28px"></i></div></div>
+      </div>
+    </div>
+    <div class="caption">Small widgets drop their card in StandBy and grow their numbers.</div>
+  </div>
+</div>
+</body>
+</html>

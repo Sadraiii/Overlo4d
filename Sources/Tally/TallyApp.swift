@@ -79,7 +79,11 @@ struct TallyApp: App {
                 }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { backup.backUpIfChanged() }
+            if phase == .background {
+                backup.backUpIfChanged()
+                // Leave the widgets showing exactly what the app last showed.
+                WidgetCenter.shared.reloadAllTimelines()
+            }
             // Pick up the new day (and any widget-side changes) when returning to the app.
             guard phase == .active else { return }
             reps.reload()

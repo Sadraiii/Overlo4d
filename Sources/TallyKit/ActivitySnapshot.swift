@@ -47,6 +47,30 @@ public struct ActivitySnapshot: Codable, Sendable {
         return workoutDates.filter { week.contains($0) }.count
     }
 
+    /// The streak as of `date`. The app saves it when data changes, so if neither this week
+    /// nor last week has a workout by now, the streak has ended even though the file still has it.
+    public func currentStreak(at date: Date = .now, calendar: Calendar = .current) -> Int {
+        guard weekStreak > 0,
+              let last = workoutDates.max(),
+              let thisWeek = calendar.dateInterval(of: .weekOfYear, for: date)?.start,
+              let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeek)
+        else { return 0 }
+        return last >= lastWeek ? weekStreak : 0
+    }
+
+    /// Workouts in each of the last `weeks` weeks, oldest first, ending with the week of `date`.
+    public func weeklyCounts(weeks: Int, endingAt date: Date = .now, calendar: Calendar = .current) -> [Int] {
+        guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: date)?.start else {
+            return Array(repeating: 0, count: weeks)
+        }
+        return (0..<weeks).reversed().map { back in
+            guard let start = calendar.date(byAdding: .weekOfYear, value: -back, to: thisWeek),
+                  let end = calendar.date(byAdding: .weekOfYear, value: 1, to: start)
+            else { return 0 }
+            return workoutDates.filter { $0 >= start && $0 < end }.count
+        }
+    }
+
     /// Index of `date` within its week (0 = first weekday).
     public static func weekdayIndex(of date: Date = .now, calendar: Calendar = .current) -> Int {
         (calendar.component(.weekday, from: date) - calendar.firstWeekday + 7) % 7

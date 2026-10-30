@@ -21,6 +21,9 @@ struct ChangelogEntry: Identifiable {
 enum Changelog {
     static let entries: [ChangelogEntry] = [
         ChangelogEntry(version: "0.9", date: DateComponents(year: 2026, month: 10, day: 30), changes: [
+            "Widgets: redrawn in the new look, with a large Training widget (last workout and 8 weeks of training) and a large Food widget (calories, macros, water and fast).",
+            "Lock Screen: new Training inline and week-ring widgets, and all widgets stay readable when the Home Screen is tinted or clear and in StandBy.",
+            "Widgets: the streak now ends on its own if you miss a week, and the Food widget no longer refreshes over and over.",
             "Body: log waist, chest, hips, arms, thighs, calves, neck, shoulders and body fat, with a chart and the change for each.",
             "Pick which measurements you track, with how-to-measure tips. Body fat and waist sync with Apple Health.",
             "Progress photos: front, side and back, from the camera or your library, with last time's photo shown to line up the pose. Kept in the app only.",

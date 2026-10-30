@@ -19,7 +19,9 @@ Gym tracker for iPhone.
 - Sleep tracking, sleep score, bedtime reminders and a wind-down routine
 - Body measurements and progress photos, compared side by side or with a slider
 - Apple Health and Apple Watch workouts
-- Widgets and a Live Activity
+- Home Screen, Lock Screen and StandBy widgets, and a rest timer Live Activity
+
+<img src="docs/images/widgets.png" alt="Widgets">
 - Export to CSV, text or JSON
 - Backup to a folder in iCloud Drive, automatic when you leave the app, and restore on a new iPhone
 - AI feedback with your own Anthropic API key, stored in the Keychain
