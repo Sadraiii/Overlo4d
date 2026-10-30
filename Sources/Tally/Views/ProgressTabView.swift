@@ -225,7 +225,7 @@ struct ProgressOverview: View {
             }
             .card(padding: 14, cornerRadius: 20)
 
-            WeightCard()
+            HealthWeightCard()
 
             // Averaged over the last 4 weeks, or since the first workout for newer users.
             let muscleSince = min(max(Calendar.current.date(byAdding: .day, value: -28, to: .now) ?? .now, gym.workouts.last?.startedAt ?? .now), .now)

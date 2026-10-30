@@ -254,7 +254,7 @@ struct ExerciseBadge: View {
     var body: some View {
         // A still of the Workout API animation when there is one, else the muscle figure.
         if let exercise, media.hasKey, media.showsThumbnails, let code = media.code(for: exercise) {
-            ExerciseAnimation(code: code, animated: false) { figure }
+            ExerciseAnimation(media: .workoutAPI(code: code), animated: false) { figure }
                 .padding(size * 0.04)
                 .frame(width: size, height: size)
                 .background(.white, in: .rect(cornerRadius: size * 0.28))

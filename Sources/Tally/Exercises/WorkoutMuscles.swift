@@ -14,6 +14,7 @@ struct WorkoutMuscles {
 
     let entries: [Entry]
 
+    @MainActor
     init(_ workout: Workout, gym: GymStore) {
         var roles: [Muscle: MuscleRole] = [:]
         var sets: [Muscle: Double] = [:]

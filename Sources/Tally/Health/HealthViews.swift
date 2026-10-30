@@ -76,7 +76,7 @@ struct WorkoutHealthTiles: View {
 }
 
 /// Body weight from Health over the last six months.
-struct WeightCard: View {
+struct HealthWeightCard: View {
     @Environment(HealthManager.self) private var health
 
     var body: some View {

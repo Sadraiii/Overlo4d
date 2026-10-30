@@ -1,5 +1,6 @@
 import SwiftUI
 import TallyCore
+import TallyKit
 import UniformTypeIdentifiers
 
 /// Settings: back up to a folder in iCloud Drive, and restore on a new phone.
