@@ -352,7 +352,7 @@ struct SleepSettingsSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Apple Health").eyebrow(11.5)
                             if health.isConnected {
-                                Text("Sleep comes from Health: an Apple Watch worn to bed records stages, and an iPhone sleep schedule records time in bed. Check access in Health › Profile › Apps › Overload.")
+                                Text("Sleep comes from Health: an Apple Watch worn to bed records stages, and an iPhone sleep schedule records time in bed. Check access in Health › Profile › Apps › Overlo4d.")
                                     .font(Typo.body(13))
                                     .foregroundStyle(Theme.ink3)
                                     .fixedSize(horizontal: false, vertical: true)

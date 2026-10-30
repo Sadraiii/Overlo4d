@@ -44,7 +44,7 @@ struct BackupSettingsSection: View {
                         picking = .folder
                     } label: {
                         row(icon: "icloud.fill", title: "Back up to iCloud Drive",
-                            detail: "Choose a folder, e.g. iCloud Drive › Overload") { chevron }
+                            detail: "Choose a folder, e.g. iCloud Drive › Overlo4d") { chevron }
                     }
                     .buttonStyle(.plain)
                 }

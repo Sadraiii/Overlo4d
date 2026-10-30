@@ -34,7 +34,7 @@ struct BarcodeScannerSheet: View {
                         Image(systemName: "camera.fill").font(.system(size: 32))
                         Text("Camera not available")
                             .font(Typo.body(16, .semibold))
-                        Text("Allow camera access in Settings › Overload, or type the number under the barcode.")
+                        Text("Allow camera access in Settings › Overlo4d, or type the number under the barcode.")
                             .font(Typo.body(14))
                             .multilineTextAlignment(.center)
                             .opacity(0.7)

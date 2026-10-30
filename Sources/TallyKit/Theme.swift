@@ -22,7 +22,7 @@ extension Color {
     }
 }
 
-/// Overload colours: a near-white page, white cards and soft neutral greys, with one accent colour.
+/// Overlo4d colours: a near-white page, white cards and soft neutral greys, with one accent colour.
 public enum Theme {
     public static let paper = Color(light: 0xF3F4F1, dark: 0x0B0D0B)
     public static let card = Color(light: 0xFFFFFF, dark: 0x171A17)
@@ -111,7 +111,7 @@ public enum AppearanceMode: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Overload type: Schibsted Grotesk for headings and text, Big Shoulders Display (condensed) for big numbers.
+/// Overlo4d type: Schibsted Grotesk for headings and text, Big Shoulders Display (condensed) for big numbers.
 public enum Typo {
     public enum Weight {
         case regular, medium, semibold, bold

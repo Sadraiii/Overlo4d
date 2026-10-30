@@ -60,11 +60,12 @@ private func day(_ day: Int, _ hour: Int = 12) -> Date {
     @Test func namesCarryTheTime() {
         let date = day(30, 11).addingTimeInterval(23 * 60 + 5)
         let name = BackupName.fileName(for: date, timeZone: utc)
-        #expect(name == "Overload Backup 2026-10-30 112305.json")
+        #expect(name == "Overlo4d Backup 2026-10-30 112305.json")
         #expect(BackupName.date(of: name, timeZone: utc) == date)
         #expect(BackupName.date(of: ".\(name).icloud", timeZone: utc) == date)
         #expect(BackupName.date(of: "gym.json", timeZone: utc) == nil)
-        #expect(BackupName.date(of: "Overload Backup notes.json", timeZone: utc) == nil)
+        #expect(BackupName.date(of: "Overlo4d Backup notes.json", timeZone: utc) == nil)
+        #expect(BackupName.date(of: "Overload Backup 2026-10-30 112305.json", timeZone: utc) == date)
         #expect(BackupName.logicalName(".\(name).icloud") == name)
     }
 

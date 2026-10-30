@@ -3,7 +3,7 @@ import Foundation
 /// Open Food Facts: a free, open database of packaged food with barcodes. No key needed,
 /// but requests must send a User-Agent naming the app.
 public enum OpenFoodFacts {
-    public static let userAgent = "Overload/0.7 (iOS gym and food tracker)"
+    public static let userAgent = "Overlo4d/0.7 (iOS gym and food tracker)"
 
     static let fields = "code,product_name,product_name_en,generic_name,brands,nutriments,serving_size,serving_quantity"
 

@@ -1,6 +1,6 @@
 <img src="Resources/AppIcon.png" width="88" alt="">
 
-# Overload
+# Overlo4d
 
 Gym tracker for iPhone.
 

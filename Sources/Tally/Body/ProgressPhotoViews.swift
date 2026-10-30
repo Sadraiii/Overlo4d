@@ -567,7 +567,7 @@ private struct CompareShareCard: View {
             }
             HStack {
                 Seal(size: 26)
-                Text("Overload").font(Typo.display(18)).tracking(1.2).textCase(.uppercase)
+                Text("Overlo4d").font(Typo.display(18)).tracking(1.2).textCase(.uppercase)
                 Spacer()
                 Text(BodyFormat.apart(from, to)).font(Typo.body(14, .semibold)).foregroundStyle(Theme.ink2)
             }

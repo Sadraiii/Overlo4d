@@ -129,7 +129,7 @@ struct StoryCard: View {
                         if let seal = uiImage("Seal") {
                             Image(uiImage: seal).resizable().frame(width: 110, height: 110)
                         }
-                        Text("OVERLOAD")
+                        Text("OVERLO4D")
                             .font(Typo.display(64, black: true))
                             .tracking(4)
                     }
@@ -152,7 +152,7 @@ struct StoryCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .padding(.top, 40)
-                    Text("Logged with Overload")
+                    Text("Logged with Overlo4d")
                         .font(Typo.body(36))
                         .foregroundStyle(palette.dim)
                 }
@@ -416,7 +416,7 @@ struct StickerCard: View {
                             .scaledToFit()
                             .frame(height: 64)
                     }
-                    Text("OVERLOAD").font(Typo.display(58, black: true)).tracking(3)
+                    Text("OVERLO4D").font(Typo.display(58, black: true)).tracking(3)
                 }
                 .padding(.top, 70)
             }

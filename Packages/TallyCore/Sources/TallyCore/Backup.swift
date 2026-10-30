@@ -71,26 +71,28 @@ public enum BackupError: Error, Equatable {
 
     public var message: String {
         switch self {
-        case .unreadable: "This file isn't an Overload backup."
-        case .newerFormat: "This backup is from a newer version of Overload. Update the app first."
+        case .unreadable: "This file isn't an Overlo4d backup."
+        case .newerFormat: "This backup is from a newer version of Overlo4d. Update the app first."
         }
     }
 }
 
-/// Backup file names carry the time they were made: "Overload Backup 2026-10-30 112305.json".
+/// Backup file names carry the time they were made: "Overlo4d Backup 2026-10-30 112305.json".
 public enum BackupName {
-    public static let prefix = "Overload Backup "
+    public static let prefix = "Overlo4d Backup "
+    /// Names used by earlier versions of the app, still recognised so old backups show up.
+    static let legacyPrefixes = ["Overload Backup "]
 
     public static func fileName(for date: Date, timeZone: TimeZone = .current) -> String {
         "\(prefix)\(formatter(timeZone).string(from: date)).json"
     }
 
     /// The time in a backup's name, or nil for other files. Accepts iCloud placeholders
-    /// (".Overload Backup ….json.icloud") for backups not downloaded to this phone yet.
+    /// (".Overlo4d Backup ….json.icloud") for backups not downloaded to this phone yet.
     public static func date(of fileName: String, timeZone: TimeZone = .current) -> Date? {
         let name = logicalName(fileName)
-        guard name.hasPrefix(prefix), name.hasSuffix(".json") else { return nil }
-        let stamp = name.dropFirst(prefix.count).dropLast(".json".count)
+        guard let match = ([prefix] + legacyPrefixes).first(where: { name.hasPrefix($0) }), name.hasSuffix(".json") else { return nil }
+        let stamp = name.dropFirst(match.count).dropLast(".json".count)
         return formatter(timeZone).date(from: String(stamp))
     }
 

@@ -395,7 +395,7 @@ final class HealthManager {
             }
             try await builder.addMetadata([
                 HKMetadataKeyExternalUUID: workout.id.uuidString,
-                HKMetadataKeyWorkoutBrandName: "Overload",
+                HKMetadataKeyWorkoutBrandName: "Overlo4d",
             ])
             try await builder.endCollection(at: end)
             return try await builder.finishWorkout()?.uuid

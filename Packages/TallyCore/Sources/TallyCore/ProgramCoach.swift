@@ -28,7 +28,7 @@ public struct ProgramRequest: Sendable, Equatable {
 /// Asks Claude to write a `StrengthProgram`, in the same compact shape as the templates.
 public enum ProgramCoach {
     static let system = """
-    You are the strength coach inside Overload, a gym tracker. You write periodized strength \
+    You are the strength coach inside Overlo4d, a gym tracker. You write periodized strength \
     programs that the app turns into workouts, with the weights filled in.
 
     How to program:

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Overload</string>
+	<string>Overlo4d</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.9</string>
 	<key>CFBundleVersion</key>
@@ -30,13 +30,13 @@
 		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Overload uses the camera to scan food barcodes and take progress photos.</string>
+	<string>Overlo4d uses the camera to scan food barcodes and take progress photos.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Overload shows your steps, active energy, heart rate, body weight, body fat, waist and sleep next to your training.</string>
+	<string>Overlo4d shows your steps, active energy, heart rate, body weight, body fat, waist and sleep next to your training.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Overload saves finished workouts, food, weight, body fat and waist to Apple Health.</string>
+	<string>Overlo4d saves finished workouts, food, weight, body fat and waist to Apple Health.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Overload saves share images to your photo library.</string>
+	<string>Overlo4d saves share images to your photo library.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UILaunchScreen</key>

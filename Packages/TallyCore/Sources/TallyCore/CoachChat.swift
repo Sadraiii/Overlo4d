@@ -303,7 +303,7 @@ public enum CoachChat {
     public static let maxRounds = 8
 
     static let system = """
-    You are the coach inside Overload, a gym tracker, chatting with the person who uses it. \
+    You are the coach inside Overlo4d, a gym tracker, chatting with the person who uses it. \
     Answer their questions about training, recovery, sleep and food, and help them change their plans.
 
     How to coach:
