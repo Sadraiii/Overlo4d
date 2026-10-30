@@ -48,70 +48,117 @@ private extension MuscleRole {
     }
 }
 
-/// Front and back figure for a workout, beside the muscles it hits and how many sets each got.
+/// The workout's muscles on a large front and back figure, with a ranked list of sets per muscle
+/// underneath. Tapping a muscle on the figure or in the list picks it out on both.
 struct WorkoutMusclesCard: View {
     @Environment(GymStore.self) private var gym
     let workout: Workout
-    /// Colour of the gaps between muscles; match the background behind the card.
-    var gap: Color = Theme.card
+
+    @State private var selected: Muscle?
+    @State private var showingAll = false
+
+    /// Rows shown before "Show all".
+    private let collapsedCount = 5
 
     var body: some View {
         let summary = WorkoutMuscles(workout, gym: gym)
         if !summary.entries.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Muscles worked").eyebrow(11)
-                HStack(alignment: .top, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        ForEach(summary.entries.prefix(7)) { entry in
-                            row(entry)
-                        }
-                        if summary.entries.count > 7 {
-                            Text("+\(summary.entries.count - 7) more")
-                                .font(Typo.body(12.5))
-                                .foregroundStyle(Theme.ink3)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    AnatomyFigure(
-                        primary: summary.muscles(.primary),
-                        secondary: summary.muscles(.secondary),
-                        tertiary: summary.muscles(.tertiary),
-                        gap: gap,
-                        labels: true
-                    )
-                    .frame(height: 170)
-                    .accessibilityHidden(true)
+            let entries = summary.entries
+            let shown = showingAll ? entries : Array(entries.prefix(collapsedCount))
+            let scale = max(entries.map(\.sets).max() ?? 0, 1)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Muscles worked").font(Typo.title(17)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(entries.count == 1 ? "1 muscle" : "\(entries.count) muscles")
+                        .font(Typo.body(13.5))
+                        .foregroundStyle(Theme.ink3)
                 }
-                HStack(spacing: 14) {
-                    ForEach(MuscleRole.allCases, id: \.self) { role in
-                        HStack(spacing: 5) {
-                            RoundedRectangle(cornerRadius: 3).fill(role.color).frame(width: 9, height: 9)
-                            Text(role.label).eyebrow(9.5).foregroundStyle(Theme.ink3)
-                        }
-                    }
-                }
+
+                AnatomyFigure(
+                    primary: summary.muscles(.primary),
+                    secondary: summary.muscles(.secondary),
+                    tertiary: summary.muscles(.tertiary),
+                    selected: selected,
+                    onTap: select,
+                    labels: true
+                )
+                .frame(height: 260)
+                .frame(maxWidth: .infinity)
+                .sensoryFeedback(.selection, trigger: selected)
                 .accessibilityHidden(true)
+
+                HStack(spacing: 16) {
+                    ForEach(MuscleRole.allCases, id: \.self) { role in
+                        HStack(spacing: 6) {
+                            Circle().fill(role.color).frame(width: 9, height: 9)
+                            Text(role.label).font(Typo.body(12.5, .medium)).foregroundStyle(Theme.ink2)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
+
+                VStack(spacing: 2) {
+                    ForEach(shown) { entry in
+                        row(entry, scale: scale)
+                    }
+                }
+
+                if entries.count > collapsedCount {
+                    Button {
+                        withAnimation(.snappy) { showingAll.toggle() }
+                    } label: {
+                        Text(verbatim: showingAll ? "Show less" : "Show all \(entries.count) muscles")
+                            .font(Typo.body(14, .semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .animation(.snappy, value: summary.entries.map(\.muscle))
+            .animation(.snappy, value: entries.map(\.muscle))
         }
     }
 
-    private func row(_ entry: WorkoutMuscles.Entry) -> some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 3).fill(entry.role.color).frame(width: 10, height: 10)
-            Text(entry.muscle.label)
-                .font(Typo.body(14.5, .semibold))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            if entry.sets > 0 {
-                Text(VolumeZone.format(entry.sets) + (entry.sets == 1 ? " set" : " sets"))
-                    .font(Typo.body(12.5))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.ink3)
+    private func select(_ muscle: Muscle) {
+        withAnimation(.snappy) { selected = selected == muscle ? nil : muscle }
+    }
+
+    private func row(_ entry: WorkoutMuscles.Entry, scale: Double) -> some View {
+        Button { select(entry.muscle) } label: {
+            VStack(spacing: 7) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(entry.muscle.label)
+                        .font(Typo.body(15, .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text(entry.role.label)
+                        .font(Typo.body(12.5))
+                        .foregroundStyle(Theme.ink3)
+                    Spacer(minLength: 4)
+                    Text(entry.sets > 0 ? VolumeZone.format(entry.sets) + (entry.sets == 1 ? " set" : " sets") : "No sets")
+                        .font(Typo.body(13.5))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.ink2)
+                }
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Theme.line
+                        Capsule()
+                            .fill(entry.role.color)
+                            .frame(width: entry.sets > 0 ? max(proxy.size.width * CGFloat(entry.sets / scale), 6) : 0)
+                    }
+                    .clipShape(Capsule())
+                }
+                .frame(height: 6)
             }
+            .padding(.vertical, 7)
+            .padding(.horizontal, 10)
+            .background(selected == entry.muscle ? Theme.fill : .clear, in: .rect(cornerRadius: 12))
+            .contentShape(.rect)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(entry.muscle.label), \(entry.role.label.lowercased())")
+        .buttonStyle(.plain)
+        .padding(.horizontal, -10)
+        .accessibilityLabel("\(entry.muscle.label), \(entry.role.label.lowercased()), \(VolumeZone.format(entry.sets)) sets")
     }
 }

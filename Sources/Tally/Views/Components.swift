@@ -253,8 +253,7 @@ struct ExerciseBadge: View {
         AnatomyFigure(
             primary: Set(exercise?.primary ?? []),
             secondary: Set(exercise?.secondary ?? []),
-            tertiary: Set(exercise?.tertiary ?? []),
-            gap: Theme.fill
+            tertiary: Set(exercise?.tertiary ?? [])
         )
         .padding(size * 0.07)
         .frame(width: size, height: size)

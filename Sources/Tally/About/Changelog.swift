@@ -32,6 +32,7 @@ enum Changelog {
             "The week chart shows how far over or under your goal and maintenance you were, and the weight change that adds up to.",
             "Food goals show your daily deficit and the date you'd reach your goal weight.",
             "New look: cleaner white cards, sentence-case headings, a calmer Home with a greeting, a simpler week card, one row of tools and Today and Training sections.",
+            "Muscle view remade: the body is one soft figure, muscles are shaded in your accent colour (primary, secondary, tertiary), and the Muscles worked card has a bigger figure with sets bars. Tap a muscle on the figure or in the list to pick it out.",
         ]),
         ChangelogEntry(version: "0.8", date: DateComponents(year: 2026, month: 10, day: 27), changes: [
             "Sleep: naps are kept apart from the night, so a nap on the sofa no longer spoils the score.",

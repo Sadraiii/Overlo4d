@@ -116,11 +116,12 @@ enum MuscleRole: CaseIterable {
         }
     }
 
+    /// Shades of the accent, strongest for primary, so the figure reads like the weekly volume map.
     var color: Color {
         switch self {
-        case .primary: Color(light: 0xE0445F, dark: 0xFF6B86)
-        case .secondary: Color(light: 0xEE8A3C, dark: 0xFFA05C)
-        case .tertiary: Color(light: 0xE0B021, dark: 0xFFD966)
+        case .primary: Theme.accent
+        case .secondary: Theme.accent.mix(with: Theme.card, by: 0.45)
+        case .tertiary: Theme.accent.mix(with: Theme.card, by: 0.72)
         }
     }
 
@@ -206,14 +207,20 @@ struct AnatomyFigure: View {
     /// Working sets per week for each muscle. When set, muscles are shaded by volume zone instead of
     /// by role.
     var weeklySets: [Muscle: Double]?
-    /// Outlined, for the muscle being inspected.
+    /// Outlined, with the other muscles faded, for the muscle being inspected.
     var selected: Muscle?
-    /// Colour of the gaps between muscles; match the background behind the figure.
-    var gap: Color = Theme.card
     /// Makes muscles tappable (picking muscles for a custom exercise).
     var onTap: ((Muscle) -> Void)?
     /// "Front" and "Back" under the figures, for the larger sizes.
     var labels = false
+
+    /// The body behind the muscles, and the gaps between them.
+    static let skin = Theme.line
+    /// Muscles the workout or exercise doesn't touch.
+    static let untrained = Theme.line2
+    /// Room around the figure for the outline that rounds off the silhouette, in figure units.
+    private static let pad = 3.0
+    private static let aspect = (AnatomyShapes.width + pad * 2) / (AnatomyShapes.height + pad * 2)
 
     var body: some View {
         HStack(spacing: 0) {
@@ -236,38 +243,48 @@ struct AnatomyFigure: View {
 
     private func side(_ regions: [FigureRegion]) -> some View {
         let fills = regions.map { color($0.muscle) }
-        let gap = gap
         let selected = selected
+        let skin = Self.skin
         let outline = Theme.ink
+        let pad = Self.pad
         return Canvas { context, size in
-            let scale = size.width / AnatomyShapes.width
+            let scale = size.width / (AnatomyShapes.width + pad * 2)
             context.scaleBy(x: scale, y: scale)
+            context.translateBy(x: pad, y: pad)
+            // One continuous body first: every region filled and outlined thickly in skin colour,
+            // which closes the gaps at the joints and rounds off the outline.
+            for region in regions where !region.detail {
+                context.fill(region.path, with: .color(skin))
+                context.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: pad * 2, lineJoin: .round))
+            }
             // At least 0.4 pt on screen so small figures keep their muscle outlines.
-            let lineWidth = max(1.2, 0.4 / scale)
+            let lineWidth = max(1.6, 0.4 / scale)
             // Lines between muscle heads are finer, and left out where they'd only add noise.
-            let detailWidth = scale >= 0.4 ? max(0.7, 0.3 / scale) : 0
-            for (region, fill) in zip(regions, fills) {
-                context.fill(region.path, with: .color(fill))
+            let detailWidth = scale >= 0.4 ? max(0.8, 0.3 / scale) : 0
+            for (region, fill) in zip(regions, fills) where region.muscle != nil {
+                let faded = selected != nil && region.muscle != selected
+                context.fill(region.path, with: .color(faded ? fill.opacity(0.35) : fill))
                 let width = region.detail ? detailWidth : lineWidth
                 if width > 0 {
-                    context.stroke(region.path, with: .color(gap), style: StrokeStyle(lineWidth: width, lineJoin: .round))
+                    context.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: width, lineJoin: .round))
                 }
             }
             if let selected {
                 for region in regions where region.muscle == selected && !region.detail {
-                    context.stroke(region.path, with: .color(outline), style: StrokeStyle(lineWidth: lineWidth * 1.4, lineJoin: .round))
+                    context.stroke(region.path, with: .color(outline), style: StrokeStyle(lineWidth: lineWidth * 1.3, lineJoin: .round))
                 }
             }
         }
-        .aspectRatio(AnatomyShapes.width / AnatomyShapes.height, contentMode: .fit)
+        .aspectRatio(Self.aspect, contentMode: .fit)
         .overlay {
             if let onTap {
                 GeometryReader { proxy in
                     Color.clear
                         .contentShape(.rect)
                         .onTapGesture { location in
-                            let scale = proxy.size.width / AnatomyShapes.width
-                            if let muscle = Self.muscle(at: CGPoint(x: location.x / scale, y: location.y / scale), in: regions) {
+                            let scale = proxy.size.width / (AnatomyShapes.width + pad * 2)
+                            let point = CGPoint(x: location.x / scale - pad, y: location.y / scale - pad)
+                            if let muscle = Self.muscle(at: point, in: regions) {
                                 onTap(muscle)
                             }
                         }
@@ -289,15 +306,15 @@ struct AnatomyFigure: View {
     }
 
     private func color(_ muscle: Muscle?) -> Color {
-        // Head, hands, knees and feet sit back so the muscles read first.
-        guard let muscle else { return Theme.line.opacity(0.5) }
+        // Head, hands, knees and feet are part of the skin, so the muscles read first.
+        guard let muscle else { return Self.skin }
         if let weeklySets {
-            return VolumeZone(sets: weeklySets[muscle] ?? 0)?.color ?? Theme.line
+            return VolumeZone(sets: weeklySets[muscle] ?? 0)?.color ?? Self.untrained
         }
         if primary.contains(muscle) { return MuscleRole.primary.color }
         if secondary.contains(muscle) { return MuscleRole.secondary.color }
         if tertiary.contains(muscle) { return MuscleRole.tertiary.color }
-        return Theme.line
+        return Self.untrained
     }
 }
 
@@ -438,8 +455,8 @@ enum VolumeZone: CaseIterable {
 
     var color: Color {
         switch self {
-        case .light: Theme.accent.opacity(0.3)
-        case .maintenance: Theme.accent.opacity(0.62)
+        case .light: Theme.accent.mix(with: Theme.card, by: 0.72)
+        case .maintenance: Theme.accent.mix(with: Theme.card, by: 0.42)
         case .growth: Theme.accent
         case .high: Theme.hot
         }

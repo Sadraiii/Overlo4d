@@ -19,13 +19,13 @@
   --paper: #F3F4F1; --card: #FFFFFF; --ink: #111411; --ink2: #4F554F; --ink3: #868C85;
   --line: #E9EBE6; --line2: #D4D8D1; --fill: #F1F2EF; --good: #2C7748; --goodSoft: #DDF1E3; --danger: #B0382C;
   --hot: #C4561A; --accent: #5A3E8A; --accentInk: #FFFFFF; --accentSoft: #E8E1F2; --glass: rgba(255,255,255,.8);
-  --body: #D4D8D1; --muscle: #E4E7E1; --sec: #B9A6D8; --shadow: 0 4px 14px rgba(0,0,0,.05);
+  --body: #E9EBE6; --muscle: #D4D8D1; --sec: color-mix(in oklab, var(--accent) 55%, var(--card)); --ter: color-mix(in oklab, var(--accent) 28%, var(--card)); --shadow: 0 4px 14px rgba(0,0,0,.05);
 }
 .dark {
   --paper: #0B0D0B; --card: #171A17; --ink: #EEF0EC; --ink2: #B2B8AF; --ink3: #858C83;
   --line: #252925; --line2: #363C36; --fill: #222622; --good: #6CCB8C; --goodSoft: #16301F; --danger: #F0897D;
   --hot: #F5A167; --accent: #B9A0E6; --accentInk: #1B1229; --accentSoft: #2A2240; --glass: rgba(30,34,30,.8);
-  --body: #363C36; --muscle: #2A2F2A; --sec: #5E4E80; --shadow: none;
+  --body: #252925; --muscle: #363C36; --sec: color-mix(in oklab, var(--accent) 55%, var(--card)); --ter: color-mix(in oklab, var(--accent) 28%, var(--card)); --shadow: none;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -390,15 +390,18 @@ const NS = 'http://www.w3.org/2000/svg';
 const heat = { chest: 'g', frontDelts: 'g', triceps: 's', quads: 'g', glutes: 's', lats: 'g', upperBack: 'g', biceps: 's', hamstrings: 's', rearDelts: 's', sideDelts: 's' };
 function draw(svg, view, fill) {
   const g = document.createElementNS(NS, 'g');
-  ANATOMY[view].forEach(([m, d, detail]) => {
+  const path = (d, attrs) => {
     const p = document.createElementNS(NS, 'path');
     p.setAttribute('d', d);
-    p.setAttribute('fill', fill(m));
-    p.setAttribute('stroke', svg.classList.contains('heat') ? 'var(--card)' : 'var(--fill)');
-    // Lines between the heads of one muscle are finer than the gaps between muscles.
-    p.setAttribute('stroke-width', detail ? '1' : '2.2');
     p.setAttribute('stroke-linejoin', 'round');
+    Object.entries(attrs).forEach(([k, v]) => p.setAttribute(k, v));
     g.append(p);
+  };
+  // One continuous body first (AnatomyFigure's skin), then the muscles with skin-coloured gaps.
+  ANATOMY[view].forEach(([m, d, detail]) => { if (!detail) path(d, { fill: 'var(--body)', stroke: 'var(--body)', 'stroke-width': 6 }); });
+  ANATOMY[view].forEach(([m, d, detail]) => {
+    // Lines between the heads of one muscle are finer than the gaps between muscles.
+    if (m) path(d, { fill: fill(m), stroke: 'var(--body)', 'stroke-width': detail ? 1 : 2.2 });
   });
   return g;
 }
@@ -414,11 +417,11 @@ document.querySelectorAll('svg.fig').forEach(svg => {
     return 'var(--muscle)';
   };
   if (svg.dataset.view) {
-    svg.setAttribute('viewBox', '0 0 200 400');
+    svg.setAttribute('viewBox', '-3 -3 206 406');
     svg.append(draw(svg, svg.dataset.view, fill));
   } else {
     // Badge: front and back side by side.
-    svg.setAttribute('viewBox', '0 0 400 400');
+    svg.setAttribute('viewBox', '-3 -3 406 406');
     svg.append(draw(svg, 'front', fill));
     const back = draw(svg, 'back', fill);
     back.setAttribute('transform', 'translate(200 0)');
