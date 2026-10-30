@@ -8,11 +8,14 @@ struct CoachRoute: Hashable {}
 /// The load check on Home. Opens the coach screen.
 struct CoachCard: View {
     @Environment(GymStore.self) private var gym
+    @Environment(CoachCloudStore.self) private var cloud
 
     var body: some View {
         let flags = gym.workouts.isEmpty ? [] : gym.loadReport().flags
         let serious = flags.filter { $0.severity == 2 }.count
-        let headline = if gym.workouts.isEmpty {
+        let headline = if !cloud.inbox.isEmpty {
+            "Claude sent \(cloud.inbox.count) \(cloud.inbox.count == 1 ? "change" : "changes") to look at"
+        } else if gym.workouts.isEmpty {
             "Log a workout for feedback"
         } else if serious > 0 {
             "\(serious) \(serious == 1 ? "thing" : "things") to ease off"
@@ -54,6 +57,7 @@ struct CoachCard: View {
 /// Training load, weekly sets per muscle and Claude's review of the last weeks.
 struct CoachView: View {
     @Environment(GymStore.self) private var gym
+    @Environment(CoachCloudStore.self) private var cloud
     @Environment(SleepStore.self) private var sleep
     @State private var reviewing: Workout?
 
@@ -72,6 +76,8 @@ struct CoachView: View {
                 if let readiness = sleep.report().readiness {
                     ReadinessRow(readiness: readiness)
                 }
+
+                CoachInboxSection()
 
                 SectionHead("Training load")
                 if gym.workouts.isEmpty {
@@ -154,6 +160,7 @@ struct CoachView: View {
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $reviewing) { WorkoutCoachSheet(workout: $0) }
+        .task { await cloud.refreshInbox() }
     }
 }
 
@@ -250,6 +257,7 @@ struct CoachFeedbackPanel: View {
     @Environment(GymStore.self) private var gym
     @Environment(SleepStore.self) private var sleep
     @Environment(FoodStore.self) private var food
+    @Environment(CoachCloudStore.self) private var cloud
     let scope: CoachScope
     var askTitle = "Get feedback"
     /// Asks as soon as the panel appears, when there's a key and no earlier answer.
@@ -258,7 +266,8 @@ struct CoachFeedbackPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if !coach.hasKey {
-                CoachKeyPrompt()
+                CoachConnectorHint(question: claudeQuestion)
+                if !cloud.isConnected { CoachKeyPrompt() }
             } else if coach.isLoading(scope) {
                 HStack(spacing: 12) {
                     ProgressView()
@@ -293,6 +302,18 @@ struct CoachFeedbackPanel: View {
             if askOnAppear && coach.hasKey && coach.feedback(for: scope) == nil && coach.error(for: scope) == nil {
                 await coach.ask(scope, gym: gym, sleep: sleep.coachLines(), nutrition: food.coachLines())
             }
+        }
+    }
+
+    /// What to ask Claude through the connector instead.
+    private var claudeQuestion: String {
+        switch scope {
+        case .workout(let id):
+            "Give me feedback on my \(gym.workout(id)?.name ?? "last") workout in Overlo4d and what to do next session"
+        case .overall:
+            "Review my training in Overlo4d over the last 4 weeks: what's going well, what to change, and where I'm doing too much"
+        case .sleep:
+            "Review my sleep in Overlo4d over the last two weeks and how it affects my training"
         }
     }
 
@@ -527,8 +548,20 @@ struct CoachSettingsSection: View {
                     .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
+                HStack {
+                    Text("Goal").font(Typo.body(15, .semibold))
+                    Spacer()
+                    Picker("Goal", selection: $goal) {
+                        ForEach(CoachGoal.allCases) { Text($0.label).tag($0.rawValue) }
+                    }
+                    .pickerStyle(.menu)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .card(padding: 0, cornerRadius: 18)
                 CoachKeyPrompt()
             }
+            CoachConnectorSettingsSection()
         }
     }
 }

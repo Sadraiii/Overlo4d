@@ -25,6 +25,7 @@ Gym tracker for iPhone.
 - Export to CSV, text or JSON
 - Backup to a folder in iCloud Drive, automatic when you leave the app, and restore on a new iPhone
 - AI feedback with your own Anthropic API key, stored in the Keychain
+- Or coach in Claude with your normal Claude plan through a connector on your own free Cloudflare Worker ([setup](cloudflare/coach-mcp/README.md))
 
 ## Build
 

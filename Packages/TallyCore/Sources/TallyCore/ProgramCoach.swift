@@ -222,6 +222,12 @@ public enum ProgramCoach {
         return try program(from: draft, start: start)
     }
 
+    /// Reads a program in the same JSON shape, e.g. one Claude sent through the coach connector.
+    public static func program(json: Data, start: Date) throws -> StrengthProgram {
+        guard let draft = try? JSONDecoder().decode(Draft.self, from: json) else { throw CoachError.badResponse }
+        return try program(from: draft, start: start)
+    }
+
     private static func program(from draft: Draft, start: Date) throws -> StrengthProgram {
         func clamp<T: Comparable>(_ value: T, _ range: ClosedRange<T>) -> T { min(max(value, range.lowerBound), range.upperBound) }
 

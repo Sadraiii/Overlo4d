@@ -34,6 +34,7 @@ struct TallyApp: App {
     @State private var bodyStore = BodyStore()
     @State private var programs = ProgramStore()
     @State private var backup = BackupStore()
+    @State private var cloud = CoachCloudStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -57,10 +58,12 @@ struct TallyApp: App {
                 .environment(sleep)
                 .environment(bodyStore)
                 .environment(programs)
+                .environment(cloud)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
-                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym).environment(ui).environment(backup) }
+                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym).environment(ui).environment(backup)
+                        .environment(cloud).environment(sleep).environment(food).environment(bodyStore).environment(programs) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear {
                     rest.requestPermission()
@@ -81,12 +84,15 @@ struct TallyApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 backup.backUpIfChanged()
+                let toolbox = CoachToolbox(gym: gym, sleep: sleep, food: food, body: bodyStore, programs: programs)
+                Task { await cloud.sync(toolbox: toolbox) }
                 // Leave the widgets showing exactly what the app last showed.
                 WidgetCenter.shared.reloadAllTimelines()
             }
             // Pick up the new day (and any widget-side changes) when returning to the app.
             guard phase == .active else { return }
             reps.reload()
+            Task { await cloud.refreshInbox() }
             Task {
                 // After Health's refresh, which asks for sleep access the first time.
                 await HealthSync.refresh(gym: gym, health: health)

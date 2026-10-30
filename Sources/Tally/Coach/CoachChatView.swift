@@ -134,6 +134,7 @@ extension CoachStore {
 /// Ask the coach anything. It looks up workouts, plans, sleep and food itself and can propose plan changes.
 struct CoachChatView: View {
     @Environment(CoachStore.self) private var coach
+    @Environment(CoachCloudStore.self) private var cloud
     @Environment(GymStore.self) private var gym
     @Environment(SleepStore.self) private var sleep
     @Environment(FoodStore.self) private var food
@@ -156,7 +157,8 @@ struct CoachChatView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if !coach.hasKey {
-                        CoachKeyPrompt()
+                        CoachConnectorHint(question: "Let's talk about my training in Overlo4d")
+                        if !cloud.isConnected { CoachKeyPrompt() }
                     } else if items.isEmpty {
                         intro
                     }
