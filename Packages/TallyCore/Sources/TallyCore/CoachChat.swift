@@ -139,6 +139,7 @@ public enum CoachTool: String, CaseIterable, Sendable {
     case getWeeklySets = "get_weekly_sets"
     case getSleep = "get_sleep"
     case getFood = "get_food"
+    case getBody = "get_body"
     case getPlans = "get_plans"
     case getPrograms = "get_programs"
     case proposePlanChange = "propose_plan_change"
@@ -152,6 +153,7 @@ public enum CoachTool: String, CaseIterable, Sendable {
         case .getWeeklySets: "Counting sets per muscle…"
         case .getSleep: "Reading your sleep…"
         case .getFood: "Reading your food log…"
+        case .getBody: "Reading your measurements…"
         case .getPlans: "Reading your plans…"
         case .getPrograms: "Reading your strength programs…"
         case .proposePlanChange: "Writing a plan change…"
@@ -181,6 +183,8 @@ public enum CoachTool: String, CaseIterable, Sendable {
             "The last two weeks of sleep: times, hours, stages, scores, tags and the sleep goal. Empty if the user doesn't track sleep."
         case .getFood:
             "The last week of the food diary: calories and macros per day against the goals, and body weight. Empty if the user doesn't log food."
+        case .getBody:
+            "Body measurements (waist, chest, arms, thighs, body fat and so on) with the change over the last month and since the first reading, plus how many progress-photo days there are. Weight is in get_food. Empty if the user doesn't measure."
         case .getPlans:
             "The user's saved workout plans with each exercise and its target sets."
         case .getPrograms:
@@ -200,7 +204,7 @@ public enum CoachTool: String, CaseIterable, Sendable {
             Self.object(["query": ["type": "string", "description": "Part of a name or a muscle, e.g. row or hamstrings."]], required: ["query"])
         case .getWeeklySets:
             Self.object(["weeks": ["type": "integer", "description": "How many weeks back, 1-12."]], required: ["weeks"])
-        case .getSleep, .getFood, .getPlans, .getPrograms:
+        case .getSleep, .getFood, .getBody, .getPlans, .getPrograms:
             Self.object([:], required: [])
         case .proposePlanChange:
             Self.object([

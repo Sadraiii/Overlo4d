@@ -7,6 +7,7 @@ struct CoachToolbox {
     let gym: GymStore
     let sleep: SleepStore
     let food: FoodStore
+    let body: BodyStore
     let programs: ProgramStore
     var now: Date = .now
 
@@ -27,6 +28,9 @@ struct CoachToolbox {
             return CoachToolResult(id: call.id, text: sleep.coachLines().map { "- \($0)" }.joined(separator: "\n"))
         case .getFood:
             return CoachToolResult(id: call.id, text: food.coachLines().map { "- \($0)" }.joined(separator: "\n"))
+        case .getBody:
+            let lines = body.coachLines()
+            return CoachToolResult(id: call.id, text: lines.isEmpty ? "No body measurements logged." : lines.map { "- \($0)" }.joined(separator: "\n"))
         case .getPlans:
             return CoachToolResult(id: call.id, text: plans())
         case .getPrograms:

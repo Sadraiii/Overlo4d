@@ -37,7 +37,7 @@ final class BackupStore {
     }
 
     /// Data files kept in Documents.
-    private static let documentFiles = ["gym.json", "food.json", "sleep.json", "programs.json", "coach.json", "coach-chat.json"]
+    private static let documentFiles = ["gym.json", "food.json", "sleep.json", "programs.json", "coach.json", "coach-chat.json", "body.json"]
     /// Data files kept in the App Group, shared with the widgets.
     private static let sharedFiles = [SharedStorage.repsFile]
     private static let settingsFile = "settings.json"

@@ -20,6 +20,13 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9", date: DateComponents(year: 2026, month: 10, day: 30), changes: [
+            "Body: log waist, chest, hips, arms, thighs, calves, neck, shoulders and body fat, with a chart and the change for each.",
+            "Pick which measurements you track, with how-to-measure tips. Body fat and waist sync with Apple Health.",
+            "Progress photos: front, side and back, from the camera or your library, with last time's photo shown to line up the pose. Kept in the app only.",
+            "Compare two days side by side or with a slider, see how weight and measurements changed in between, and share the before and after.",
+            "Ask the coach can read your measurements.",
+        ]),
         ChangelogEntry(version: "0.8", date: DateComponents(year: 2026, month: 10, day: 27), changes: [
             "Sleep: naps are kept apart from the night, so a nap on the sofa no longer spoils the score.",
             "Nights are tagged for you from late workouts, big late meals and late coffee in the food diary.",

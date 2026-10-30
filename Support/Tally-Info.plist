@@ -5,9 +5,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>Overload</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.8</string>
+	<string>0.9</string>
 	<key>CFBundleVersion</key>
-	<string>8</string>
+	<string>9</string>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
@@ -30,11 +30,11 @@
 		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Overload uses the camera to scan food barcodes.</string>
+	<string>Overload uses the camera to scan food barcodes and take progress photos.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Overload shows your steps, active energy, heart rate, body weight and sleep next to your training.</string>
+	<string>Overload shows your steps, active energy, heart rate, body weight, body fat, waist and sleep next to your training.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Overload saves finished workouts to Apple Health.</string>
+	<string>Overload saves finished workouts, food, weight, body fat and waist to Apple Health.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Overload saves share images to your photo library.</string>
 	<key>NSSupportsLiveActivities</key>

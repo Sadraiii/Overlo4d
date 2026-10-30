@@ -52,6 +52,8 @@ struct HomeTab: View {
 
                     SleepCard()
 
+                    BodyCard()
+
                     CoachCard()
 
                     RepsCard { ui.showingReps = true }
@@ -92,6 +94,7 @@ struct HomeTab: View {
             .navigationDestination(for: CoachRoute.self) { _ in CoachView() }
             .navigationDestination(for: CoachChatRoute.self) { _ in CoachChatView() }
             .navigationDestination(for: SleepRoute.self) { _ in SleepView() }
+            .navigationDestination(for: BodyRoute.self) { _ in BodyView() }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
             .navigationDestination(isPresented: $showingRecords) { RecordsView() }
             .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }

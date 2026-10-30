@@ -31,6 +31,7 @@ struct TallyApp: App {
     @State private var coach = CoachStore()
     @State private var food = FoodStore()
     @State private var sleep = SleepStore()
+    @State private var bodyStore = BodyStore()
     @State private var programs = ProgramStore()
     @State private var backup = BackupStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
@@ -54,6 +55,7 @@ struct TallyApp: App {
                 .environment(coach)
                 .environment(food)
                 .environment(sleep)
+                .environment(bodyStore)
                 .environment(programs)
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
@@ -63,6 +65,7 @@ struct TallyApp: App {
                 .onAppear {
                     rest.requestPermission()
                     food.health = health
+                    bodyStore.health = health
                     food.scheduleMealReminders()
                 }
                 .onChange(of: ui.dataVersion) { reloadData() }
@@ -93,10 +96,12 @@ struct TallyApp: App {
         gym = GymStore()
         food = FoodStore()
         sleep = SleepStore()
+        bodyStore = BodyStore()
         programs = ProgramStore()
         coach = CoachStore()
         reps.reload()
         food.health = health
+        bodyStore.health = health
         food.scheduleMealReminders()
         sleep.scheduleReminders()
         WidgetCenter.shared.reloadAllTimelines()

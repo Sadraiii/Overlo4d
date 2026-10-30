@@ -28,6 +28,13 @@ final class HealthManager {
         let kg: Double
     }
 
+    /// Body fat or waist from Apple Health (a smart scale, for example).
+    struct BodyReading: Equatable, Sendable {
+        let measure: BodyMeasure
+        let date: Date
+        let value: Double
+    }
+
     let isAvailable = HKHealthStore.isHealthDataAvailable()
 
     /// Whether the permission prompt has been shown. Read access itself can't be checked (by design of HealthKit).
@@ -40,6 +47,8 @@ final class HealthManager {
     private(set) var today = Today()
     /// Body weight over the last 180 days, oldest first.
     private(set) var weights: [Weight] = []
+    /// Body fat and waist over the last two years from other apps, oldest first.
+    private(set) var bodyReadings: [BodyReading] = []
     private var workoutHealth: [UUID: WorkoutHealth] = [:]
     /// Asked once per launch so types added in an update (e.g. distance) get their permission prompt.
     private var askedForNewTypes = false
@@ -53,6 +62,8 @@ final class HealthManager {
         HKQuantityType(.appleExerciseTime),
         HKQuantityType(.heartRate),
         HKQuantityType(.bodyMass),
+        HKQuantityType(.bodyFatPercentage),
+        HKQuantityType(.waistCircumference),
         HKQuantityType(.distanceWalkingRunning),
         HKQuantityType(.distanceCycling),
         HKQuantityType(.distanceSwimming),
@@ -63,6 +74,8 @@ final class HealthManager {
         HKObjectType.workoutType(),
         HKQuantityType(.activeEnergyBurned),
         HKQuantityType(.bodyMass),
+        HKQuantityType(.bodyFatPercentage),
+        HKQuantityType(.waistCircumference),
         HKQuantityType(.dietaryEnergyConsumed),
         HKQuantityType(.dietaryCarbohydrates),
         HKQuantityType(.dietaryProtein),
@@ -93,8 +106,10 @@ final class HealthManager {
         async let energy = Self.sum(.activeEnergyBurned, unit: .kilocalorie(), from: start, to: .now, store: store)
         async let exercise = Self.sum(.appleExerciseTime, unit: .minute(), from: start, to: .now, store: store)
         async let weights = Self.weights(store: store)
+        async let body = Self.bodyReadings(store: store)
         today = Today(steps: await steps, activeEnergy: await energy, exerciseMinutes: await exercise)
         self.weights = await weights
+        bodyReadings = await body
     }
 
     /// Energy and heart rate recorded between `start` and `end`, if Health has any. Cached by `key`.
@@ -163,6 +178,12 @@ final class HealthManager {
 
     // MARK: Queries
 
+    /// Saves body fat and waist to Apple Health. Other measurements have no Health type.
+    func saveBody(_ values: [BodyMeasure: Double], date: Date) async {
+        guard isAvailable, isConnected else { return }
+        await Self.saveBody(values, date: date, store: store)
+    }
+
     private nonisolated static func sum(
         _ id: HKQuantityTypeIdentifier, unit: HKUnit, from start: Date, to end: Date, store: HKHealthStore
     ) async -> Double? {
@@ -209,6 +230,50 @@ final class HealthManager {
         )
         let samples = (try? await descriptor.result(for: store)) ?? []
         return samples.map { Weight(date: $0.endDate, kg: $0.quantity.doubleValue(for: .gramUnit(with: .kilo))) }
+    }
+
+    /// HealthKit stores body fat as a fraction (0.18); the app uses percent (18).
+    private nonisolated static var bodyTypes: [(BodyMeasure, HKQuantityTypeIdentifier, HKUnit, Double)] {
+        [
+            (.bodyFat, .bodyFatPercentage, .percent(), 100),
+            (.waist, .waistCircumference, .meterUnit(with: .centi), 1),
+        ]
+    }
+
+    private nonisolated static func bodyReadings(store: HKHealthStore) async -> [BodyReading] {
+        let since = Calendar.current.date(byAdding: .year, value: -2, to: .now)
+        let own = HKSource.default()
+        var readings: [BodyReading] = []
+        for (measure, identifier, unit, scale) in bodyTypes {
+            let descriptor = HKSampleQueryDescriptor(
+                predicates: [.quantitySample(
+                    type: HKQuantityType(identifier),
+                    predicate: HKQuery.predicateForSamples(withStart: since, end: nil)
+                )],
+                sortDescriptors: [SortDescriptor(\.endDate, order: .forward)]
+            )
+            let samples = (try? await descriptor.result(for: store)) ?? []
+            // Readings saved by this app are already in body.json; skipping them lets deletes here stick.
+            readings += samples.filter { $0.sourceRevision.source != own }.map {
+                BodyReading(measure: measure, date: $0.endDate, value: $0.quantity.doubleValue(for: unit) * scale)
+            }
+        }
+        return readings.sorted { $0.date < $1.date }
+    }
+
+    private nonisolated static func saveBody(_ values: [BodyMeasure: Double], date: Date, store: HKHealthStore) async {
+        var samples: [HKQuantitySample] = []
+        for (measure, identifier, unit, scale) in bodyTypes {
+            guard let value = values[measure] else { continue }
+            samples.append(HKQuantitySample(
+                type: HKQuantityType(identifier),
+                quantity: HKQuantity(unit: unit, doubleValue: value / scale),
+                start: date,
+                end: date
+            ))
+        }
+        guard !samples.isEmpty else { return }
+        try? await store.save(samples)
     }
 
     private nonisolated static func sleepSegments(since start: Date, store: HKHealthStore) async -> [SleepSegment] {
