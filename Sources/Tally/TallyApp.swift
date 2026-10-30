@@ -67,6 +67,7 @@ struct TallyApp: App {
                     food.health = health
                     bodyStore.health = health
                     food.scheduleMealReminders()
+                    Task { await ExerciseMediaStore.shared.loadCatalogue() }
                 }
                 .onChange(of: ui.dataVersion) { reloadData() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }

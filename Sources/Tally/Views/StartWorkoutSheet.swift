@@ -220,6 +220,8 @@ struct SettingsSheet: View {
 
                     CoachSettingsSection()
 
+                    ExerciseMediaSettingsSection()
+
                     BackupSettingsSection()
 
                     ExportSettingsSection()

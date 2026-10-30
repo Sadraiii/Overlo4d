@@ -249,7 +249,22 @@ struct ExerciseBadge: View {
     let exercise: ExerciseDef?
     var size: CGFloat = 40
 
+    private var media: ExerciseMediaStore { .shared }
+
     var body: some View {
+        // A still of the Workout API animation when there is one, else the muscle figure.
+        if let exercise, media.hasKey, media.showsThumbnails, let code = media.code(for: exercise) {
+            ExerciseAnimation(code: code, animated: false) { figure }
+                .padding(size * 0.04)
+                .frame(width: size, height: size)
+                .background(.white, in: .rect(cornerRadius: size * 0.28))
+                .accessibilityHidden(true)
+        } else {
+            figure
+        }
+    }
+
+    private var figure: some View {
         AnatomyFigure(
             primary: Set(exercise?.primary ?? []),
             secondary: Set(exercise?.secondary ?? []),

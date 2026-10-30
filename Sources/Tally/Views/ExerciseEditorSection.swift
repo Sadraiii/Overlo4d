@@ -19,6 +19,7 @@ struct ExerciseEditorSection: View {
     var onSetCompleted: (WorkoutExercise) -> Void = { _ in }
 
     @State private var showingPlates = false
+    @State private var showingDemo = false
     @State private var addingNote = false
 
     private static let restOptions = [0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
@@ -35,7 +36,12 @@ struct ExerciseEditorSection: View {
                         .fill(Theme.accent)
                         .frame(width: 4, height: 40)
                 }
-                ExerciseBadge(exercise: def, size: 42)
+                // Tap the badge to see how the exercise is done.
+                Button { showingDemo = true } label: {
+                    ExerciseBadge(exercise: def, size: 42)
+                }
+                .buttonStyle(.plain)
+                .disabled(def == nil || !ExerciseMediaStore.shared.hasKey)
                 if let def {
                     NavigationLink(value: def) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -100,6 +106,9 @@ struct ExerciseEditorSection: View {
             .cardRow()
             .sheet(isPresented: $showingPlates) {
                 PlateCalculatorSheet(target: exercise.sets.compactMap(\.weight).max())
+            }
+            .sheet(isPresented: $showingDemo) {
+                if let def { ExerciseDemoSheet(exercise: def) }
             }
 
             if isLive, let last = gym.lastSession(for: exercise.exerciseID) {

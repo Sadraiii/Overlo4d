@@ -106,6 +106,8 @@ struct ExerciseDetailView: View {
                     Text(exercise.name).display(34).lineLimit(2)
                 }
 
+                ExerciseDemoCard(exercise: exercise)
+
                 ExerciseDetailsCard(exercise: exercise)
                     .card()
 
