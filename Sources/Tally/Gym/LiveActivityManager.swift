@@ -18,7 +18,7 @@ final class LiveActivityManager {
             return
         }
         let attributes = WorkoutActivityAttributes(workoutName: workout.name, startedAt: workout.startedAt)
-        let state = Self.state(for: workout, restEndsAt: nil, names: names)
+        let state = Self.state(for: workout, rest: nil, names: names)
         activity = try? Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil))
         lastState = state
         // End any leftovers from earlier workouts, but not the one just started.
@@ -35,9 +35,10 @@ final class LiveActivityManager {
         }
     }
 
-    func update(for workout: Workout, restEndsAt: Date?, names: (UUID) -> String) {
+    /// `rest` is the running rest countdown, from when it started to when it ends.
+    func update(for workout: Workout, rest: ClosedRange<Date>?, names: (UUID) -> String) {
         guard let activity else { return }
-        let state = Self.state(for: workout, restEndsAt: restEndsAt, names: names)
+        let state = Self.state(for: workout, rest: rest, names: names)
         guard state != lastState else { return }
         lastState = state
         let id = activity.id
@@ -52,8 +53,11 @@ final class LiveActivityManager {
 
     // `Activity` isn't Sendable, so the async calls look activities up by ID off the main actor.
     private nonisolated static func push(_ state: WorkoutActivityAttributes.ContentState, toActivityWithID id: String) async {
+        // Going stale when the rest ends redraws the lock screen as "Rest over",
+        // even if the app is suspended by then.
+        let content = ActivityContent(state: state, staleDate: state.restEndsAt)
         for activity in Activity<WorkoutActivityAttributes>.activities where activity.id == id {
-            await activity.update(ActivityContent(state: state, staleDate: nil))
+            await activity.update(content)
         }
     }
 
@@ -65,15 +69,21 @@ final class LiveActivityManager {
 
     private static func state(
         for workout: Workout,
-        restEndsAt: Date?,
+        rest: ClosedRange<Date>?,
         names: (UUID) -> String
     ) -> WorkoutActivityAttributes.ContentState {
         let next = workout.exercises.first { $0.sets.contains { !$0.isDone } }
+        let nextSet = next.flatMap { exercise in
+            exercise.sets.firstIndex { !$0.isDone }.map { "Set \($0 + 1) of \(exercise.sets.count)" }
+        }
+        let rest = rest.flatMap { $0.upperBound > .now ? $0 : nil }
         return WorkoutActivityAttributes.ContentState(
             exerciseName: next.map { names($0.exerciseID) },
+            nextSet: nextSet,
             setsDone: workout.completedSets.count,
             setsTotal: workout.allSets.count,
-            restEndsAt: restEndsAt.flatMap { $0 > .now ? $0 : nil }
+            restStartedAt: rest?.lowerBound,
+            restEndsAt: rest?.upperBound
         )
     }
 }

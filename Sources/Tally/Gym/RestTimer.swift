@@ -15,6 +15,11 @@ final class RestTimer {
 
     var isRunning: Bool { endDate != nil }
 
+    /// From when the countdown started (moved by +/−15) to when it ends.
+    var interval: ClosedRange<Date>? {
+        endDate.map { $0.addingTimeInterval(-total)...$0 }
+    }
+
     /// Start the rest countdown automatically when a set is ticked off.
     /// Set in Settings.
     var autoStart: Bool { UserDefaults.standard.object(forKey: "rest.autoStart") as? Bool ?? true }

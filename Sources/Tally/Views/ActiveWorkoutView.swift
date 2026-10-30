@@ -87,7 +87,7 @@ struct ActiveWorkoutView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Minimize", systemImage: "chevron.down") {
-                        gym.updateActive(draft, restEndsAt: rest.endDate)
+                        gym.updateActive(draft, rest: rest.interval)
                         gym.isPresentingWorkout = false
                     }
                 }
@@ -138,8 +138,8 @@ struct ActiveWorkoutView: View {
             } message: {
                 Text("Tick off at least one set, or discard the workout.")
             }
-            .onChange(of: draft) { gym.updateActive(draft, restEndsAt: rest.endDate) }
-            .onChange(of: rest.endDate) { gym.updateActive(draft, restEndsAt: rest.endDate) }
+            .onChange(of: draft) { gym.updateActive(draft, rest: rest.interval) }
+            .onChange(of: rest.endDate) { gym.updateActive(draft, rest: rest.interval) }
         }
     }
 

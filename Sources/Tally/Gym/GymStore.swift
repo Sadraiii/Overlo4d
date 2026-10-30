@@ -160,7 +160,7 @@ final class GymStore {
         LiveActivityManager.shared.start(for: workout, names: name(of:))
     }
 
-    func updateActive(_ workout: Workout, restEndsAt: Date?) {
+    func updateActive(_ workout: Workout, rest: ClosedRange<Date>?) {
         guard let previous = activeWorkout else { return }
         if previous != workout {
             activeWorkout = workout
@@ -170,7 +170,7 @@ final class GymStore {
             // The lock screen timer counts from the start, which a Live Activity can't change.
             LiveActivityManager.shared.start(for: workout, names: name(of:))
         }
-        LiveActivityManager.shared.update(for: workout, restEndsAt: restEndsAt, names: name(of:))
+        LiveActivityManager.shared.update(for: workout, rest: rest, names: name(of:))
     }
 
     func newWorkoutExercise(for exercise: ExerciseDef) -> WorkoutExercise {
