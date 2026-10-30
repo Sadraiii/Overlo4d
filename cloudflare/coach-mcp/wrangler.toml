@@ -1,0 +1,9 @@
+# The name must match the Worker's name in the Cloudflare dashboard.
+name = "overlo4d"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Wrangler creates this namespace on the first deploy.
+[[kv_namespaces]]
+binding = "COACH"
