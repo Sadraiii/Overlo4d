@@ -20,6 +20,7 @@ Gym tracker for iPhone.
 - Apple Health and Apple Watch workouts
 - Widgets and a Live Activity
 - Export to CSV, text or JSON
+- Backup to a folder in iCloud Drive, automatic when you leave the app, and restore on a new iPhone
 - AI feedback with your own Anthropic API key, stored in the Keychain
 
 ## Build

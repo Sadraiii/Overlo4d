@@ -45,6 +45,7 @@ enum Changelog {
             "Edit a workout's date, start, end and duration, during the workout (tap the start time) or later in History. Workouts past midnight are handled.",
             "Export: the training log shows sets per muscle group for each workout and the muscle group beside every exercise, marks edited times, and the export screen shows the muscles worked in the period.",
             "Rest timer on the lock screen and Dynamic Island: a big countdown with a bar that drains, the next exercise and set, and \"Rest over\" when it's time to lift, even with the app closed.",
+            "Backup to iCloud Drive: pick a folder once and everything is backed up when you leave the app, so a new iPhone can restore it from Settings. Restores can be undone.",
         ]),
         ChangelogEntry(version: "0.7", date: DateComponents(year: 2026, month: 10, day: 26), changes: [
             "Food tracker: log breakfast, lunch, dinner and snacks, with calories and macros left for the day.",

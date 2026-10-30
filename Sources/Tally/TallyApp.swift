@@ -16,6 +16,8 @@ final class AppUI {
     var showingReps = false
     /// The food diary, pushed on Home.
     var showingFood = false
+    /// Bumped after a backup is restored, so the stores reload their files.
+    var dataVersion = 0
 }
 
 @main
@@ -30,6 +32,7 @@ struct TallyApp: App {
     @State private var food = FoodStore()
     @State private var sleep = SleepStore()
     @State private var programs = ProgramStore()
+    @State private var backup = BackupStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
     @Environment(\.scenePhase) private var scenePhase
@@ -55,13 +58,14 @@ struct TallyApp: App {
                 .tint(Theme.accent)
                 // Rebuild with the new accent colour when it changes.
                 .id(accent)
-                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym) }
+                .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym).environment(ui).environment(backup) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear {
                     rest.requestPermission()
                     food.health = health
                     food.scheduleMealReminders()
                 }
+                .onChange(of: ui.dataVersion) { reloadData() }
                 .onChange(of: accent) { WidgetCenter.shared.reloadAllTimelines() }
                 .onChange(of: health.isConnected) {
                     Task {
@@ -71,6 +75,7 @@ struct TallyApp: App {
                 }
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .background { backup.backUpIfChanged() }
             // Pick up the new day (and any widget-side changes) when returning to the app.
             guard phase == .active else { return }
             reps.reload()
@@ -80,6 +85,25 @@ struct TallyApp: App {
                 sleep.updateContext(gym: gym, food: food)
                 await sleep.refresh(health: health)
             }
+        }
+    }
+
+    /// Reads every store's file again after a restore.
+    private func reloadData() {
+        gym = GymStore()
+        food = FoodStore()
+        sleep = SleepStore()
+        programs = ProgramStore()
+        coach = CoachStore()
+        reps.reload()
+        food.health = health
+        food.scheduleMealReminders()
+        sleep.scheduleReminders()
+        WidgetCenter.shared.reloadAllTimelines()
+        Task {
+            await HealthSync.refresh(gym: gym, health: health)
+            sleep.updateContext(gym: gym, food: food)
+            await sleep.refresh(health: health)
         }
     }
 

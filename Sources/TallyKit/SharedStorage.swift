@@ -34,7 +34,7 @@ public enum SharedStorage {
         appGroupID.flatMap(UserDefaults.init(suiteName:)) ?? .standard
     }
 
-    static func url(for file: String) -> URL {
+    public static func url(for file: String) -> URL {
         let directory: URL
         if let appGroupID,
            let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {

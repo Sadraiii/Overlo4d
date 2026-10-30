@@ -222,6 +222,8 @@ struct SettingsSheet: View {
 
                     CoachSettingsSection()
 
+                    BackupSettingsSection()
+
                     ExportSettingsSection()
 
                     AboutSection()
