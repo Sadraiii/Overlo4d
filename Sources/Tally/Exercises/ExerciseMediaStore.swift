@@ -143,11 +143,16 @@ final class ExerciseMediaStore {
 
     // MARK: Animations
 
-    /// Start and end photos from Free Exercise DB, from disk or downloaded and saved. Needs no key.
+    /// Start and end photos from Free Exercise DB: shipped in the app, else saved or downloaded. Needs no key.
     func photos(_ id: String) async -> [Data]? {
         var frames: [Data] = []
         for frame in 0..<2 {
             let name = "photos-\(id)-\(frame).jpg"
+            let bundled = Bundle.main.resourceURL?.appending(path: "ExercisePhotos/\(id)-\(frame).jpg")
+            if let bundled, let data = try? Data(contentsOf: bundled) {
+                frames.append(data)
+                continue
+            }
             if let data = try? Data(contentsOf: Self.folder.appending(path: name)) {
                 frames.append(data)
                 continue

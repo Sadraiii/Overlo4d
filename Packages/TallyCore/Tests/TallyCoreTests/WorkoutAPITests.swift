@@ -86,3 +86,13 @@ private let catalogue = [
         #expect(FreeExerciseDB.ids.values.allSatisfy { !$0.isEmpty && !$0.contains(" ") })
     }
 }
+
+@Suite struct MachineNameTests {
+    @Test func leverMeansMachine() {
+        let list = ["Lever Seated Row", "Cable Seated Row", "Barbell Bench Press", "Pull-Up", "Dumbbell Biceps Curl"]
+            .enumerated().map { WorkoutAPI.Exercise(id: "\($0)", code: "\($0)", name: $1) }
+        #expect(WorkoutAPIMatcher.bestMatch(for: "Seated Row (Machine)", in: list)?.name == "Lever Seated Row")
+        #expect(WorkoutAPIMatcher.bestMatch(for: "Pull-ups", hints: ["pronated"], in: list)?.name == "Pull-Up")
+        #expect(WorkoutAPIMatcher.bestMatch(for: "Bicep Curl (Dumbbell)", in: list)?.name == "Dumbbell Biceps Curl")
+    }
+}

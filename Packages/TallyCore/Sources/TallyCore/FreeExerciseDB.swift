@@ -1,8 +1,8 @@
 import Foundation
 
 /// Free Exercise DB (github.com/yuhonas/free-exercise-db): public-domain photos of 800+ exercises,
-/// two per exercise (start and end position), served from GitHub. No key needed. Shown when Workout API
-/// has no animation, flipping between the two photos.
+/// two per exercise (start and end position). The ones used here ship in the app (Resources/ExercisePhotos);
+/// GitHub is the fallback. No key needed. Shown when Workout API has no animation, flipping between the two.
 public enum FreeExerciseDB {
     public static let imageBase = URL(string: "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/")!
 

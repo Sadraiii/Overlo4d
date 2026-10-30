@@ -11,6 +11,8 @@ resources:
   - Resources/AppIcon60x60@3x.png
   - Resources/Seal.png
   - Resources/Glyph.png
+  # Free Exercise DB photos (public domain) shown as exercise demos without any API.
+  - Resources/ExercisePhotos
   - Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf
   - Resources/Fonts/BigShouldersDisplayThin-Black.ttf
   - Resources/Fonts/SchibstedGrotesk-Regular.ttf

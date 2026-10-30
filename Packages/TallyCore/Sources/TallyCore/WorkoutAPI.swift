@@ -65,6 +65,8 @@ public enum WorkoutAPIMatcher {
         "pullup": "pull up", "chinup": "chin up", "pushup": "push up", "situp": "sit up",
         "bentover": "bent over", "rdl": "romanian deadlift", "ohp": "overhead press",
         "single": "unilateral", "ups": "up",
+        // Machines are often named "lever" or "leverage".
+        "lever": "machine", "leverage": "machine", "sled": "machine", 
     ]
 
     /// Lower-case word stems with equipment and grip words normalised.
