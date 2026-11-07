@@ -161,6 +161,8 @@ struct ProgressOverview: View {
                 Tile(value: "\(weeks.last?.workouts ?? 0)", label: "This week")
             }
 
+            ConsistencyCard()
+
             // Workouts per week as bars.
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
@@ -234,6 +236,11 @@ struct ProgressOverview: View {
                 SectionHead("Muscles")
                 MuscleVolumeCard(weeklySets: muscleVolume, caption: "Average working sets per week, last 4 weeks")
                     .card()
+            }
+
+            if !gym.workouts.isEmpty {
+                SectionHead("Milestones")
+                MilestonesCard()
             }
 
             if !recentRecords.isEmpty {

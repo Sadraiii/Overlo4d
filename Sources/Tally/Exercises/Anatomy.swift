@@ -207,6 +207,9 @@ struct AnatomyFigure: View {
     /// Working sets per week for each muscle. When set, muscles are shaded by volume zone instead of
     /// by role.
     var weeklySets: [Muscle: Double]?
+    /// A colour for each muscle, e.g. by recovery. When set, it wins over roles and volume; muscles
+    /// left out are drawn untrained.
+    var shades: [Muscle: Color]?
     /// Outlined, with the other muscles faded, for the muscle being inspected.
     var selected: Muscle?
     /// Makes muscles tappable (picking muscles for a custom exercise).
@@ -308,6 +311,9 @@ struct AnatomyFigure: View {
     private func color(_ muscle: Muscle?) -> Color {
         // Head, hands, knees and feet are part of the skin, so the muscles read first.
         guard let muscle else { return Self.skin }
+        if let shades {
+            return shades[muscle] ?? Self.untrained
+        }
         if let weeklySets {
             return VolumeZone(sets: weeklySets[muscle] ?? 0)?.color ?? Self.untrained
         }

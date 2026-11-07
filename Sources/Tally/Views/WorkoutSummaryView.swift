@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -51,6 +52,36 @@ struct WorkoutSummaryView: View {
                     Tile(value: "\(workout.completedSets.count)", label: "Sets")
                 }
                 WorkoutHealthTiles(workout: workout, stats: $workoutHealth)
+
+                let reached = gym.milestonesReached(by: workout)
+                if !reached.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label(reached.count == 1 ? "New milestone" : "New milestones", systemImage: "rosette")
+                            .font(Typo.body(13, .bold))
+                            .foregroundStyle(Theme.accent)
+                        ForEach(reached, id: \.kind) { milestone in
+                            HStack(spacing: 12) {
+                                Image(systemName: milestone.kind.symbol)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(Theme.accentInk)
+                                    .frame(width: 36, height: 36)
+                                    .background(Theme.accent, in: .circle)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(milestone.kind.title): \(milestone.reached.map(milestone.kind.format) ?? "")")
+                                        .font(Typo.body(15, .semibold))
+                                        .foregroundStyle(Theme.ink)
+                                    Text("Level \(milestone.level) of \(milestone.maxLevel)")
+                                        .font(Typo.body(12.5))
+                                        .foregroundStyle(Theme.ink3)
+                                }
+                                Spacer(minLength: 0)
+                                LevelPips(level: milestone.level, max: milestone.maxLevel)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .card(padding: 14, cornerRadius: 18)
+                }
 
                 if !WorkoutMuscles(workout, gym: gym).entries.isEmpty {
                     WorkoutMusclesCard(workout: workout)

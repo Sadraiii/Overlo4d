@@ -160,6 +160,24 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 .dock .btn { height: 44px; border-radius: 22px; }
 .mbar { height: 8px; border-radius: 4px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .mbar b { display: block; height: 100%; border-radius: 4px; }
+
+.pin { font-weight: 500; font-size: 13.5px; padding: 9px 12px; border-radius: 12px; background: color-mix(in srgb, var(--hot) 10%, transparent); margin-bottom: 8px; }
+.sets .n.rpe { position: relative; }
+.sets .n.rpe em { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); font: 700 9px Body; font-style: normal; background: var(--accent); color: var(--accentInk); padding: 1px 4px; border-radius: 6px; }
+.grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; }
+.grid i { aspect-ratio: 1; border-radius: 3px; background: var(--fill); }
+.grid i.a { background: color-mix(in oklab, var(--accent) 65%, var(--card)); }
+.grid i.b { background: var(--accent); }
+.grid i.t { outline: 1.2px solid var(--ink); outline-offset: -1.2px; }
+.grid i.f { background: transparent; }
+.mtiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mtile { background: var(--card); box-shadow: var(--shadow); border-radius: 18px; padding: 13px; display: flex; flex-direction: column; gap: 9px; }
+.mtile .ic { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accentInk); font-size: 14px; }
+.pips { display: flex; gap: 2.5px; } .pips b { width: 5px; height: 5px; border-radius: 3px; background: var(--line2); } .pips b.on { background: var(--accent); }
+.navbar { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 2px; }
+.navbar .back { width: 38px; height: 38px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; color: var(--ink2); font-size: 20px; }
+.rrow { padding: 12px 16px; border-top: 1px solid var(--line); }
+.rrow:first-child { border-top: 0; }
 </style>
 </head>
 <body>
@@ -276,11 +294,14 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     <div style="padding:0 4px">
       <div class="row between"><span class="pill live">In progress</span><span class="eyebrow" style="font-size:12.5px">Started 18:04 ✎</span></div>
       <div class="title" style="font-size:26px;margin-top:10px">Upper A</div>
-      <div class="num" style="font-size:72px;margin-top:2px">31:07</div>
-      <div class="row" style="gap:12px;margin-top:8px">
-        <div class="stat" style="flex:1"><div class="eyebrow">Volume</div><div class="num">3,180 kg</div></div>
-        <div class="stat" style="flex:1"><div class="eyebrow">Sets</div><div class="num">7/14</div></div>
-        <div class="stat" style="flex:1"><div class="eyebrow">Exercises</div><div class="num">4</div></div>
+      <div class="num" style="font-size:64px;margin-top:2px">31:07</div>
+      <div class="card" style="padding:14px;border-radius:20px;margin-top:10px">
+        <div class="row" style="gap:12px">
+          <div class="stat" style="flex:1"><div class="eyebrow">Volume</div><div class="num">3,180 kg</div></div>
+          <div class="stat" style="flex:1"><div class="eyebrow">Sets</div><div class="num">7/14</div></div>
+          <div class="stat" style="flex:1"><div class="eyebrow">Exercises</div><div class="num">4</div></div>
+        </div>
+        <div class="mbar" style="height:6px;margin-top:12px"><b style="width:50%;background:var(--accent)"></b></div>
       </div>
     </div>
 
@@ -290,10 +311,11 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
         <div style="flex:1"><div class="title" style="font-size:17px">Bench Press</div><div class="muted" style="font-size:12px;font-weight:600">⏱ Rest 2:00</div></div>
         <span class="muted" style="font-size:18px">···</span>
       </div>
+      <div class="pin">📌 Bench on notch 3, feet tucked, arch</div>
       <div class="sets">
         <div class="h"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div>
         <div class="r done"><span class="n">1</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-        <div class="r done"><span class="n">2</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r done"><span class="n rpe">2<em>@8</em></span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
         <div class="r"><span class="n">3</span><span class="prev">70 × 7</span><span class="f ph">72.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
       </div>
     </div>
@@ -354,6 +376,11 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
       <div class="tile"><div class="num" style="font-size:32px">2</div><div class="eyebrow" style="font-size:12px;margin-top:4px">This week</div></div>
     </div>
     <div class="card" style="padding:14px">
+      <div class="row between" style="align-items:baseline"><span class="title" style="font-size:13.6px">Consistency</span><span class="muted" style="font-size:12.5px">Last 6 months</span></div>
+      <div class="grid" id="grid" style="margin-top:12px"></div>
+      <div class="row" style="gap:14px;margin-top:12px;font-size:13px"><b style="font-weight:600">68 active days</b><span class="muted">71 sessions</span><span style="flex:1"></span><span class="muted row" style="gap:3px;font-size:11px">Less <i style="width:10px;height:10px;border-radius:2.5px;background:var(--fill)"></i><i style="width:10px;height:10px;border-radius:2.5px;background:color-mix(in oklab, var(--accent) 65%, var(--card))"></i><i style="width:10px;height:10px;border-radius:2.5px;background:var(--accent)"></i> More</span></div>
+    </div>
+    <div class="card" style="padding:14px">
       <div class="row between" style="align-items:baseline"><span class="title" style="font-size:13.6px">Workouts per week</span><span class="muted" style="font-size:12.5px">Last 12 weeks</span></div>
       <div class="bars" style="height:90px;margin-top:12px" id="wk"></div>
     </div>
@@ -364,8 +391,51 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
         <svg class="fig heat" data-view="back" width="90" height="180"></svg>
       </div>
       <div style="margin-top:12px;font-size:14px">
-        <div class="row between"><b style="font-weight:600">Chest</b><span class="muted">18 sets</span></div><div class="mbar"><b style="width:100%;background:#D2551F"></b></div>
-        <div class="row between" style="margin-top:12px"><b style="font-weight:600">Back</b><span class="muted">16 sets</span></div><div class="mbar"><b style="width:89%;background:#2F7FD8"></b></div>
+        <div class="row between"><b style="font-weight:600">Chest</b><span class="muted">18 sets</span></div><div class="mbar"><b style="width:100%;background:var(--accent)"></b></div>
+        <div class="row between" style="margin-top:12px"><b style="font-weight:600">Back</b><span class="muted">16 sets</span></div><div class="mbar"><b style="width:89%;background:var(--accent)"></b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Recovery -->
+<section class="phone light" id="recovery">
+  <div class="content" style="gap:12px">
+    <div class="navbar"><span class="back">‹</span><span class="title" style="font-size:17px">Recovery</span><span style="width:38px"></span></div>
+    <div class="card">
+      <div class="row" style="justify-content:center;gap:10px">
+        <div style="text-align:center"><svg class="fig rec" data-view="front" width="105" height="210"></svg><div class="eyebrow" style="font-size:11.5px">Front</div></div>
+        <div style="text-align:center"><svg class="fig rec" data-view="back" width="105" height="210"></svg><div class="eyebrow" style="font-size:11.5px">Back</div></div>
+      </div>
+      <div class="row" style="justify-content:center;gap:14px;margin-top:12px;font-size:12.5px;font-weight:500;color:var(--ink2)">
+        <span class="row" style="gap:6px"><i style="width:9px;height:9px;border-radius:50%;background:var(--hot)"></i>Just trained</span>
+        <span class="row" style="gap:6px"><i style="width:9px;height:9px;border-radius:50%;background:color-mix(in oklab, var(--hot) 50%, var(--card))"></i>Recovering</span>
+        <span class="row" style="gap:6px"><i style="width:9px;height:9px;border-radius:50%;background:color-mix(in oklab, var(--good) 65%, var(--card))"></i>Ready</span>
+      </div>
+    </div>
+    <div class="card" style="padding:0;border-radius:20px" id="reclist"></div>
+  </div>
+</section>
+
+<!-- 6. Milestones (Progress, scrolled) -->
+<section class="phone light" id="milestones" data-tab="progress">
+  <div class="content" style="gap:12px">
+    <div class="section" style="padding-top:6px"><span class="title">Milestones</span></div>
+    <div class="mtiles">
+      <div class="mtile"><div class="row between"><span class="ic">🏋</span><span class="pips"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b><b></b><b></b></span></div><div><div class="num" style="font-size:26px">86</div><div class="eyebrow" style="font-size:12px">Workouts</div></div><div><div class="mbar" style="height:5px;margin-top:0"><b style="width:72%;background:var(--accent)"></b></div><div class="muted" style="font-size:11.5px;font-weight:500;margin-top:4px">Next: 100</div></div></div>
+      <div class="mtile"><div class="row between"><span class="ic">✓</span><span class="pips"><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b><b></b><b></b></span></div><div><div class="num" style="font-size:26px">1,284</div><div class="eyebrow" style="font-size:12px">Sets done</div></div><div><div class="mbar" style="height:5px;margin-top:0"><b style="width:19%;background:var(--accent)"></b></div><div class="muted" style="font-size:11.5px;font-weight:500;margin-top:4px">Next: 2,500</div></div></div>
+      <div class="mtile"><div class="row between"><span class="ic">⚖</span><span class="pips"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b><b></b></span></div><div><div class="num" style="font-size:26px">412 t</div><div class="eyebrow" style="font-size:12px">Weight lifted</div></div><div><div class="mbar" style="height:5px;margin-top:0"><b style="width:41%;background:var(--accent)"></b></div><div class="muted" style="font-size:11.5px;font-weight:500;margin-top:4px">Next: 500 t</div></div></div>
+      <div class="mtile"><div class="row between"><span class="ic">⏱</span><span class="pips"><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b><b></b><b></b><b></b></span></div><div><div class="num" style="font-size:26px">79 h</div><div class="eyebrow" style="font-size:12px">Time trained</div></div><div><div class="mbar" style="height:5px;margin-top:0"><b style="width:58%;background:var(--accent)"></b></div><div class="muted" style="font-size:11.5px;font-weight:500;margin-top:4px">Next: 100 h</div></div></div>
+      <div class="mtile"><div class="row between"><span class="ic">🔥</span><span class="pips"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b><b></b></span></div><div><div class="num" style="font-size:26px">14 wk</div><div class="eyebrow" style="font-size:12px">Best streak</div></div><div><div class="mbar" style="height:5px;margin-top:0"><b style="width:17%;background:var(--accent)"></b></div><div class="muted" style="font-size:11.5px;font-weight:500;margin-top:4px">Next: 26 wk</div></div></div>
+      <div class="mtile"><div class="row between"><span class="ic">🏆</span><span class="pips"><b class="on"></b><b class="on"></b><b></b><b></b><b></b><b></b><b></b></span></div><div><div class="num" style="font-size:26px">37</div><div class="eyebrow" style="font-size:12px">Records</div></div><div><div class="mbar" style="height:5px;margin-top:0"><b style="width:48%;background:var(--accent)"></b></div><div class="muted" style="font-size:11.5px;font-weight:500;margin-top:4px">Next: 50</div></div></div>
+    </div>
+    <div class="muted" style="font-size:13px;padding:6px 2px 0">On the workout summary:</div>
+    <div class="card" style="padding:14px;border-radius:18px">
+      <div style="font-weight:700;font-size:13px;color:var(--accent);margin-bottom:10px">✪ New milestone</div>
+      <div class="row" style="gap:12px">
+        <span class="ic" style="width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accentInk);display:flex;align-items:center;justify-content:center">🏋</span>
+        <div style="flex:1"><div style="font-weight:600">Workouts: 100</div><div class="muted" style="font-size:12.5px">Level 5 of 8</div></div>
+        <span class="pips"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b><b></b><b></b><b></b></span>
       </div>
     </div>
   </div>
@@ -385,6 +455,9 @@ document.querySelectorAll('.phone').forEach(p => {
   }
 });
 
+// Recovery shading: orange fading as it recovers, green once ready.
+const rec = { chest: .2, frontDelts: .25, triceps: .3, lats: .65, upperBack: .7, biceps: .6, rearDelts: .75, quads: 1, glutes: 1, hamstrings: 1, adductors: 1, abs: 1 };
+const recColor = p => p >= 1 ? 'color-mix(in oklab, var(--good) 65%, var(--card))' : `color-mix(in oklab, var(--hot) ${Math.round(100 - 60 * p)}%, var(--card))`;
 // Muscle figures.
 const NS = 'http://www.w3.org/2000/svg';
 const heat = { chest: 'g', frontDelts: 'g', triceps: 's', quads: 'g', glutes: 's', lats: 'g', upperBack: 'g', biceps: 's', hamstrings: 's', rearDelts: 's', sideDelts: 's' };
@@ -411,6 +484,7 @@ document.querySelectorAll('svg.fig').forEach(svg => {
   const isHeat = svg.classList.contains('heat');
   const fill = m => {
     if (!m) return 'var(--body)';
+    if (svg.classList.contains('rec')) return rec[m] === undefined ? 'var(--muscle)' : recColor(rec[m]);
     if (isHeat) return { g: 'var(--accent)', h: 'var(--hot)', s: 'var(--sec)' }[heat[m]] || 'var(--muscle)';
     if (primary.includes(m)) return 'var(--accent)';
     if (secondary.includes(m)) return 'var(--sec)';
@@ -428,6 +502,28 @@ document.querySelectorAll('svg.fig').forEach(svg => {
     svg.append(back);
   }
 });
+
+
+const names = { chest: 'Chest', frontDelts: 'Front delts', triceps: 'Triceps', lats: 'Lats', upperBack: 'Upper back', biceps: 'Biceps', rearDelts: 'Rear delts', quads: 'Quads', glutes: 'Glutes', hamstrings: 'Hamstrings' };
+const when = { chest: 'Sat 18:00', frontDelts: 'Sat 14:00', triceps: 'Sat 10:00', biceps: 'In 9 h', lats: 'In 7 h', upperBack: 'In 6 h', rearDelts: 'In 4 h' };
+const trainedAgo = { chest: 'yesterday', frontDelts: 'yesterday', triceps: 'yesterday', lats: '2 days ago', upperBack: '2 days ago', biceps: '2 days ago', rearDelts: '2 days ago', quads: '4 days ago', glutes: '4 days ago', hamstrings: '4 days ago' };
+const list = document.getElementById('reclist');
+Object.keys(names).forEach(m => {
+  const p = rec[m], ready = p >= 1;
+  list.insertAdjacentHTML('beforeend', `<div class="rrow"><div class="row between" style="align-items:baseline"><b style="font-weight:600">${names[m]}</b><span style="font-weight:600;font-size:13px;color:${ready ? 'var(--good)' : 'var(--hot)'}">${ready ? 'Ready' : when[m]}</span></div><div class="mbar" style="height:6px;margin-top:7px;background:var(--fill)"><b style="width:${p * 100}%;background:${recColor(p)}"></b></div><div class="muted" style="font-size:12px;margin-top:6px">Trained ${trainedAgo[m]}</div></div>`);
+});
+
+// Consistency grid: 26 weeks, today is a Thursday in the last column.
+const grid = document.getElementById('grid');
+let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+for (let w = 0; w < 26; w++) for (let d = 0; d < 7; d++) {
+  const last = w === 25, future = last && d > 3, today = last && d === 3;
+  let cls = '';
+  if (future) cls = 'f';
+  else if ([0, 2, 4].includes(d) && rnd() < .78) cls = rnd() < .12 ? 'b' : 'a';
+  else if (d === 5 && rnd() < .2) cls = 'a';
+  grid.insertAdjacentHTML('beforeend', `<i class="${cls} ${today ? 't' : ''}"></i>`);
+}
 
 // History calendar: October 2026 starts on a Thursday (Monday-first grid).
 const cal = document.getElementById('cal');

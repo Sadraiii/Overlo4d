@@ -9,6 +9,7 @@ struct ExerciseDetailView: View {
 
     @State private var metric: ChartMetric?
     @State private var editing = false
+    @State private var editingPin = false
 
     enum ChartMetric: String, CaseIterable, Identifiable {
         case heaviest = "Heaviest"
@@ -104,6 +105,15 @@ struct ExerciseDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exercise.isCustom ? "\(exercise.muscle.label) · Custom" : exercise.muscle.label).eyebrow(11)
                     Text(exercise.name).display(34).lineLimit(2)
+                }
+
+                if gym.pinnedNote(for: exercise.id).isEmpty {
+                    Button("Pin a note", systemImage: "pin") { editingPin = true }
+                        .font(Typo.body(14, .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .buttonStyle(.plain)
+                } else {
+                    PinnedNoteRow(exerciseID: exercise.id, isEditing: $editingPin)
                 }
 
                 ExerciseDemoCard(exercise: exercise)
@@ -211,6 +221,7 @@ struct ExerciseDetailView: View {
             }
         }
         .sheet(isPresented: $editing) { ExerciseEditor(exercise: exercise) }
+        .pinnedNoteEditor(for: exercise.id, isPresented: $editingPin)
     }
 }
 

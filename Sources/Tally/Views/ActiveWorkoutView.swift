@@ -175,15 +175,33 @@ struct WorkoutHeader: View {
                 .font(Typo.title(26))
                 .foregroundStyle(Theme.ink)
             Text(draft.startedAt, style: .timer)
-                .font(Typo.display(72))
+                .font(Typo.display(64))
                 .monospacedDigit()
                 .foregroundStyle(Theme.ink)
                 .padding(.vertical, -6)
-            HStack(spacing: 12) {
-                StatBlock(label: "Volume", value: Fmt.volume(draft.volume))
-                StatBlock(label: "Sets", value: "\(draft.completedSets.count)/\(draft.allSets.count)")
-                StatBlock(label: "Exercises", value: "\(draft.exercises.count)")
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    StatBlock(label: "Volume", value: Fmt.volume(draft.volume))
+                    StatBlock(label: "Sets", value: "\(draft.completedSets.count)/\(draft.allSets.count)")
+                    StatBlock(label: "Exercises", value: "\(draft.exercises.count)")
+                }
+                // How much of the planned work is ticked off.
+                if !draft.allSets.isEmpty {
+                    GeometryReader { proxy in
+                        let done = Double(draft.completedSets.count) / Double(draft.allSets.count)
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Theme.line)
+                            Capsule().fill(done >= 1 ? Theme.good : Theme.accent)
+                                .frame(width: max(done > 0 ? 6 : 0, proxy.size.width * done))
+                        }
+                    }
+                    .frame(height: 6)
+                    .accessibilityHidden(true)
+                }
             }
+            .padding(14)
+            .background(Theme.card, in: .rect(cornerRadius: 20))
+            .shadow(color: Theme.shadow, radius: 10, y: 3)
             .animation(.snappy, value: draft.completedSets.count)
         }
         .padding(.horizontal, 4)

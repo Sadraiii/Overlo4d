@@ -112,6 +112,8 @@ struct WorkoutSet: Codable, Identifiable, Hashable, Sendable {
     var assistance: Double?
     var meters: Double?
     var isDone = false
+    /// How hard the set felt, as RPE (6–10, 10 = nothing left). Optional.
+    var rpe: Double?
 
     /// A fresh, not-done copy (new ID) used when adding sets or starting from a plan.
     func copyForNewSet() -> WorkoutSet {
@@ -177,10 +179,12 @@ struct GymData: Codable, Sendable {
     var plans: [Plan] = []
     /// The workout currently in progress, kept on disk so it survives the app being closed.
     var activeWorkout: Workout?
+    /// Notes pinned to an exercise (seat height, grip cues…), shown every time it's done.
+    var exerciseNotes: [String: String]?
 
     // Plans were called routines in earlier versions; keep the stored key.
     enum CodingKeys: String, CodingKey {
-        case exercises, workouts, activeWorkout
+        case exercises, workouts, activeWorkout, exerciseNotes
         case plans = "routines"
     }
 }

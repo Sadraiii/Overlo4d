@@ -21,6 +21,8 @@ struct ExerciseEditorSection: View {
     @State private var showingPlates = false
     @State private var showingDemo = false
     @State private var addingNote = false
+    @State private var editingPin = false
+    @State private var replacing = false
 
     private static let restOptions = [0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
 
@@ -84,7 +86,13 @@ struct ExerciseEditorSection: View {
                         Button("Remove from superset", systemImage: "minus.circle", action: onLeaveSuperset)
                     }
                     if exercise.notes.isEmpty && !addingNote {
-                        Button("Add note", systemImage: "note.text") { addingNote = true }
+                        Button("Add note for today", systemImage: "note.text") { addingNote = true }
+                    }
+                    Button(gym.pinnedNote(for: exercise.exerciseID).isEmpty ? "Pin a note" : "Edit pinned note", systemImage: "pin") {
+                        editingPin = true
+                    }
+                    if !exercise.sets.contains(where: \.isDone) {
+                        Button("Replace exercise", systemImage: "arrow.triangle.2.circlepath") { replacing = true }
                     }
                     if kind == .weightReps {
                         if !warmUps(for: def).isEmpty {
@@ -109,6 +117,17 @@ struct ExerciseEditorSection: View {
             }
             .sheet(isPresented: $showingDemo) {
                 if let def { ExerciseDemoSheet(exercise: def) }
+            }
+            .pinnedNoteEditor(for: exercise.exerciseID, isPresented: $editingPin)
+            .sheet(isPresented: $replacing) {
+                ExercisePicker(single: true) { picked in
+                    if let replacement = picked.first { replace(with: replacement) }
+                }
+            }
+
+            if !gym.pinnedNote(for: exercise.exerciseID).isEmpty {
+                PinnedNoteRow(exerciseID: exercise.exerciseID, isEditing: $editingPin)
+                    .cardRow()
             }
 
             if isLive, let last = gym.lastSession(for: exercise.exerciseID) {
@@ -164,6 +183,17 @@ struct ExerciseEditorSection: View {
             }
             .buttonStyle(.plain)
             .cardRow()
+        }
+    }
+
+    /// Swaps in another exercise (e.g. the machine is taken), keeping the number and types of sets.
+    private func replace(with replacement: ExerciseDef) {
+        guard replacement.id != exercise.exerciseID else { return }
+        let count = max(exercise.sets.filter { $0.type != .warmup }.count, 1)
+        exercise.exerciseID = replacement.id
+        exercise.sets = (0..<count).map { _ in WorkoutSet() }
+        if replacement.kind == .duration || replacement.kind == .distanceDuration {
+            exercise.restSeconds = min(exercise.restSeconds, 60)
         }
     }
 

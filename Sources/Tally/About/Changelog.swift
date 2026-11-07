@@ -20,6 +20,15 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.10", date: DateComponents(year: 2026, month: 11, day: 7), changes: [
+            "Recovery: Home shows which muscles are still recovering and what's ready to train, on the body figure. Tap it for every muscle with the time it's ready again.",
+            "Milestones for workouts, weight lifted, time trained, best streak and records, each with levels and how far you are from the next. New ones show on the workout summary.",
+            "Consistency: the last six months of training days on one grid in Progress.",
+            "Pin a note to an exercise (seat height, grip, cues) and see it every time you do it.",
+            "Replace an exercise during a workout when the machine is taken, keeping the sets.",
+            "Log effort as RPE on any set from the set number menu. It shows on the set and in History.",
+            "The workout screen shows your totals on a card with a bar for how many sets are ticked off.",
+        ]),
         ChangelogEntry(version: "0.9", date: DateComponents(year: 2026, month: 10, day: 30), changes: [
             "Widgets: redrawn in the new look, with a large Training widget (last workout and 8 weeks of training) and a large Food widget (calories, macros, water and fast).",
             "Lock Screen: new Training inline and week-ring widgets, and all widgets stay readable when the Home Screen is tinted or clear and in StandBy.",

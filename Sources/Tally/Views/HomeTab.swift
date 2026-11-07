@@ -73,6 +73,8 @@ struct HomeTab: View {
 
                     SectionHead("Training")
 
+                    RecoveryCard()
+
                     LastWeekCard()
 
                     CoachCard()
@@ -105,6 +107,7 @@ struct HomeTab: View {
             .navigationDestination(for: CoachChatRoute.self) { _ in CoachChatView() }
             .navigationDestination(for: SleepRoute.self) { _ in SleepView() }
             .navigationDestination(for: BodyRoute.self) { _ in BodyView() }
+            .navigationDestination(for: RecoveryRoute.self) { _ in RecoveryView() }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
             .navigationDestination(isPresented: $showingRecords) { RecordsView() }
             .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }

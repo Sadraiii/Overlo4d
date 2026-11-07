@@ -193,6 +193,11 @@ struct WorkoutDetailView: View {
                             Text(Fmt.set(set, kind: def?.kind ?? .weightReps))
                                 .font(Typo.display(22))
                                 .monospacedDigit()
+                            if let rpe = set.rpe {
+                                Text("@\(RPE.format(rpe))")
+                                    .font(Typo.body(12, .bold))
+                                    .foregroundStyle(Theme.accent)
+                            }
                             Spacer()
                             if let kinds = gym.records[set.id] {
                                 Label(kinds.map(\.label).joined(separator: ", "), systemImage: "trophy.fill")

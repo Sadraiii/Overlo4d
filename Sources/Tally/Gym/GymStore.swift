@@ -30,6 +30,8 @@ final class GymStore {
     private(set) var records: [UUID: [RecordKind]] = [:]
     /// Workouts from Apple Health not recorded by Tally and not merged into a Tally workout, newest first.
     private(set) var healthWorkouts: [HealthWorkout] = []
+    /// Notes pinned to exercises, by exercise ID.
+    private(set) var exerciseNotes: [UUID: String]
 
     private let fileURL = URL.documentsDirectory.appending(path: "gym.json")
 
@@ -49,6 +51,7 @@ final class GymStore {
         workouts = data.workouts.sorted { $0.startedAt > $1.startedAt }
         plans = data.plans
         activeWorkout = data.activeWorkout
+        exerciseNotes = Dictionary(uniqueKeysWithValues: (data.exerciseNotes ?? [:]).compactMap { key, value in UUID(uuidString: key).map { ($0, value) } })
         let migrated = migrateAssistedSets()
         if exercises != data.exercises || migrated { save() }
         recomputeRecords()
@@ -61,7 +64,7 @@ final class GymStore {
     }
 
     func save() {
-        let data = GymData(exercises: exercises, workouts: workouts, plans: plans, activeWorkout: activeWorkout)
+        let data = GymData(exercises: exercises, workouts: workouts, plans: plans, activeWorkout: activeWorkout, exerciseNotes: exerciseNotes.isEmpty ? nil : Dictionary(uniqueKeysWithValues: exerciseNotes.map { ($0.key.uuidString, $0.value) }))
         guard let encoded = try? JSONEncoder().encode(data) else { return }
         try? encoded.write(to: fileURL, options: .atomic)
     }
@@ -106,6 +109,18 @@ final class GymStore {
         guard let index = exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
         exercises[index] = exercise
         recomputeRecords()
+        save()
+    }
+
+    /// The note pinned to an exercise, or "" when there is none.
+    func pinnedNote(for exerciseID: UUID) -> String {
+        exerciseNotes[exerciseID] ?? ""
+    }
+
+    func setPinnedNote(_ note: String, for exerciseID: UUID) {
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed != pinnedNote(for: exerciseID) else { return }
+        exerciseNotes[exerciseID] = trimmed.isEmpty ? nil : trimmed
         save()
     }
 
@@ -462,6 +477,59 @@ final class GymStore {
         }
         let weeks = max(interval.duration / (7 * 24 * 60 * 60), 1)
         return counts.filter { $0.value > 0 }.mapValues { $0 / weeks }
+    }
+
+    // MARK: Recovery and milestones
+
+    /// How rested each muscle trained in the last week is. Primary sets count fully, secondary half,
+    /// warm-ups not at all.
+    func recovery(now: Date = .now) -> [Muscle: Recovery.Status] {
+        let since = now.addingTimeInterval(-7 * 24 * 3600)
+        var loads: [Recovery.Load] = []
+        for workout in workouts where workout.startedAt >= since {
+            var sets: [Muscle: Double] = [:]
+            for exercise in workout.exercises {
+                guard let def = self.exercise(exercise.exerciseID) else { continue }
+                let count = Double(exercise.sets.filter { $0.type != .warmup }.count)
+                for muscle in def.primary { sets[muscle, default: 0] += count }
+                for muscle in def.secondary { sets[muscle, default: 0] += count / 2 }
+            }
+            let end = workout.endedAt ?? workout.startedAt
+            loads += sets.map { Recovery.Load(muscle: $0.key.rawValue, date: end, sets: $0.value) }
+        }
+        var result: [Muscle: Recovery.Status] = [:]
+        for (key, status) in Recovery.status(loads: loads, now: now) {
+            if let muscle = Muscle(rawValue: key) { result[muscle] = status }
+        }
+        return result
+    }
+
+    /// Lifetime totals for milestones.
+    var milestoneStats: MilestoneStats {
+        MilestoneStats(
+            workouts: workouts.count,
+            volume: workouts.reduce(0) { $0 + $1.volume },
+            hours: workouts.reduce(0) { $0 + $1.duration } / 3600,
+            bestStreak: Streaks.longestWeekRun(activityDates),
+            records: records.count,
+            sets: workouts.reduce(0) { $0 + $1.completedSets.filter { $0.type != .warmup }.count }
+        )
+    }
+
+    /// Milestone levels the workout just reached, by comparing totals with and without it.
+    func milestonesReached(by workout: Workout) -> [Milestone] {
+        guard workouts.contains(where: { $0.id == workout.id }) else { return [] }
+        let after = milestoneStats
+        var before = after
+        before.workouts -= 1
+        before.volume -= workout.volume
+        before.hours -= workout.duration / 3600
+        before.records -= recordCount(in: workout)
+        before.sets -= workout.completedSets.filter { $0.type != .warmup }.count
+        var dates = activityDates
+        if let index = dates.firstIndex(of: workout.startedAt) { dates.remove(at: index) }
+        before.bestStreak = Streaks.longestWeekRun(dates)
+        return Milestones.newlyReached(before: before, after: after)
     }
 
     // MARK: Stats

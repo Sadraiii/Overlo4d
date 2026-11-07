@@ -9,12 +9,16 @@ Gym tracker for iPhone.
   <img src="docs/images/screen-workout.png" width="200" alt="Workout">
   <img src="docs/images/screen-history.png" width="200" alt="History">
   <img src="docs/images/screen-progress.png" width="200" alt="Progress">
+  <img src="docs/images/screen-recovery.png" width="200" alt="Recovery">
+  <img src="docs/images/screen-milestones.png" width="200" alt="Milestones">
 </p>
 
 <sub>Mockups, not simulator screenshots.</sub>
 
 - Workouts, plans, supersets and a rest timer
 - Muscle map, records and weekly recap
+- Muscle recovery, milestones and a six-month consistency grid
+- Pinned exercise notes, swapping an exercise mid-workout and RPE per set
 - Calorie and macro tracking with food search and barcode scanning ([Open Food Facts](https://world.openfoodfacts.org), [USDA FoodData Central](https://fdc.nal.usda.gov)), recipes ([Spoonacular](https://spoonacular.com/food-api), free key) and weight goals
 - Sleep tracking, sleep score, bedtime reminders and a wind-down routine
 - Body measurements and progress photos, compared side by side or with a slider
