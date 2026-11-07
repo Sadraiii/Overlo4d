@@ -1,10 +1,35 @@
 import Foundation
 import TallyCore
 
-/// What to show for an exercise: a Workout API animation, or the two Free Exercise DB photos.
+/// What to show for an exercise: the app's own animated figure, a Workout API animation, or the two
+/// Free Exercise DB photos.
 enum ExerciseMedia: Hashable {
+    case figure(MotionMove, MotionLoad)
     case workoutAPI(code: String)
     case photos(id: String)
+}
+
+/// The demo style the user prefers. Exercises without that style fall back to another one.
+enum ExerciseDemoStyle: String, CaseIterable, Identifiable {
+    case figure, photos, drawings
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .figure: "Figure"
+        case .photos: "Photos"
+        case .drawings: "Drawings"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .figure: "Animated figure in your colours, with the worked muscles lit up"
+        case .photos: "Start and end photos, crossfading"
+        case .drawings: "Workout API line drawings (needs a key)"
+        }
+    }
 }
 
 /// Exercise animations from Workout API, with Free Exercise DB photos for the rest. The user's key lives in
@@ -19,6 +44,7 @@ final class ExerciseMediaStore {
     static let keyAccount = "workoutapi-api-key"
     private static let overridesKey = "workoutapi.overrides"
     private static let thumbnailsKey = "workoutapi.thumbnails"
+    private static let styleKey = "exerciseDemo.style"
 
     private(set) var hasKey: Bool
     private(set) var catalogue: [WorkoutAPI.Exercise]
@@ -31,6 +57,9 @@ final class ExerciseMediaStore {
     /// Show a still of the animation in exercise badges instead of the muscle figure.
     var showsThumbnails: Bool {
         didSet { UserDefaults.standard.set(showsThumbnails, forKey: Self.thumbnailsKey) }
+    }
+    var style: ExerciseDemoStyle {
+        didSet { UserDefaults.standard.set(style.rawValue, forKey: Self.styleKey) }
     }
 
     // Filled while views draw, so not observed.
@@ -54,6 +83,7 @@ final class ExerciseMediaStore {
         catalogue = (try? Data(contentsOf: Self.catalogueURL)).map(WorkoutAPI.parseExercises) ?? []
         overrides = UserDefaults.standard.dictionary(forKey: Self.overridesKey) as? [String: String] ?? [:]
         showsThumbnails = UserDefaults.standard.object(forKey: Self.thumbnailsKey) as? Bool ?? true
+        style = UserDefaults.standard.string(forKey: Self.styleKey).flatMap(ExerciseDemoStyle.init) ?? .figure
     }
 
     // MARK: Key
@@ -117,14 +147,31 @@ final class ExerciseMediaStore {
         return code
     }
 
-    /// The user's pick, else a Workout API match (with a key), else the built-in exercise's photos.
-    func media(for exercise: ExerciseDef) -> ExerciseMedia? {
-        if let chosen = overrides[exercise.name.lowercased()] {
-            return chosen.isEmpty ? nil : .workoutAPI(code: chosen)
+    /// What to show in `style` (the user's preferred one by default), falling back to the other styles.
+    /// A Workout API animation the user picked by hand is used for the drawings style.
+    func media(for exercise: ExerciseDef, style: ExerciseDemoStyle? = nil) -> ExerciseMedia? {
+        let options = available(for: exercise)
+        let order: [ExerciseDemoStyle] = switch style ?? self.style {
+        case .figure: [.figure, .photos, .drawings]
+        case .photos: [.photos, .figure, .drawings]
+        case .drawings: [.drawings, .figure, .photos]
         }
-        if hasKey, let code = code(for: exercise) { return .workoutAPI(code: code) }
-        if !exercise.isCustom, let id = FreeExerciseDB.ids[exercise.name] { return .photos(id: id) }
-        return nil
+        return order.lazy.compactMap { options[$0] }.first
+    }
+
+    /// Every style this exercise can be shown in.
+    func available(for exercise: ExerciseDef) -> [ExerciseDemoStyle: ExerciseMedia] {
+        var result: [ExerciseDemoStyle: ExerciseMedia] = [:]
+        if let motion = MotionLibrary.motion(for: exercise.name, equipment: exercise.equipment?.rawValue) {
+            result[.figure] = .figure(motion.move, motion.load)
+        }
+        if !exercise.isCustom, let id = FreeExerciseDB.ids[exercise.name] { result[.photos] = .photos(id: id) }
+        if let chosen = overrides[exercise.name.lowercased()] {
+            if !chosen.isEmpty { result[.drawings] = .workoutAPI(code: chosen) }
+        } else if hasKey, let code = code(for: exercise) {
+            result[.drawings] = .workoutAPI(code: code)
+        }
+        return result
     }
 
     func catalogueName(_ code: String) -> String? {

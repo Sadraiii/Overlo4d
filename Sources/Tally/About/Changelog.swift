@@ -28,6 +28,9 @@ enum Changelog {
             "Replace an exercise during a workout when the machine is taken, keeping the sets.",
             "Log effort as RPE on any set from the set number menu. It shows on the set and in History.",
             "The workout screen shows your totals on a card with a bar for how many sets are ticked off.",
+            "New exercise demo style: an animated figure drawn in your accent colour, with the worked body parts lit up. Every built-in exercise has one, it works offline and in dark mode, and exercises you make get one when their name says what they are (squat, row, curl…).",
+            "Switch between Figure, Photos and Drawings on the exercise screen, or pick your favourite in Settings › Exercise demos.",
+            "Photos now fade smoothly between the start and end position, with a Start / End label.",
         ]),
         ChangelogEntry(version: "0.9", date: DateComponents(year: 2026, month: 10, day: 30), changes: [
             "Widgets: redrawn in the new look, with a large Training widget (last workout and 8 weeks of training) and a large Food widget (calories, macros, water and fast).",

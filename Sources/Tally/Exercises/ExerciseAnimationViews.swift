@@ -91,6 +91,7 @@ struct ExerciseAnimation<Placeholder: View>: View {
         switch media {
         case .workoutAPI(let code): ExerciseMediaStore.fileName(code, variant)
         case .photos(let id): "photos-\(id)"
+        case .figure(let move, _): "figure-\(move.rawValue)"
         }
     }
 
@@ -117,12 +118,15 @@ struct ExerciseAnimation<Placeholder: View>: View {
                 image = await Task.detached(priority: .userInitiated) {
                     AnimatedGIF.flipbook(frames, key: key, animated: animated)
                 }.value
+            case .figure:
+                break
             }
         }
     }
 }
 
-/// The big animation on the exercise screen and the live workout sheet, with a Movement / Muscles switch.
+/// The big demo on the exercise screen and the live workout sheet. A switch on top picks the style
+/// (figure, photos, Workout API drawings) out of those this exercise has; the choice is remembered.
 struct ExerciseDemoCard: View {
     let exercise: ExerciseDef
     var height: CGFloat = 280
@@ -134,10 +138,41 @@ struct ExerciseDemoCard: View {
     private var variant: WorkoutAPI.Variant { WorkoutAPI.Variant(rawValue: variantRaw) ?? .basic }
 
     var body: some View {
+        let options = store.available(for: exercise)
+        let styles = ExerciseDemoStyle.allCases.filter { options[$0] != nil }
         let media = store.media(for: exercise)
+
         if media != nil || store.hasKey {
             VStack(alignment: .leading, spacing: 12) {
+                if styles.count > 1 {
+                    let shown: ExerciseDemoStyle = switch media {
+                    case .photos: .photos
+                    case .workoutAPI: .drawings
+                    default: .figure
+                    }
+                    Picker("Style", selection: Binding(get: { shown }, set: { store.style = $0 })) {
+                        ForEach(styles) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
                 switch media {
+                case .figure(let move, let load):
+                    MotionFigureView(
+                        move: move, load: load,
+                        primary: Set(exercise.primary), secondary: Set(exercise.secondary)
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: height)
+                    .background(Theme.fill.opacity(0.6), in: .rect(cornerRadius: 16))
+                    .accessibilityLabel("Animated figure doing \(exercise.name)")
+
+                    HStack(spacing: 14) {
+                        legend(Theme.accent, "Primary")
+                        if !exercise.secondary.isEmpty { legend(Theme.accent.mix(with: Theme.card, by: 0.45), "Secondary") }
+                        Spacer()
+                    }
+
                 case .workoutAPI(let code):
                     ExerciseAnimation(media: .workoutAPI(code: code), variant: variant) {
                         loading(ExerciseMediaStore.fileName(code, variant))
@@ -157,26 +192,17 @@ struct ExerciseDemoCard: View {
                         Button("Change") { choosing = true }
                             .font(Typo.body(14, .semibold))
                     }
-                case .photos(let id):
-                    ExerciseAnimation(media: .photos(id: id)) {
-                        loading("photos-\(id)-0.jpg")
-                    }
-                    .aspectRatio(1.5, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-                    .background(Theme.fill)
-                    .clipShape(.rect(cornerRadius: 16))
-                    .accessibilityLabel("Start and end position of \(exercise.name)")
 
+                case .photos(let id):
+                    PhotoCrossfade(id: id)
+                        .accessibilityLabel("Start and end position of \(exercise.name)")
                     HStack {
-                        Text("Start and end position · Free Exercise DB")
+                        Text("Photos: Free Exercise DB")
                             .font(Typo.body(12.5))
                             .foregroundStyle(Theme.ink3)
                         Spacer()
-                        if store.hasKey && !store.catalogue.isEmpty {
-                            Button("Change") { choosing = true }
-                                .font(Typo.body(14, .semibold))
-                        }
                     }
+
                 case nil:
                     HStack(spacing: 10) {
                         Image(systemName: "play.rectangle")
@@ -198,8 +224,16 @@ struct ExerciseDemoCard: View {
                 }
             }
             .card(padding: 12)
+            .animation(.snappy, value: store.style)
             .task { await store.loadCatalogue() }
             .sheet(isPresented: $choosing) { AnimationChooser(exercise: exercise) }
+        }
+    }
+
+    private func legend(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 14, height: 6)
+            Text(label).font(Typo.body(12.5, .medium)).foregroundStyle(Theme.ink3)
         }
     }
 
@@ -213,6 +247,50 @@ struct ExerciseDemoCard: View {
                 .padding(24)
         } else {
             ProgressView()
+        }
+    }
+}
+
+/// The start and end photos fading into each other, holding on each, with a Start / End label.
+struct PhotoCrossfade: View {
+    let id: String
+    @State private var frames: [UIImage] = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let duration = 3.2
+
+    var body: some View {
+        ZStack {
+            if frames.count == 2 {
+                if reduceMotion {
+                    HStack(spacing: 6) {
+                        ForEach(0..<2, id: \.self) { Image(uiImage: frames[$0]).resizable().scaledToFit() }
+                    }
+                } else {
+                    TimelineView(.animation) { context in
+                        let phase = MotionPattern.phase(at: context.date.timeIntervalSinceReferenceDate, duration: Self.duration)
+                        // Hold on each photo, fade in the middle.
+                        let fade = min(max((phase - 0.3) / 0.4, 0), 1)
+                        ZStack(alignment: .topLeading) {
+                            Image(uiImage: frames[0]).resizable().scaledToFit()
+                            Image(uiImage: frames[1]).resizable().scaledToFit().opacity(fade)
+                            Text(fade < 0.5 ? "Start" : "End")
+                                .font(Typo.body(12, .semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.ultraThinMaterial, in: .capsule)
+                                .padding(10)
+                        }
+                    }
+                }
+            } else {
+                ProgressView().frame(maxWidth: .infinity).aspectRatio(1.5, contentMode: .fit)
+            }
+        }
+        .clipShape(.rect(cornerRadius: 16))
+        .task(id: id) {
+            guard let data = await ExerciseMediaStore.shared.photos(id) else { return }
+            frames = data.compactMap { UIImage(data: $0) }
         }
     }
 }
@@ -325,7 +403,32 @@ struct ExerciseMediaSettingsSection: View {
         @Bindable var media = media
 
         VStack(alignment: .leading, spacing: 12) {
-            Text("Exercise animations").eyebrow(11.5)
+            Text("Exercise demos").eyebrow(11.5)
+            VStack(spacing: 0) {
+                ForEach(Array(ExerciseDemoStyle.allCases.enumerated()), id: \.element) { index, style in
+                    if index > 0 { Rectangle().fill(Theme.line).frame(height: 1) }
+                    Button {
+                        media.style = style
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(style.label).font(Typo.body(15, .semibold)).foregroundStyle(Theme.ink)
+                                Text(style.detail).font(Typo.body(12.5)).foregroundStyle(Theme.ink3)
+                            }
+                            Spacer()
+                            if media.style == style {
+                                Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.accent)
+                            }
+                        }
+                        .padding(14)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .card(padding: 0, cornerRadius: 18)
+
+            Text("Workout API").eyebrow(11.5).padding(.top, 6)
             if media.hasKey {
                 VStack(spacing: 0) {
                     HStack {
@@ -353,14 +456,14 @@ struct ExerciseMediaSettingsSection: View {
                     .padding(14)
                 }
                 .card(padding: 0, cornerRadius: 18)
-                Text("Animations come from Workout API (\(media.catalogue.count) exercises). Exercises it doesn't have show start and end photos from Free Exercise DB. Each one is downloaded the first time you open it and then kept on this iPhone.")
+                Text("Drawings come from Workout API (\(media.catalogue.count) exercises). Each one is downloaded the first time you open it and then kept on this iPhone.")
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Connect Workout API").font(Typo.body(15, .semibold))
-                    Text("Without a key, exercises show start and end photos from Free Exercise DB. A Workout API key adds animated drawings with the muscles highlighted. Your key stays in this iPhone's Keychain.")
+                    Text("Optional. A Workout API key adds their animated line drawings as a third style. Your key stays in this iPhone's Keychain.")
                         .font(Typo.body(13))
                         .foregroundStyle(Theme.ink2)
                         .fixedSize(horizontal: false, vertical: true)
