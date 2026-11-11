@@ -212,6 +212,15 @@ final class ExerciseMediaStore {
         return frames
     }
 
+    /// Forgets a failed download so the next attempt goes online again.
+    func retry(_ media: ExerciseMedia, variant: WorkoutAPI.Variant = .basic) {
+        switch media {
+        case .workoutAPI(let code): failures[Self.fileName(code, variant)] = nil
+        case .photos(let id): for frame in 0..<2 { failures["photos-\(id)-\(frame).jpg"] = nil }
+        case .figure: break
+        }
+    }
+
     static func fileName(_ code: String, _ variant: WorkoutAPI.Variant) -> String { "\(code)-\(variant.rawValue).gif" }
 
     /// The saved GIF, without going online.

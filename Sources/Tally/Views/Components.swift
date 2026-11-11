@@ -244,7 +244,8 @@ extension MuscleGroup {
     }
 }
 
-/// Small front and back figure with the exercise's muscles filled in.
+/// Small muscle figure for an exercise: the trained side of the body, zoomed in on the primary
+/// muscles. With "Use as exercise icons" on, a still of the Workout API drawing instead.
 struct ExerciseBadge: View {
     let exercise: ExerciseDef?
     var size: CGFloat = 40
@@ -252,9 +253,8 @@ struct ExerciseBadge: View {
     private var media: ExerciseMediaStore { .shared }
 
     var body: some View {
-        // A still of the Workout API animation when there is one, else the muscle figure.
         if let exercise, media.hasKey, media.showsThumbnails, let code = media.code(for: exercise) {
-            ExerciseAnimation(code: code, animated: false) { figure }
+            ExerciseAnimation(media: .workoutAPI(code: code), animated: false) { figure }
                 .padding(size * 0.04)
                 .frame(width: size, height: size)
                 .background(.white, in: .rect(cornerRadius: size * 0.28))
@@ -265,30 +265,40 @@ struct ExerciseBadge: View {
     }
 
     private var figure: some View {
-        AnatomyFigure(
-            primary: Set(exercise?.primary ?? []),
-            secondary: Set(exercise?.secondary ?? []),
-            tertiary: Set(exercise?.tertiary ?? [])
-        )
-        .padding(size * 0.07)
-        .frame(width: size, height: size)
-        .background(Theme.fill, in: .rect(cornerRadius: size * 0.28))
-        .accessibilityHidden(true)
+        MuscleThumbnail(exercise: exercise, size: size)
     }
 }
 
+/// An exercise in a list: its muscle figure, its name, and what it trains (primary muscles strong,
+/// secondary ones lighter). On wide screens a still of the demo sits at the end.
 struct ExerciseLabel: View {
     let exercise: ExerciseDef
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
         HStack(spacing: 12) {
-            ExerciseBadge(exercise: exercise, size: 46)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(exercise.name).font(Typo.body(15, .semibold)).foregroundStyle(Theme.ink)
-                Text(exercise.isCustom ? "Custom · \(exercise.muscleSummary)" : exercise.muscleSummary)
-                    .font(Typo.body(13))
-                    .foregroundStyle(Theme.ink3)
-                    .lineLimit(1)
+            MuscleThumbnail(exercise: exercise, size: 48)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(exercise.name)
+                    .font(Typo.body(15, .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(2)
+                HStack(spacing: 6) {
+                    if exercise.isCustom {
+                        Text("Custom")
+                            .font(Typo.body(11, .semibold))
+                            .foregroundStyle(Theme.ink3)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Theme.fill, in: .capsule)
+                    }
+                    MuscleSummaryText(exercise: exercise)
+                }
+            }
+            if sizeClass == .regular {
+                Spacer(minLength: 8)
+                ExerciseDemoThumbnail(exercise: exercise, size: 56)
             }
         }
     }

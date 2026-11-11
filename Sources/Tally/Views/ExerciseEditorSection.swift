@@ -38,16 +38,30 @@ struct ExerciseEditorSection: View {
                         .fill(Theme.accent)
                         .frame(width: 4, height: 40)
                 }
-                // Tap the badge to see how the exercise is done.
+                // Tap the badge to see how the exercise is done; the play mark says so.
+                let hasDemo = def.flatMap { ExerciseMediaStore.shared.media(for: $0) } != nil
                 Button { showingDemo = true } label: {
-                    ExerciseBadge(exercise: def, size: 42)
+                    ExerciseBadge(exercise: def, size: 44)
+                        .overlay(alignment: .bottomTrailing) {
+                            if hasDemo {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 7, weight: .bold))
+                                    .foregroundStyle(Theme.accentInk)
+                                    .frame(width: 16, height: 16)
+                                    .background(Theme.accent, in: .circle)
+                                    .overlay(Circle().strokeBorder(Theme.card, lineWidth: 1.5))
+                                    .offset(x: 4, y: 4)
+                            }
+                        }
                 }
                 .buttonStyle(.plain)
-                .disabled(def.flatMap { ExerciseMediaStore.shared.media(for: $0) } == nil)
+                .disabled(!hasDemo)
+                .accessibilityLabel(def.map { "How to do \($0.name)" } ?? "")
                 if let def {
                     NavigationLink(value: def) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(def.name).display(22).foregroundStyle(Theme.ink).lineLimit(2)
+                            MuscleSummaryText(exercise: def, size: 12.5)
                             HStack(spacing: 8) {
                                 if supersetPosition != .none {
                                     Label("Superset", systemImage: "link")

@@ -216,6 +216,11 @@ struct AnatomyFigure: View {
     var onTap: ((Muscle) -> Void)?
     /// "Front" and "Back" under the figures, for the larger sizes.
     var labels = false
+    /// Which side(s) of the body to draw.
+    var sides: AnatomySides = .both
+    /// The slice of the body to show, top to bottom in figure units (0–400), for compact figures
+    /// zoomed in on the trained area. The cut edges fade out.
+    var window: ClosedRange<Double>?
 
     /// The body behind the muscles, and the gaps between them.
     static let skin = Theme.line
@@ -223,13 +228,18 @@ struct AnatomyFigure: View {
     static let untrained = Theme.line2
     /// Room around the figure for the outline that rounds off the silhouette, in figure units.
     private static let pad = 3.0
-    private static let aspect = (AnatomyShapes.width + pad * 2) / (AnatomyShapes.height + pad * 2)
 
     var body: some View {
         HStack(spacing: 0) {
-            labelled("Front", side(Figure.front))
-            labelled("Back", side(Figure.back))
+            if sides != .back { labelled("Front", figure(Figure.front)) }
+            if sides != .front { labelled("Back", figure(Figure.back)) }
         }
+    }
+
+    /// Top of the drawn slice and its height, in figure units.
+    private var slice: (top: Double, height: Double) {
+        guard let window else { return (-Self.pad, AnatomyShapes.height + Self.pad * 2) }
+        return (window.lowerBound, window.upperBound - window.lowerBound)
     }
 
     @ViewBuilder
@@ -244,16 +254,17 @@ struct AnatomyFigure: View {
         }
     }
 
-    private func side(_ regions: [FigureRegion]) -> some View {
+    private func figure(_ regions: [FigureRegion]) -> some View {
         let fills = regions.map { color($0.muscle) }
         let selected = selected
         let skin = Self.skin
         let outline = Theme.ink
         let pad = Self.pad
+        let slice = slice
         return Canvas { context, size in
             let scale = size.width / (AnatomyShapes.width + pad * 2)
             context.scaleBy(x: scale, y: scale)
-            context.translateBy(x: pad, y: pad)
+            context.translateBy(x: pad, y: -slice.top)
             // One continuous body first: every region filled and outlined thickly in skin colour,
             // which closes the gaps at the joints and rounds off the outline.
             for region in regions where !region.detail {
@@ -278,7 +289,8 @@ struct AnatomyFigure: View {
                 }
             }
         }
-        .aspectRatio(Self.aspect, contentMode: .fit)
+        .aspectRatio((AnatomyShapes.width + pad * 2) / slice.height, contentMode: .fit)
+        .mask { edgeFade(slice) }
         .overlay {
             if let onTap {
                 GeometryReader { proxy in
@@ -286,13 +298,36 @@ struct AnatomyFigure: View {
                         .contentShape(.rect)
                         .onTapGesture { location in
                             let scale = proxy.size.width / (AnatomyShapes.width + pad * 2)
-                            let point = CGPoint(x: location.x / scale - pad, y: location.y / scale - pad)
+                            let point = CGPoint(x: location.x / scale - pad, y: location.y / scale + slice.top)
                             if let muscle = Self.muscle(at: point, in: regions) {
                                 onTap(muscle)
                             }
                         }
                 }
             }
+        }
+    }
+
+    /// Fades the figure out where the window cuts through the body, so a zoomed figure doesn't end
+    /// in a hard line.
+    @ViewBuilder
+    private func edgeFade(_ slice: (top: Double, height: Double)) -> some View {
+        if window == nil {
+            Color.black
+        } else {
+            let fade = 0.14
+            let cutTop = slice.top > 0
+            let cutBottom = slice.top + slice.height < AnatomyShapes.height
+            LinearGradient(
+                stops: [
+                    .init(color: .black.opacity(cutTop ? 0 : 1), location: 0),
+                    .init(color: .black, location: cutTop ? fade : 0),
+                    .init(color: .black, location: cutBottom ? 1 - fade : 1),
+                    .init(color: .black.opacity(cutBottom ? 0 : 1), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
     }
 
@@ -356,63 +391,6 @@ struct MuscleLegend: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: horizontal ? .infinity : nil, alignment: .leading)
-    }
-}
-
-/// The exercise's muscles by role, its grip and its force, as icon rows beside the front and back
-/// figure.
-struct ExerciseDetailsCard: View {
-    let exercise: ExerciseDef
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Exercise details").eyebrow(11)
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 12) {
-                    muscleRow(.primary, exercise.primary)
-                    muscleRow(.secondary, exercise.secondary)
-                    if !exercise.tertiary.isEmpty {
-                        muscleRow(.tertiary, exercise.tertiary)
-                    }
-                    if let grip = exercise.grip {
-                        row("Grip type", grip.label, symbol: "hand.raised.fill", tint: Color(light: 0x7B5CC4, dark: 0xB9A0E6))
-                    }
-                    if let force = exercise.force {
-                        row("Force type", force.label, symbol: force.symbol, tint: Color(light: 0x2F7FB8, dark: 0x8AC6F0))
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                AnatomyFigure(
-                    primary: Set(exercise.primary),
-                    secondary: Set(exercise.secondary),
-                    tertiary: Set(exercise.tertiary),
-                    labels: true
-                )
-                .frame(height: 200)
-            }
-        }
-    }
-
-    private func muscleRow(_ role: MuscleRole, _ muscles: [Muscle]) -> some View {
-        row("\(role.label) muscles", muscles.isEmpty ? "–" : muscles.map(\.label).joined(separator: ", "), symbol: role.symbol, tint: role.color)
-    }
-
-    private func row(_ title: String, _ value: String, symbol: String, tint: Color) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 30, height: 30)
-                .background(tint.opacity(0.16), in: .rect(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).eyebrow(9.5).foregroundStyle(Theme.ink3)
-                Text(value)
-                    .font(Typo.body(14.5, .semibold))
-                    .foregroundStyle(value == "–" ? Theme.ink3 : Theme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
     }
 }
 

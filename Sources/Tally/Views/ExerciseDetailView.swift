@@ -116,10 +116,11 @@ struct ExerciseDetailView: View {
                     PinnedNoteRow(exerciseID: exercise.id, isEditing: $editingPin)
                 }
 
-                ExerciseDemoCard(exercise: exercise)
-
-                ExerciseDetailsCard(exercise: exercise)
+                // What it trains first, then how to do it.
+                MuscleTargetsCard(exercise: exercise)
                     .card()
+
+                ExerciseDemoCard(exercise: exercise)
 
                 if sessions.isEmpty {
                     Text("Not logged yet")
