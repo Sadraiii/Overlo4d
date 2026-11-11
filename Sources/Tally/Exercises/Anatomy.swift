@@ -231,8 +231,8 @@ struct AnatomyFigure: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            if sides != .back { labelled("Front", figure(Figure.front)) }
-            if sides != .front { labelled("Back", figure(Figure.back)) }
+            if sides != .back { labelled("Front", figure(Figure.front, back: false)) }
+            if sides != .front { labelled("Back", figure(Figure.back, back: true)) }
         }
     }
 
@@ -254,8 +254,9 @@ struct AnatomyFigure: View {
         }
     }
 
-    private func figure(_ regions: [FigureRegion]) -> some View {
+    private func figure(_ regions: [FigureRegion], back: Bool) -> some View {
         let fills = regions.map { color($0.muscle) }
+        let untrained = Self.untrained
         let selected = selected
         let skin = Self.skin
         let outline = Theme.ink
@@ -272,12 +273,25 @@ struct AnatomyFigure: View {
                 context.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: pad * 2, lineJoin: .round))
             }
             // At least 0.4 pt on screen so small figures keep their muscle outlines.
-            let lineWidth = max(1.6, 0.4 / scale)
+            let lineWidth = max(1.1, 0.4 / scale)
             // Lines between muscle heads are finer, and left out where they'd only add noise.
-            let detailWidth = scale >= 0.4 ? max(0.8, 0.3 / scale) : 0
+            let detailWidth = scale >= 0.4 ? max(0.6, 0.3 / scale) : 0
             for (region, fill) in zip(regions, fills) where region.muscle != nil {
                 let faded = selected != nil && region.muscle != selected
                 context.fill(region.path, with: .color(faded ? fill.opacity(0.35) : fill))
+                // Light from the upper left: each muscle belly brighter in the middle and darker at
+                // its edges, so the body reads as rounded rather than flat cut-outs.
+                if !region.detail && !faded, let muscle = region.muscle {
+                    let rect = region.path.boundingRect
+                    context.fill(region.path, with: Self.shading(rect))
+                    // Fine fibre lines in the direction the muscle runs, where they're big enough to see.
+                    if scale >= 0.35, let lines = Self.fibres(muscle, back: back, in: rect) {
+                        var layer = context
+                        layer.clip(to: region.path)
+                        let lit = fill != untrained
+                        layer.stroke(lines, with: .color(lit ? .white.opacity(0.16) : .black.opacity(0.06)), lineWidth: 0.5)
+                    }
+                }
                 let width = region.detail ? detailWidth : lineWidth
                 if width > 0 {
                     context.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: width, lineJoin: .round))
@@ -306,6 +320,66 @@ struct AnatomyFigure: View {
                 }
             }
         }
+    }
+
+    private static let shade = Gradient(stops: [
+        .init(color: .white.opacity(0.2), location: 0),
+        .init(color: .white.opacity(0), location: 0.6),
+        .init(color: .black.opacity(0.12), location: 1),
+    ])
+
+    /// Fibre direction per muscle in degrees from vertical; positive leans the top of the line
+    /// toward the outside of the body.
+    private static func fibreAngle(_ muscle: Muscle, back: Bool) -> Double {
+        switch muscle {
+        case .chest: -62
+        case .frontDelts: 18
+        case .sideDelts: 10
+        case .rearDelts: -15
+        case .traps: back ? 58 : 70
+        case .upperBack: -55
+        case .lats: 38
+        case .biceps, .triceps: 6
+        case .forearms: 8
+        case .abs, .lowerBack, .calves: 0
+        case .obliques: -38
+        case .quads: 8
+        case .hamstrings: 4
+        case .adductors: back ? -10 : -22
+        case .glutes: -48
+        }
+    }
+
+    /// Parallel lines across a muscle's bounding box at its fibre angle, to be clipped to the muscle.
+    private static func fibres(_ muscle: Muscle, back: Bool, in rect: CGRect) -> Path? {
+        // Regions left of the centre line are the figure's other side, so the lean flips.
+        let outwardIsLeft = rect.midX < AnatomyShapes.width / 2
+        let degrees = fibreAngle(muscle, back: back) * (outwardIsLeft ? -1 : 1)
+        // The traps on the back are one shape across both sides; fan them from the middle instead.
+        if muscle == .traps && back && abs(rect.midX - AnatomyShapes.width / 2) < 1 { return nil }
+        let radians = degrees * .pi / 180
+        let direction = CGPoint(x: sin(radians), y: -cos(radians))
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let reach = hypot(rect.width, rect.height) / 2 + 2
+        var path = Path()
+        var offset = -reach
+        while offset <= reach {
+            let base = CGPoint(x: center.x + normal.x * offset, y: center.y + normal.y * offset)
+            path.move(to: CGPoint(x: base.x - direction.x * reach, y: base.y - direction.y * reach))
+            path.addLine(to: CGPoint(x: base.x + direction.x * reach, y: base.y + direction.y * reach))
+            offset += 2.6
+        }
+        return path
+    }
+
+    private static func shading(_ rect: CGRect) -> GraphicsContext.Shading {
+        .radialGradient(
+            shade,
+            center: CGPoint(x: rect.minX + rect.width * 0.42, y: rect.minY + rect.height * 0.32),
+            startRadius: 0,
+            endRadius: max(rect.width, rect.height) * 0.75
+        )
     }
 
     /// Fades the figure out where the window cuts through the body, so a zoomed figure doesn't end
