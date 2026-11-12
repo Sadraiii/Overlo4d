@@ -53,6 +53,10 @@ struct WorkoutSummaryView: View {
                 }
                 WorkoutHealthTiles(workout: workout, stats: $workoutHealth)
 
+                if let before = gym.previousSession(like: workout) {
+                    SessionComparisonCard(workout: workout, before: before)
+                }
+
                 let reached = gym.milestonesReached(by: workout)
                 if !reached.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {

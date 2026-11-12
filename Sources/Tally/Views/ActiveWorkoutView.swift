@@ -15,6 +15,16 @@ struct ActiveWorkoutView: View {
     @State private var confirmingDiscard = false
     @State private var showingNothingDone = false
     @State private var showingTimer = false
+    /// The exercise the next set belongs to, with a line for the rest dock.
+    @State private var nextUp: NextUp?
+    /// Set to scroll the list to an exercise.
+    @State private var jumpTarget: UUID?
+    @FocusedValue(\.fieldStepper) private var stepper
+
+    struct NextUp: Equatable {
+        var exerciseID: UUID?
+        var text: String
+    }
 
     init(initial: Workout) {
         _draft = State(initialValue: initial)
@@ -22,6 +32,7 @@ struct ActiveWorkoutView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             List {
                 Section {
                     WorkoutHeader(draft: $draft)
@@ -34,6 +45,8 @@ struct ActiveWorkoutView: View {
                         exercise: $exercise,
                         isLive: true,
                         supersetPosition: draft.exercises.supersetPosition(of: exercise.id),
+                        groupLabel: draft.exercises.groupLabel(of: exercise.id),
+                        isNext: nextUp?.exerciseID == exercise.id,
                         supersetCandidates: draft.exercises.supersetCandidates(for: exercise.id)
                             .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
                         onSuperset: { draft.exercises.linkSuperset(exercise.id, with: $0) },
@@ -46,7 +59,7 @@ struct ActiveWorkoutView: View {
                             draft.exercises.move(id: exercise.id, by: $0)
                             draft.exercises.normalizeSupersets()
                         },
-                        onSetCompleted: { startRestIfNeeded(after: $0) }
+                        onSetCompleted: { setCompleted(in: $0) }
                     )
                 }
 
@@ -71,11 +84,17 @@ struct ActiveWorkoutView: View {
                 .listRowInsets(EdgeInsets())
             }
             .listSectionSpacing(14)
+            .onChange(of: jumpTarget) { _, target in
+                guard let target else { return }
+                withAnimation(.snappy) { proxy.scrollTo(target, anchor: .top) }
+                jumpTarget = nil
+            }
+            }
             .screenBackground()
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
                 if rest.isRunning {
-                    RestDock()
+                    RestDock(nextUp: nextUp?.text)
                         .padding(.horizontal, 12)
                         .padding(.bottom, 6)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -91,16 +110,44 @@ struct ActiveWorkoutView: View {
                         gym.isPresentingWorkout = false
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if draft.exercises.count > 1 {
+                        // Jump straight to an exercise; each line shows how many sets are ticked off.
+                        Menu("Exercises", systemImage: "list.bullet") {
+                            ForEach(draft.exercises) { exercise in
+                                let done = exercise.sets.filter(\.isDone).count
+                                Button {
+                                    jumpTarget = exercise.id
+                                } label: {
+                                    Label("\(gym.name(of: exercise.exerciseID)) · \(done)/\(exercise.sets.count)", systemImage: done >= exercise.sets.count && !exercise.sets.isEmpty ? "checkmark.circle.fill" : "circle")
+                                }
+                            }
+                        }
+                    }
                     Button("Timer", systemImage: "stopwatch") { showingTimer = true }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Finish") { confirmingFinish = true }
+                    Button("Finish") {
+                        // Nothing left unticked: no need to ask.
+                        if !draft.allSets.isEmpty && draft.allSets.allSatisfy(\.isDone) { finish() } else { confirmingFinish = true }
+                    }
                         .font(Typo.body(15, .bold))
                         .buttonStyle(.glassProminent)
                         .tint(Theme.good)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
+                    if let stepper {
+                        Button { stepper.adjust(-1) } label: {
+                            Label("Minus \(stepper.label)", systemImage: "minus").labelStyle(.iconOnly).frame(minWidth: 44)
+                        }
+                        Text(stepper.label)
+                            .font(Typo.body(13, .semibold))
+                            .foregroundStyle(Theme.ink3)
+                            .monospacedDigit()
+                        Button { stepper.adjust(1) } label: {
+                            Label("Plus \(stepper.label)", systemImage: "plus").labelStyle(.iconOnly).frame(minWidth: 44)
+                        }
+                    }
                     Spacer()
                     Button("Done") {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -114,16 +161,10 @@ struct ActiveWorkoutView: View {
             }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
             .confirmationDialog("Finish workout?", isPresented: $confirmingFinish, titleVisibility: .visible) {
-                Button("Finish") {
-                    rest.stop()
-                    if gym.finishWorkout(draft), let saved = gym.summaryWorkout {
-                        Task { await HealthSync.finished(saved, gym: gym, health: health) }
-                    } else {
-                        showingNothingDone = true
-                    }
-                }
+                Button("Finish") { finish() }
             } message: {
-                Text("Sets that aren't ticked off won't be saved.")
+                let open = draft.allSets.filter { !$0.isDone }.count
+                Text(open == 1 ? "1 set isn't ticked off and won't be saved." : "\(open) sets aren't ticked off and won't be saved.")
             }
             .confirmationDialog("Discard workout?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
                 Button("Discard", role: .destructive) {
@@ -143,12 +184,32 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    /// Starts the rest timer after a set, except between exercises of the same superset.
-    private func startRestIfNeeded(after exercise: WorkoutExercise) {
-        guard rest.autoStart,
-              let index = draft.exercises.firstIndex(where: { $0.id == exercise.id }),
-              Supersets.restsAfter(index: index, in: draft.exercises.supersetIDs) else { return }
-        rest.start(seconds: exercise.restSeconds)
+    private func finish() {
+        rest.stop()
+        if gym.finishWorkout(draft), let saved = gym.summaryWorkout {
+            Task { await HealthSync.finished(saved, gym: gym, health: health) }
+        } else {
+            showingNothingDone = true
+        }
+    }
+
+    /// After a set is ticked off: works out what comes next (the next exercise of a superset, the
+    /// next set, or the next exercise), and starts the rest timer except inside a superset round.
+    private func setCompleted(in exercise: WorkoutExercise) {
+        guard let index = draft.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
+        let ids = draft.exercises.supersetIDs
+        let remaining = draft.exercises.map { $0.sets.filter { !$0.isDone }.count }
+        if let next = Supersets.next(after: index, in: ids, remaining: remaining) {
+            let target = draft.exercises[next]
+            let number = target.sets.count - remaining[next] + 1
+            nextUp = NextUp(exerciseID: target.id, text: "\(gym.name(of: target.exerciseID)) · set \(number) of \(target.sets.count)")
+            // Bring the next exercise into view when it isn't the one just done.
+            if next != index { jumpTarget = target.id }
+        } else {
+            nextUp = NextUp(exerciseID: nil, text: "All sets done")
+        }
+        guard rest.autoStart, Supersets.restsAfter(index: index, in: ids) else { return }
+        rest.start(seconds: draft.exercises[index].restSeconds)
     }
 }
 
@@ -215,42 +276,73 @@ struct WorkoutHeader: View {
     }
 }
 
-/// Floating rest countdown above the bottom edge.
+/// Rest countdown above the bottom edge: time left, what comes next, and the controls.
 struct RestDock: View {
     @Environment(RestTimer.self) private var rest
+    /// e.g. "Cable Fly · set 2 of 3".
+    var nextUp: String?
 
     var body: some View {
-        if let end = rest.endDate {
-            HStack(spacing: 10) {
+        if rest.isRunning {
+            VStack(spacing: 10) {
                 TimelineView(.periodic(from: .now, by: 0.25)) { context in
-                    let remaining = max(0, end.timeIntervalSince(context.date))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Rest").eyebrow(11)
-                        Text(Fmt.seconds(Int(remaining.rounded(.up))))
-                            .font(Typo.display(30))
-                            .monospacedDigit()
-                            .contentTransition(.numericText(countsDown: true))
+                    let remaining = rest.pausedRemaining ?? max(0, (rest.endDate ?? context.date).timeIntervalSince(context.date))
+                    VStack(spacing: 8) {
+                        HStack(alignment: .center, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(rest.isPaused ? "Paused" : "Rest").eyebrow(11)
+                                Text(Fmt.seconds(Int(remaining.rounded(.up))))
+                                    .font(Typo.display(40))
+                                    .monospacedDigit()
+                                    .foregroundStyle(rest.isPaused ? Theme.ink3 : Theme.ink)
+                                    .contentTransition(.numericText(countsDown: true))
+                            }
+                            Spacer(minLength: 8)
+                            if let nextUp {
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("Next").eyebrow(10.5)
+                                    Text(nextUp)
+                                        .font(Typo.body(13.5, .semibold))
+                                        .foregroundStyle(Theme.ink)
+                                        .multilineTextAlignment(.trailing)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                        GeometryReader { proxy in
+                            let left = rest.total > 0 ? min(1, max(0, remaining / rest.total)) : 0
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.line)
+                                Capsule().fill(Theme.accent).frame(width: proxy.size.width * left)
+                            }
+                        }
+                        .frame(height: 5)
+                        .accessibilityHidden(true)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button("−15") { rest.adjust(by: -15) }
-                    .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 44))
-                Button("+15") { rest.adjust(by: 15) }
-                    .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 44))
-                Button("Skip") { rest.stop() }
-                    .buttonStyle(OOButtonStyle(kind: .primary, shape: .pill, height: 44))
+                HStack(spacing: 6) {
+                    Button("−15") { rest.adjust(by: -15) }
+                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                    Button("+15") { rest.adjust(by: 15) }
+                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                    Button("+30") { rest.adjust(by: 30) }
+                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                    Button(rest.isPaused ? "Resume" : "Pause", systemImage: rest.isPaused ? "play.fill" : "pause.fill") {
+                        if rest.isPaused { rest.resume() } else { rest.pause() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                    Button("Skip") { rest.stop() }
+                        .buttonStyle(OOButtonStyle(kind: .primary, shape: .pill, height: 42, fullWidth: true))
+                }
             }
-            .padding(.leading, 18)
-            .padding(.trailing, 8)
-            .padding(.vertical, 8)
-            .background(Theme.card, in: .capsule)
-            .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1))
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
+            .background(Theme.card, in: .rect(cornerRadius: 26))
+            .overlay(RoundedRectangle(cornerRadius: 26).strokeBorder(Theme.line, lineWidth: 1))
             .shadow(color: .black.opacity(0.14), radius: 20, y: 8)
-            .task(id: end) {
-                // Hide the dock when the countdown reaches zero.
-                try? await Task.sleep(for: .seconds(max(0, end.timeIntervalSinceNow)))
-                if !Task.isCancelled, rest.endDate == end { rest.finish() }
-            }
+            .sensoryFeedback(.selection, trigger: rest.isPaused)
         }
     }
 }

@@ -9,6 +9,15 @@ extension Array where Element == WorkoutExercise {
         return Supersets.position(at: index, in: supersetIDs)
     }
 
+    /// "Superset A", "Giant set B" or "Circuit A" for a grouped exercise; nil when it stands alone.
+    func groupLabel(of id: WorkoutExercise.ID) -> String? {
+        guard let index = firstIndex(where: { $0.id == id }) else { return nil }
+        let ids = supersetIDs
+        let members = Supersets.members(of: index, in: ids)
+        guard members.count > 1, let letter = Supersets.letters(ids)[index] else { return nil }
+        return "\(Supersets.groupName(size: members.count)) \(letter)"
+    }
+
     /// Clears superset links that no longer join two neighbouring exercises.
     mutating func normalizeSupersets() {
         let ids = Supersets.normalized(supersetIDs)

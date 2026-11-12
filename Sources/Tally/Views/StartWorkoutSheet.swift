@@ -23,6 +23,8 @@ struct StartWorkoutSheet: View {
     @State private var choice = Choice.empty
     @State private var name = ""
     @State private var restSeconds: Int?
+    /// The plan Up next recommends, preselected when the sheet opens.
+    @State private var suggestedPlan: UUID?
 
     private static let restOptions = [0, 60, 90, 120, 180]
 
@@ -58,7 +60,9 @@ struct StartWorkoutSheet: View {
                                     .plan(plan.id),
                                     symbol: "list.bullet",
                                     title: plan.name,
-                                    detail: "\(plan.exercises.count) exercises · \(plan.exercises.reduce(0) { $0 + $1.sets.count }) sets"
+                                    detail: plan.id == suggestedPlan
+                                        ? "Suggested · \(plan.exercises.count) exercises"
+                                        : "\(plan.exercises.count) exercises · \(plan.exercises.reduce(0) { $0 + $1.sets.count }) sets"
                                 )
                             }
                         }
@@ -103,6 +107,11 @@ struct StartWorkoutSheet: View {
             }
         }
         .sensoryFeedback(.selection, trigger: choice)
+        .onAppear {
+            guard suggestedPlan == nil, let next = gym.upNext() else { return }
+            suggestedPlan = next.plan.id
+            choice = .plan(next.plan.id)
+        }
     }
 
     private var suggestedName: String {
@@ -214,6 +223,8 @@ struct SettingsSheet: View {
                         .background(Theme.line, in: .rect(cornerRadius: 15))
                     }
 
+                    TrainingSettingsSection()
+
                     RestSettingsSection()
 
                     HealthSettingsSection()
@@ -270,6 +281,59 @@ struct RestSettingsSection: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
+            }
+            .card(padding: 0, cornerRadius: 18)
+        }
+    }
+}
+
+/// Weekly workout goal and the progression suggestions shown during a workout.
+struct TrainingSettingsSection: View {
+    @AppStorage("training.weeklyGoal") private var weeklyGoal = 0
+    @AppStorage("progression.enabled") private var suggestions = true
+    @AppStorage("progression.step") private var step = 0.0
+
+    private static let steps: [Double] = [0, 0.5, 1, 1.25, 2, 2.5, 5]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Training").eyebrow(11.5)
+            VStack(spacing: 0) {
+                Stepper(value: $weeklyGoal, in: 0...14) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Weekly goal").font(Typo.body(15, .semibold))
+                        Text(weeklyGoal == 0 ? "Off" : "\(weeklyGoal) \(weeklyGoal == 1 ? "workout" : "workouts") a week")
+                            .font(Typo.body(13))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                Rectangle().fill(Theme.line).frame(height: 1)
+                Toggle(isOn: $suggestions) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Suggest what to lift").font(Typo.body(15, .semibold))
+                        Text("More weight once every set hits its reps, lighter after a plateau.")
+                            .font(Typo.body(13))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                }
+                .padding(14)
+                if suggestions {
+                    Rectangle().fill(Theme.line).frame(height: 1)
+                    HStack {
+                        Text("Weight step").font(Typo.body(15, .semibold))
+                        Spacer()
+                        Picker("Weight step", selection: $step) {
+                            ForEach(Self.steps, id: \.self) { value in
+                                Text(value == 0 ? "By equipment" : "\(Fmt.weight(value)) kg").tag(value)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                }
             }
             .card(padding: 0, cornerRadius: 18)
         }

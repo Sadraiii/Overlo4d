@@ -9,6 +9,7 @@ Gym tracker for iPhone.
   <img src="docs/images/screen-workout.png" width="200" alt="Workout">
   <img src="docs/images/screen-history.png" width="200" alt="History">
   <img src="docs/images/screen-progress.png" width="200" alt="Progress">
+  <img src="docs/images/screen-trends.png" width="200" alt="Trends">
   <img src="docs/images/screen-recovery.png" width="200" alt="Recovery">
   <img src="docs/images/screen-milestones.png" width="200" alt="Milestones">
 </p>

@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -11,7 +12,10 @@ struct HomeTab: View {
     @State private var showingOneRepMax = false
     @State private var showingRecords = false
     @State private var showingChangelog = false
+    @State private var editingLayout = false
     @AppStorage("changelog.seenVersion") private var seenVersion = ""
+    /// Which cards show and in what order (see `HomeLayout`).
+    @AppStorage("home.layout") private var layoutRaw = ""
 
     var body: some View {
         @Bindable var ui = ui
@@ -61,25 +65,19 @@ struct HomeTab: View {
                         ToolButton(title: "Records", symbol: "trophy") { showingRecords = true }
                     }
 
-                    SectionHead("Today")
+                    let layout = HomeLayout.decode(layoutRaw)
+                    let today = layout.visible(layout.today)
+                    let training = layout.visible(layout.training)
 
-                    FoodCard { ui.showingFood = true }
+                    if !today.isEmpty {
+                        SectionHead("Today")
+                        ForEach(today, id: \.self) { homeCard($0) }
+                    }
 
-                    SleepCard()
-
-                    HealthCard()
-
-                    RepsCard { ui.showingReps = true }
-
-                    SectionHead("Training")
-
-                    RecoveryCard()
-
-                    LastWeekCard()
-
-                    CoachCard()
-
-                    BodyCard()
+                    if !training.isEmpty {
+                        SectionHead("Training")
+                        ForEach(training, id: \.self) { homeCard($0) }
+                    }
 
                     if let last = gym.workouts.first {
                         SectionHead("Last workout")
@@ -88,6 +86,13 @@ struct HomeTab: View {
                         }
                         .buttonStyle(.plain)
                     }
+
+                    Button("Edit Home", systemImage: "slider.horizontal.3") { editingLayout = true }
+                        .font(Typo.body(14, .semibold))
+                        .foregroundStyle(Theme.ink2)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .buttonStyle(.plain)
+                        .padding(.top, 10)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -113,6 +118,23 @@ struct HomeTab: View {
             .sheet(isPresented: $showingPlates) { PlateCalculatorSheet() }
             .sheet(isPresented: $showingOneRepMax) { OneRepMaxSheet() }
             .sheet(isPresented: $showingChangelog) { ChangelogSheet() }
+            .sheet(isPresented: $editingLayout) { HomeLayoutSheet(layoutRaw: $layoutRaw) }
+        }
+    }
+
+    /// One Home card by its `HomeLayout` name.
+    @ViewBuilder private func homeCard(_ name: String) -> some View {
+        switch name {
+        case "food": FoodCard { ui.showingFood = true }
+        case "sleep": SleepCard()
+        case "activity": HealthCard()
+        case "reps": RepsCard { ui.showingReps = true }
+        case "upNext": UpNextCard()
+        case "recovery": RecoveryCard()
+        case "lastWeek": LastWeekCard()
+        case "coach": CoachCard()
+        case "body": BodyCard()
+        default: EmptyView()
         }
     }
 
@@ -129,6 +151,7 @@ struct HomeTab: View {
 /// This week's training: workout count, the week's days and the start button.
 struct WeekCard: View {
     @Environment(GymStore.self) private var gym
+    @AppStorage("training.weeklyGoal") private var weeklyGoal = 0
     let onStart: () -> Void
 
     var body: some View {
@@ -166,9 +189,23 @@ struct WeekCard: View {
                         .font(Typo.display(56))
                         .monospacedDigit()
                         .contentTransition(.numericText())
+                    if weeklyGoal > 0 {
+                        Text("/ \(weeklyGoal)")
+                            .font(Typo.display(30))
+                            .foregroundStyle(Theme.ink3)
+                    }
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(thisWeek.count == 1 ? "workout" : "workouts")
-                            .font(Typo.body(16, .semibold))
+                        if weeklyGoal > 0 && thisWeek.count >= weeklyGoal {
+                            Label("Weekly goal reached", systemImage: "checkmark.circle.fill")
+                                .font(Typo.body(15, .semibold))
+                                .foregroundStyle(Theme.good)
+                        } else if weeklyGoal > 0 {
+                            Text("\(weeklyGoal - thisWeek.count) to go this week")
+                                .font(Typo.body(16, .semibold))
+                        } else {
+                            Text(thisWeek.count == 1 ? "workout" : "workouts")
+                                .font(Typo.body(16, .semibold))
+                        }
                         if !thisWeek.isEmpty {
                             Text("\(Fmt.duration(thisWeek.reduce(0) { $0 + $1.duration })) · \(Fmt.volume(thisWeek.reduce(0) { $0 + $1.volume }))")
                                 .font(Typo.body(13))
@@ -188,6 +225,124 @@ struct WeekCard: View {
             .sensoryFeedback(.impact, trigger: gym.isPresentingWorkout)
         }
         .card(padding: 18, cornerRadius: 26)
+    }
+}
+
+/// The plan to train next, picked from how long each has waited and how rested its muscles are.
+struct UpNextCard: View {
+    @Environment(GymStore.self) private var gym
+
+    var body: some View {
+        if gym.activeWorkout == nil, let next = gym.upNext() {
+            let defs = next.plan.exercises.compactMap { gym.exercise($0.exerciseID) }
+            HStack(alignment: .center, spacing: 12) {
+                AnatomyFigure(primary: Set(defs.flatMap(\.primary)), secondary: Set(defs.flatMap(\.secondary)))
+                    .frame(width: 64, height: 76)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Up next").eyebrow()
+                    Text(next.plan.name)
+                        .font(Typo.title(18))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(2)
+                    Text(Self.reason(next.pick))
+                        .font(Typo.body(13))
+                        .foregroundStyle(Theme.ink2)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    gym.startWorkout(from: next.plan)
+                } label: {
+                    Label("Start", systemImage: "play.fill")
+                }
+                .buttonStyle(.smallPrimary)
+            }
+            .card(padding: 14, cornerRadius: 20)
+        }
+    }
+
+    /// "Last done 5 days ago · muscles rested" or "… · chest still recovering".
+    static func reason(_ pick: UpNext.Pick) -> String {
+        let wait = UpNext.waitText(daysSince: pick.daysSince)
+        let tired = pick.tired.compactMap { Muscle(rawValue: $0)?.label.lowercased() }
+        guard !tired.isEmpty else { return "\(wait) · muscles rested" }
+        let names = tired.prefix(2).joined(separator: " and ")
+        return "\(wait) · \(names) still recovering"
+    }
+}
+
+/// Choose which cards Home shows and drag them into order.
+struct HomeLayoutSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var layoutRaw: String
+    @State private var layout = HomeLayout.standard
+
+    private static let titles: [String: (name: String, symbol: String)] = [
+        "food": ("Food", "fork.knife"),
+        "sleep": ("Sleep", "moon.fill"),
+        "activity": ("Activity", "heart.fill"),
+        "reps": ("Reps today", "number"),
+        "upNext": ("Up next", "play.fill"),
+        "recovery": ("Recovery", "figure.cooldown"),
+        "lastWeek": ("Last week", "calendar"),
+        "coach": ("Coach", "sparkles"),
+        "body": ("Body", "ruler"),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                section("Today", cards: $layout.today)
+                section("Training", cards: $layout.training)
+                if !layout.isStandard {
+                    Section {
+                        Button("Reset to standard") { withAnimation { layout = .standard } }
+                            .font(Typo.body(15, .semibold))
+                    }
+                    .cardRow()
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .screenBackground()
+            .navigationTitle("Edit Home")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", systemImage: "checkmark") { dismiss() }
+                }
+            }
+            .onAppear { layout = HomeLayout.decode(layoutRaw) }
+            .onChange(of: layout) { layoutRaw = layout.isStandard ? "" : layout.encoded }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func section(_ title: String, cards: Binding<[String]>) -> some View {
+        Section {
+            ForEach(cards.wrappedValue, id: \.self) { card in
+                let shown = !layout.hidden.contains(card)
+                Toggle(isOn: Binding(
+                    get: { !layout.hidden.contains(card) },
+                    set: { isOn in
+                        if isOn { layout.hidden.remove(card) } else { layout.hidden.insert(card) }
+                    }
+                )) {
+                    Label(Self.titles[card]?.name ?? card, systemImage: Self.titles[card]?.symbol ?? "square")
+                        .font(Typo.body(15, .semibold))
+                        .foregroundStyle(shown ? Theme.ink : Theme.ink3)
+                }
+            }
+            .onMove { cards.wrappedValue.move(fromOffsets: $0, toOffset: $1) }
+            .cardRow()
+        } header: {
+            Text(title)
+        } footer: {
+            if title == "Training" {
+                Text("Switch a card off to hide it. Drag the handles to change the order.")
+            }
+        }
     }
 }
 

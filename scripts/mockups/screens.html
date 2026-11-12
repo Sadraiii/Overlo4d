@@ -157,6 +157,20 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
 .mhead { font-size: 18px; font-weight: 700; }
 .dock { position: absolute; left: 16px; right: 16px; bottom: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 40px; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
 .btn { border-width: 1px; background: var(--card); }
+.dock2 { position: absolute; left: 12px; right: 12px; bottom: 34px; padding: 12px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 26px; box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.dock2 .btn { flex: 1; height: 42px; border-radius: 21px; justify-content: center; padding: 0; }
+.rng { display: inline-flex; background: var(--line); border-radius: 12px; padding: 3px; font-weight: 600; font-size: 12.5px; }
+.rng span { padding: 7px 10px; border-radius: 9px; color: var(--ink2); }
+.rng span.on { background: var(--card); color: var(--ink); }
+.pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 10px; margin-top: 12px; }
+.pgrid .num { font-size: 26px; margin-top: 2px; }
+.pgrid small { font-weight: 600; font-size: 12px; color: var(--good); }
+.pgrid small.flat { color: var(--ink3); }
+.lift { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.lift:first-of-type { border-top: 0; }
+.lift b { font-weight: 600; font-size: 14.5px; display: block; }
+.lift span.m { font-size: 12.5px; color: var(--ink3); }
+.lift em { font-style: normal; font-weight: 700; font-size: 13px; color: var(--good); width: 46px; text-align: right; }
 .dock .btn { height: 44px; border-radius: 22px; }
 .mbar { height: 8px; border-radius: 4px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .mbar b { display: block; height: 100%; border-radius: 4px; }
@@ -213,8 +227,8 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     <div class="card" style="border-radius:26px;padding:18px;display:flex;flex-direction:column;gap:16px">
       <div class="row between"><span class="eyebrow">This week</span><span class="streak">🔥 4 wk</span></div>
       <div class="row" style="gap:8px;align-items:flex-end">
-        <span class="num" style="font-size:56px">2</span>
-        <div style="padding-bottom:4px"><div style="font-weight:600;font-size:16px">workouts</div><div class="muted" style="font-size:13px">1 h 51 min · 9,860 kg</div></div>
+        <span class="num" style="font-size:56px">2</span><span class="num muted" style="font-size:30px;padding-bottom:5px">/ 4</span>
+        <div style="padding-bottom:4px"><div style="font-weight:600;font-size:16px">2 to go this week</div><div class="muted" style="font-size:13px">1 h 51 min · 9,860 kg</div></div>
       </div>
       <div class="week">
         <div><span>M</span><i class="on">✓</i></div><div><span>T</span><i></i></div><div><span>W</span><i class="on">✓</i></div>
@@ -289,7 +303,7 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
   <div class="content" style="gap:12px">
     <div class="row between" style="height:42px">
       <span style="width:38px;height:38px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;color:var(--ink2)">⌄</span>
-      <span class="btn primary" style="height:38px;background:var(--good);border-radius:19px">Finish</span>
+      <span class="row" style="gap:8px"><span style="width:38px;height:38px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:15px">☰</span><span class="btn primary" style="height:38px;background:var(--good);border-radius:19px">Finish</span></span>
     </div>
     <div style="padding:0 4px">
       <div class="row between"><span class="pill live">In progress</span><span class="eyebrow" style="font-size:12.5px">Started 18:04 ✎</span></div>
@@ -308,15 +322,22 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     <div class="card" style="padding:14px">
       <div class="row" style="gap:12px;margin-bottom:10px">
         <div class="badge"><svg class="fig" data-primary="chest,frontDelts" data-secondary="triceps" width="40" height="40"></svg></div>
-        <div style="flex:1"><div class="title" style="font-size:17px">Bench Press</div><div class="muted" style="font-size:12px;font-weight:600">⏱ Rest 2:00</div></div>
+        <div style="flex:1"><div class="title" style="font-size:17px">Bench Press</div><div class="muted" style="font-size:12px;font-weight:600"><span style="background:var(--accent);color:var(--accentInk);font-weight:700;font-size:11px;padding:2px 7px;border-radius:9px;margin-right:6px">Up next</span>⏱ Rest 2:00</div></div>
         <span class="muted" style="font-size:18px">···</span>
       </div>
       <div class="pin">📌 Bench on notch 3, feet tucked, arch</div>
+      <div class="eyebrow" style="font-size:12px">Last time · Mon 19 Oct</div>
+      <div class="ink2" style="font-weight:500;font-size:13.5px;margin:3px 0 8px">70×8  ·  70×8  ·  70×8</div>
+      <div class="row" style="gap:10px;background:var(--accentSoft);border-radius:14px;padding:8px 10px;margin-bottom:8px">
+        <span style="width:30px;height:30px;border-radius:50%;background:var(--card);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">↑</span>
+        <div style="flex:1"><div style="font-weight:700;font-size:14px">Today: 72.5 kg × 8</div><div class="ink2" style="font-size:12px">Every set reached 8 reps last time.</div></div>
+        <span style="font-weight:700;font-size:13px;color:var(--accent)">Use</span>
+      </div>
       <div class="sets">
         <div class="h"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span></span></div>
         <div class="r done"><span class="n">1</span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">8</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
         <div class="r done"><span class="n rpe">2<em>@8</em></span><span class="prev">70 × 8</span><span class="f">72.5</span><span class="f">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-        <div class="r"><span class="n">3</span><span class="prev">70 × 7</span><span class="f ph">72.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="r"><span class="n">3</span><span class="prev">70 × 8</span><span class="f ph">72.5</span><span class="f ph">7</span><span class="check"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
       </div>
     </div>
 
@@ -328,9 +349,13 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
       </div>
     </div>
   </div>
-  <div class="dock">
-    <div style="flex:1"><div class="eyebrow" style="font-size:12.5px">Rest</div><div class="num" style="font-size:30px">1:24</div></div>
-    <span class="btn">−15</span><span class="btn">+15</span><span class="btn primary">Skip</span>
+  <div class="dock2">
+    <div class="row between" style="align-items:center">
+      <div><div class="eyebrow" style="font-size:12.5px">Rest</div><div class="num" style="font-size:40px">1:24</div></div>
+      <div style="text-align:right"><div class="eyebrow" style="font-size:12px">Next</div><div style="font-weight:600;font-size:13.5px">Bench Press · set 3 of 3</div></div>
+    </div>
+    <div class="mbar" style="height:5px;margin:8px 0 10px"><b style="width:70%;background:var(--accent)"></b></div>
+    <div class="row" style="gap:6px"><span class="btn">−15</span><span class="btn">+15</span><span class="btn">+30</span><span class="btn">❙❙</span><span class="btn primary">Skip</span></div>
   </div>
 </section>
 
@@ -440,6 +465,67 @@ body { background: #888; display: flex; flex-wrap: wrap; gap: 40px; padding: 40p
     </div>
   </div>
 </section>
+<!-- 7. Progress trends -->
+<section class="phone light" id="trends" data-tab="progress">
+  <div class="content" style="gap:12px">
+    <div class="large">Progress</div>
+    <div class="row between" style="align-items:flex-end;padding:0 2px"><span class="title" style="font-size:19px">Trends</span>
+      <span class="rng"><span>4 wk</span><span class="on">12 wk</span><span>6 mo</span><span>1 yr</span></span></div>
+    <div class="card" style="padding:14px;border-radius:20px">
+      <div class="row between" style="align-items:baseline"><span class="title" style="font-size:13.6px">The last 12 weeks</span><span class="muted" style="font-size:12.5px">vs the same time before</span></div>
+      <div class="pgrid">
+        <div><div class="eyebrow" style="font-size:12px">Workouts</div><div class="num">38</div><small>+12%</small></div>
+        <div><div class="eyebrow" style="font-size:12px">Per week</div><div class="num">3.2</div></div>
+        <div><div class="eyebrow" style="font-size:12px">Records</div><div class="num">21</div><small>+31%</small></div>
+        <div><div class="eyebrow" style="font-size:12px">Volume</div><div class="num">182.4 t</div><small>+9%</small></div>
+        <div><div class="eyebrow" style="font-size:12px">Sets</div><div class="num">612</div><small>+7%</small></div>
+        <div><div class="eyebrow" style="font-size:12px">Avg session</div><div class="num">58min</div><small class="flat">−3%</small></div>
+      </div>
+    </div>
+    <div class="card" style="padding:14px;border-radius:20px">
+      <div class="row between" style="align-items:baseline;margin-bottom:6px"><span class="title" style="font-size:13.6px">Strength</span><span class="muted" style="font-size:12.5px">Estimated 1RM</span></div>
+      <div class="lift"><div style="flex:1"><b>Bench Press (Barbell)</b><span class="m">88 → 94 kg · 14 sessions</span></div><svg width="64" height="26" viewBox="0 0 64 26" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 22 9 20 17 21 25 16 33 15 41 11 49 12 57 6 63 4"/></svg><em>+7%</em></div>
+      <div class="lift"><div style="flex:1"><b>Squat (Barbell)</b><span class="m">112 → 124 kg · 12 sessions</span></div><svg width="64" height="26" viewBox="0 0 64 26" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 23 10 20 19 17 28 18 37 12 46 9 55 7 63 3"/></svg><em>+11%</em></div>
+      <div class="lift"><div style="flex:1"><b>Lat Pulldown (Cable)</b><span class="m">76 → 79 kg · 11 sessions</span></div><svg width="64" height="26" viewBox="0 0 64 26" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 18 11 16 21 19 31 13 41 14 52 10 63 8"/></svg><em>+4%</em></div>
+    </div>
+    <div class="card" style="padding:14px;border-radius:20px;font-size:14px">
+      <div class="row between" style="align-items:baseline"><span class="title" style="font-size:13.6px">Balance</span><span class="muted" style="font-size:12.5px">Share of working sets</span></div>
+      <div class="row between" style="margin-top:12px;align-items:baseline"><span><b style="font-weight:600">Push</b> <span class="muted" style="font-size:12px">Chest, shoulders, triceps</span></span><span class="num" style="font-size:18px">41%</span></div><div class="mbar" style="height:7px"><b style="width:100%;background:var(--accent)"></b></div>
+      <div class="row between" style="margin-top:12px;align-items:baseline"><span><b style="font-weight:600">Pull</b> <span class="muted" style="font-size:12px">Back, biceps, forearms</span></span><span class="num" style="font-size:18px">26%</span></div><div class="mbar" style="height:7px"><b style="width:63%;background:var(--accent)"></b></div>
+      <div class="row between" style="margin-top:12px;align-items:baseline"><span><b style="font-weight:600">Legs</b> <span class="muted" style="font-size:12px">Quads, hamstrings, glutes, calves</span></span><span class="num" style="font-size:18px">27%</span></div><div class="mbar" style="height:7px"><b style="width:66%;background:var(--accent)"></b></div>
+      <div class="ink2" style="font-weight:500;font-size:13px;margin-top:12px">ⓘ About 1.5 times the pushing of pulling. Add some rows or pull-downs.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Home, training cards -->
+<section class="phone light" id="upnext" data-tab="home">
+  <div class="content" style="gap:12px">
+    <div class="section" style="padding-top:4px"><span class="title">Training</span></div>
+    <div class="card row" style="gap:12px;padding:14px;border-radius:20px">
+      <svg class="fig" data-primary="lats,upperBack,biceps" data-secondary="rearDelts,forearms" width="64" height="76"></svg>
+      <div style="flex:1"><div class="eyebrow">Up next</div><div class="title" style="font-size:18px;margin:3px 0">Pull</div><div class="ink2" style="font-size:13px">Last done 5 days ago · muscles rested</div></div>
+      <span class="btn primary">▶ Start</span>
+    </div>
+    <div class="section"><span class="title">Routines</span></div>
+    <div class="card" style="border-radius:20px">
+      <div class="title" style="font-size:20px">Push / Pull / Legs</div>
+      <div style="font-weight:600;font-size:13px;color:var(--accent);margin:5px 0">Intermediate · 3 days a week · Full gym</div>
+      <div class="ink2" style="font-size:14px;line-height:1.35">Pushing muscles, pulling muscles and legs each get their own day. Run it once a week for three days, or twice for six.</div>
+      <div style="height:1px;background:var(--line);margin:12px 0"></div>
+      <div style="font-weight:600;font-size:14px">Push</div><div class="muted" style="font-size:12.5px;margin-bottom:8px">Bench Press (Barbell) · Shoulder Press (Dumbbell) · Incline Bench Press (Dumbbell) · Lateral Raise (Dumbbell) · Triceps Pushdown (Cable)</div>
+      <div style="font-weight:600;font-size:14px">Pull</div><div class="muted" style="font-size:12.5px;margin-bottom:8px">Pull-ups · Bent Over Row (Barbell) · Seated Row (Cable) · Face Pull (Cable) · Bicep Curl (EZ Bar)</div>
+      <div style="font-weight:600;font-size:14px">Legs</div><div class="muted" style="font-size:12.5px;margin-bottom:12px">Squat (Barbell) · Romanian Deadlift (Barbell) · Leg Press · Leg Curl (Machine) · Calf Raise</div>
+      <div class="btn" style="width:100%;justify-content:center;height:44px;border-radius:22px">+ Add 3 plans</div>
+    </div>
+    <div class="card" style="border-radius:20px">
+      <div class="title" style="font-size:20px">Dumbbells only</div>
+      <div style="font-weight:600;font-size:13px;color:var(--accent);margin:5px 0">Beginner · 3 days a week · Dumbbells</div>
+      <div class="ink2" style="font-size:14px;line-height:1.35">Three full-body sessions with a pair of dumbbells and a bench. For home or a busy gym.</div>
+    </div>
+  </div>
+</section>
+
 
 <script src="anatomy.js"></script>
 <script>

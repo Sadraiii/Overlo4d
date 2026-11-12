@@ -270,6 +270,7 @@ struct EditWorkoutView: View {
                         exercise: $exercise,
                         isLive: false,
                         supersetPosition: workout.exercises.supersetPosition(of: exercise.id),
+                        groupLabel: workout.exercises.groupLabel(of: exercise.id),
                         supersetCandidates: workout.exercises.supersetCandidates(for: exercise.id)
                             .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
                         onSuperset: { workout.exercises.linkSuperset(exercise.id, with: $0) },

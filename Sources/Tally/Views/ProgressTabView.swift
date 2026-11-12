@@ -161,6 +161,10 @@ struct ProgressOverview: View {
                 Tile(value: "\(weeks.last?.workouts ?? 0)", label: "This week")
             }
 
+            TrendsSection()
+
+            SectionHead("Activity")
+
             ConsistencyCard()
 
             // Workouts per week as bars.

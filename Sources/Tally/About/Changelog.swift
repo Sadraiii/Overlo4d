@@ -20,6 +20,25 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.11", date: DateComponents(year: 2026, month: 11, day: 12), changes: [
+            "Progression: each exercise shows what to aim for today from your last sessions. More weight once every set hit its reps, the same weight while reps are missing, one more go after a max-effort set, and 10% lighter after three stuck sessions. Tap Use to fill the sets.",
+            "The step follows the equipment (2.5 kg on bars, 2 kg on dumbbells, 5 kg on heavy machines), or pick your own in Settings › Training, where suggestions can also be switched off.",
+            "The Previous column now pairs warm-ups with warm-ups and working sets with working sets, so an extra warm-up no longer shifts every row.",
+            "Minus and plus buttons above the keyboard change the weight or reps one step at a time, starting from last time's value.",
+            "Rest timer: pause and resume, +15 and +30, a bar for the time left and what comes next. It keeps its end time, so it is right again after the app was closed, and it ends on any screen.",
+            "Supersets of three are called giant sets and four or more circuits, each with a letter (Superset A). After every set the next exercise is marked Up next and scrolled into view.",
+            "Jump to any exercise from the list button at the top of a workout, with the sets done for each.",
+            "Add a drop set from the set number menu: it lands right after the set, about 20% lighter.",
+            "Finish no longer asks when every set is ticked off, and says how many sets are left when some aren't.",
+            "Typing in a workout no longer rewrites the whole log on every key; ticked sets are still saved at once.",
+            "Add set copies assistance and distance too.",
+            "Up next on Home and in the start sheet: the plan that has waited longest and whose muscles are rested.",
+            "Ready-made routines in Plans: full body, upper / lower, push / pull / legs, dumbbells only and bodyweight. Each adds one plan per day, starting from the weights you last lifted.",
+            "Weekly goal: set how many workouts you aim for in Settings › Training and see it on the week card.",
+            "Progress › Trends: pick 4 weeks, 12 weeks, 6 months or a year and see workouts, volume, sets, records and session length against the same time before, the estimated 1RM of your most trained lifts, how your sets split over push, pull, legs and core, and workouts per month.",
+            "The workout summary compares volume, sets and time with the last session of the same plan.",
+            "Edit Home: hide cards you don't use and drag the rest into your order.",
+        ]),
         ChangelogEntry(version: "0.10", date: DateComponents(year: 2026, month: 11, day: 7), changes: [
             "Recovery: Home shows which muscles are still recovering and what's ready to train, on the body figure. Tap it for every muscle with the time it's ready again.",
             "Milestones for workouts, weight lifted, time trained, best streak and records, each with levels and how far you are from the next. New ones show on the workout summary.",

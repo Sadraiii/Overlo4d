@@ -34,6 +34,8 @@ final class GymStore {
     private(set) var exerciseNotes: [UUID: String]
 
     private let fileURL = URL.documentsDirectory.appending(path: "gym.json")
+    /// A write waiting for typing to settle (see `saveSoon`).
+    @ObservationIgnored private var pendingSave: Task<Void, Never>?
 
     init() {
         var data = GymData()
@@ -64,9 +66,33 @@ final class GymStore {
     }
 
     func save() {
+        pendingSave?.cancel()
+        pendingSave = nil
         let data = GymData(exercises: exercises, workouts: workouts, plans: plans, activeWorkout: activeWorkout, exerciseNotes: exerciseNotes.isEmpty ? nil : Dictionary(uniqueKeysWithValues: exerciseNotes.map { ($0.key.uuidString, $0.value) }))
         guard let encoded = try? JSONEncoder().encode(data) else { return }
         try? encoded.write(to: fileURL, options: .atomic)
+    }
+
+    /// Saves shortly, so typing in a workout doesn't rewrite the whole log on every keystroke.
+    /// `flush()` writes at once when the app leaves the foreground.
+    func saveSoon() {
+        guard pendingSave == nil else { return }
+        pendingSave = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(0.8))
+            guard !Task.isCancelled else { return }
+            self?.save()
+        }
+    }
+
+    /// Writes a waiting save now.
+    func flush() {
+        if pendingSave != nil { save() }
+    }
+
+    /// Drops a waiting save, for when the file on disk has just been replaced by a restore.
+    func cancelPendingSave() {
+        pendingSave?.cancel()
+        pendingSave = nil
     }
 
     // MARK: Exercises
@@ -179,7 +205,12 @@ final class GymStore {
         guard let previous = activeWorkout else { return }
         if previous != workout {
             activeWorkout = workout
-            save()
+            // Ticking a set off is saved at once; typing waits a moment.
+            if previous.completedSets.count != workout.completedSets.count || previous.exercises.count != workout.exercises.count {
+                save()
+            } else {
+                saveSoon()
+            }
         }
         if previous.startedAt != workout.startedAt {
             // The lock screen timer counts from the start, which a Live Activity can't change.
@@ -270,15 +301,43 @@ final class GymStore {
         sessions(for: exerciseID).first
     }
 
-    /// Weight to try next time: 2.5 kg more when every working set at last time's top weight reached
-    /// `targetReps` (or the reps of the first working set, if no target), otherwise the same weight.
+    /// Whether the workout screen suggests what to load next (Settings › Progression).
+    var showsProgression: Bool { UserDefaults.standard.object(forKey: "progression.enabled") as? Bool ?? true }
+
+    /// The jump used when a suggestion goes heavier: the Settings choice, or by equipment when automatic (0).
+    func progressionStep(for exerciseID: UUID, weight: Double) -> Double {
+        let chosen = UserDefaults.standard.double(forKey: "progression.step")
+        if chosen > 0 { return chosen }
+        return Progression.step(equipment: exercise(exerciseID)?.equipment?.rawValue, weight: weight)
+    }
+
+    /// What to load next time, from the last sessions of the exercise: more weight once every set
+    /// reached `targetReps`, the same weight while reps are missing, lighter after a plateau.
+    func progression(for exerciseID: UUID, targetReps: Int?) -> Progression.Suggestion? {
+        var history: [[Progression.PastSet]] = []
+        for workout in workouts {
+            let sets = workout.exercises.filter { $0.exerciseID == exerciseID }.flatMap(\.sets)
+                .filter { $0.type == .normal && ($0.weight ?? 0) > 0 && ($0.reps ?? 0) > 0 }
+                .map { Progression.PastSet(weight: $0.weight ?? 0, reps: $0.reps ?? 0, rpe: $0.rpe) }
+            if !sets.isEmpty { history.append(sets) }
+            if history.count == 3 { break }
+        }
+        guard let top = history.first?.map(\.weight).max() else { return nil }
+        return Progression.suggest(sessions: history, targetReps: targetReps, step: progressionStep(for: exerciseID, weight: top))
+    }
+
+    /// Weight to try next time, for callers that only need the number.
     func suggestedWeight(for exerciseID: UUID, targetReps: Int?) -> (weight: Double, increase: Bool)? {
-        let working = previousSets(for: exerciseID).filter { $0.type == .normal && ($0.weight ?? 0) > 0 }
-        guard let top = working.compactMap(\.weight).max() else { return nil }
-        let atTop = working.filter { $0.weight == top }
-        let target = targetReps ?? working.first?.reps ?? 0
-        let hitAll = target > 0 && atTop.allSatisfy { ($0.reps ?? 0) >= target }
-        return hitAll ? (top + 2.5, true) : (top, false)
+        progression(for: exerciseID, targetReps: targetReps).map { ($0.weight, $0.action == .increase) }
+    }
+
+    /// Last time's set to show beside each of today's sets: warm-ups pair with warm-ups and working
+    /// sets with working sets, so an extra warm-up doesn't shift the whole column.
+    func previousMatches(for exercise: WorkoutExercise) -> [WorkoutSet?] {
+        let previous = previousSets(for: exercise.exerciseID)
+        guard !previous.isEmpty else { return exercise.sets.map { _ in nil } }
+        return PreviousSets.match(current: exercise.sets.map { $0.type == .warmup }, previous: previous.map { $0.type == .warmup })
+            .map { $0.map { previous[$0] } }
     }
 
     /// Completed sets from the most recent finished workout containing the exercise.
@@ -431,6 +490,64 @@ final class GymStore {
             }
             .withRenewedSupersets()
         )
+    }
+
+    /// Adds one plan per day of a ready-made routine. Returns how many were added.
+    @discardableResult
+    func addPlans(from template: PlanTemplate) -> Int {
+        var added = 0
+        for day in template.days {
+            let exercises: [WorkoutExercise] = day.items.compactMap { item in
+                guard let def = exercises.first(where: { !$0.isCustom && $0.name == item.exercise })
+                    ?? exercises.first(where: { $0.name.caseInsensitiveCompare(item.exercise) == .orderedSame }) else { return nil }
+                let timed = def.kind == .duration || def.kind == .distanceDuration
+                // Start from last time's weight when the exercise has been done before.
+                let lastWeight = previousSets(for: def.id).filter { $0.type == .normal }.compactMap(\.weight).max()
+                let sets = (0..<item.sets).map { _ in
+                    timed ? WorkoutSet(seconds: 45) : WorkoutSet(weight: def.kind == .weightReps ? lastWeight : nil, reps: item.reps)
+                }
+                return WorkoutExercise(exerciseID: def.id, sets: sets, restSeconds: item.rest)
+            }
+            guard !exercises.isEmpty else { continue }
+            var name = day.name
+            var copy = 2
+            while plans.contains(where: { $0.name == name }) {
+                name = "\(day.name) \(copy)"
+                copy += 1
+            }
+            plans.append(Plan(name: name, exercises: exercises))
+            added += 1
+        }
+        if added > 0 { save() }
+        return added
+    }
+
+    /// The plan to train next: the one that has waited longest and whose muscles are rested.
+    func upNext(now: Date = .now) -> (plan: Plan, pick: UpNext.Pick)? {
+        guard !plans.isEmpty else { return nil }
+        let candidates = plans.map { plan in
+            UpNext.Candidate(
+                id: plan.id,
+                lastDone: sessions(of: plan).first?.startedAt,
+                muscles: plan.exercises.compactMap { exercise($0.exerciseID) }.flatMap(\.primary).map(\.rawValue)
+            )
+        }
+        var levels: [String: Double] = [:]
+        for (muscle, status) in recovery(now: now) { levels[muscle.rawValue] = status.progress }
+        guard let pick = UpNext.pick(candidates: candidates, recovery: levels, now: now),
+              let plan = plans.first(where: { $0.id == pick.id }) else { return nil }
+        return (plan, pick)
+    }
+
+    /// Workouts aimed for each week (Settings › Training); 0 when no goal is set.
+    var weeklyGoal: Int { UserDefaults.standard.integer(forKey: "training.weeklyGoal") }
+
+    /// The session before `workout` of the same plan (or with the same name), to compare against.
+    func previousSession(like workout: Workout) -> Workout? {
+        workouts.first { other in
+            other.id != workout.id && other.startedAt < workout.startedAt
+                && (workout.planID != nil ? other.planID == workout.planID : other.name == workout.name)
+        }
     }
 
     // MARK: Recap

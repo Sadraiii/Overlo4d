@@ -1,16 +1,32 @@
 import TallyKit
 import SwiftUI
 
+/// Plus and minus steps for the number field being typed in, shown above the keyboard.
+struct FieldStepper: Sendable {
+    /// e.g. "2.5" or "1".
+    let label: String
+    /// Called with -1 or +1.
+    let adjust: @MainActor @Sendable (Int) -> Void
+}
+
+extension FocusedValues {
+    @Entry var fieldStepper: FieldStepper?
+}
+
 /// Text field bound to an optional number. Keeps its own text so partial input like "62." isn't reformatted while typing.
-struct NumberField<Value: Numeric & LosslessStringConvertible & Equatable>: View {
+struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equatable & Sendable>: View {
     @Binding var value: Value?
     var placeholder: String
     var decimal = false
+    /// Size of one tap on the keyboard's − and + buttons; nil for no buttons.
+    var step: Value?
+    /// Where − and + start from while the field is empty (last time's value).
+    var base: Value?
 
     @State private var text = ""
 
     var body: some View {
-        TextField(placeholder, text: $text)
+        field
             .keyboardType(decimal ? .decimalPad : .numberPad)
             .setField()
             .onAppear { text = Self.format(value) }
@@ -22,6 +38,25 @@ struct NumberField<Value: Numeric & LosslessStringConvertible & Equatable>: View
                 let current = Value(text.replacingOccurrences(of: ",", with: "."))
                 if current != newValue { text = Self.format(newValue) }
             }
+    }
+
+    @ViewBuilder private var field: some View {
+        if let step {
+            TextField(placeholder, text: $text)
+                .focusedValue(\.fieldStepper, Self.stepper(binding: $value, step: step, base: base))
+        } else {
+            TextField(placeholder, text: $text)
+        }
+    }
+
+    /// − and + for this field. An empty field starts from last time's value, so one tap on + gives
+    /// "last time plus a step". Going to zero or below clears the field.
+    private static func stepper(binding: Binding<Value?>, step: Value, base: Value?) -> FieldStepper {
+        FieldStepper(label: format(step)) { direction in
+            let start = binding.wrappedValue ?? base ?? Value.zero
+            let next = direction > 0 ? start + step : start - step
+            binding.wrappedValue = next > Value.zero ? next : nil
+        }
     }
 
     private static func format(_ value: Value?) -> String {
@@ -67,7 +102,7 @@ struct SetHeader: View {
                 Text("Time").frame(width: 70)
             }
             if !showsPrevious { Spacer() }
-            if showsCheck { Image(systemName: "checkmark").frame(width: 38) }
+            if showsCheck { Image(systemName: "checkmark").frame(width: 42) }
         }
         .eyebrow(10.5)
     }
@@ -81,6 +116,10 @@ struct SetRow: View {
     var previous: WorkoutSet?
     var showsCheck = true
     var isRecord = false
+    /// The jump for the keyboard's − and + on the weight field.
+    var weightStep = 2.5
+    /// Adds a lighter drop set straight after this one; nil where that isn't offered.
+    var onAddDrop: (() -> Void)?
     var onCompleted: () -> Void = {}
 
     var body: some View {
@@ -98,6 +137,9 @@ struct SetRow: View {
                     }
                 } label: {
                     Label(set.rpe.map { "Effort: RPE \(RPE.format($0))" } ?? "Effort (RPE)", systemImage: "gauge.with.dots.needle.67percent")
+                }
+                if let onAddDrop {
+                    Button("Add drop set", systemImage: "arrow.down.right", action: onAddDrop)
                 }
             } label: {
                 Text(set.type == .normal ? "\(number)" : set.type.badge)
@@ -137,17 +179,17 @@ struct SetRow: View {
 
             switch kind {
             case .weightReps, .weightedBodyweight:
-                NumberField(value: $set.weight, placeholder: previous?.weight.map(Fmt.weight) ?? "0", decimal: true)
+                NumberField(value: $set.weight, placeholder: previous?.weight.map(Fmt.weight) ?? "0", decimal: true, step: weightStep, base: previous?.weight)
                     .frame(width: 66)
-                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0")
+                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0", step: 1, base: previous?.reps)
                     .frame(width: 58)
             case .assistedBodyweight:
-                NumberField(value: $set.assistance, placeholder: previous?.assistance.map(Fmt.weight) ?? "0", decimal: true)
+                NumberField(value: $set.assistance, placeholder: previous?.assistance.map(Fmt.weight) ?? "0", decimal: true, step: weightStep, base: previous?.assistance)
                     .frame(width: 66)
-                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0")
+                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0", step: 1, base: previous?.reps)
                     .frame(width: 58)
             case .repsOnly:
-                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0")
+                NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0", step: 1, base: previous?.reps)
                     .frame(width: 76)
             case .duration:
                 TimeField(seconds: $set.seconds, placeholder: previous?.seconds.map(Fmt.seconds) ?? "0:00")
@@ -168,11 +210,12 @@ struct SetRow: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 16, weight: .heavy))
                         .foregroundStyle(set.isDone ? Theme.card : Theme.ink3)
-                        .frame(width: 38, height: 38)
-                        .background(set.isDone ? Theme.good : Theme.line, in: .rect(cornerRadius: 11))
+                        .frame(width: 42, height: 40)
+                        .background(set.isDone ? Theme.good : Theme.line, in: .rect(cornerRadius: 12))
                         .symbolEffect(.bounce, value: set.isDone)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(set.isDone ? "Set \(number) done. Tap to undo" : "Complete set \(number)")
             }
         }
         .overlay(alignment: .topTrailing) {

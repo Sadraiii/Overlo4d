@@ -10,6 +10,7 @@ struct PlansTab: View {
     @State private var openedPlan: UUID?
     @State private var openedProgram: UUID?
     @State private var newProgram = false
+    @State private var browsingTemplates = false
 
     var body: some View {
         NavigationStack {
@@ -28,12 +29,23 @@ struct PlansTab: View {
 
                     if gym.plans.isEmpty {
                         VStack(spacing: 14) {
-                            Text("No plans yet").display(22)
-                            Button("New plan", systemImage: "plus") { editingPlan = Plan(name: "", exercises: []) }
-                                .buttonStyle(.smallPrimary)
+                            VStack(spacing: 5) {
+                                Text("No plans yet").display(22)
+                                Text("A plan is a workout you repeat. Start from a ready-made routine or build your own.")
+                                    .font(Typo.body(14))
+                                    .foregroundStyle(Theme.ink2)
+                                    .multilineTextAlignment(.center)
+                            }
+                            HStack(spacing: 8) {
+                                Button("Routines", systemImage: "square.grid.2x2") { browsingTemplates = true }
+                                    .buttonStyle(.smallPrimary)
+                                Button("New plan", systemImage: "plus") { editingPlan = Plan(name: "", exercises: []) }
+                                    .buttonStyle(.smallOutline)
+                            }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 36)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 30)
                         .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                     }
                 }
@@ -43,8 +55,12 @@ struct PlansTab: View {
             .screenBackground()
             .navigationTitle("Plans")
             .toolbar {
-                Button("New plan", systemImage: "plus") { editingPlan = Plan(name: "", exercises: []) }
+                Menu("Add", systemImage: "plus") {
+                    Button("New plan", systemImage: "square.and.pencil") { editingPlan = Plan(name: "", exercises: []) }
+                    Button("Ready-made routines", systemImage: "square.grid.2x2") { browsingTemplates = true }
+                }
             }
+            .sheet(isPresented: $browsingTemplates) { PlanTemplateGallery() }
             .navigationDestination(item: $openedPlan) { PlanDetailView(planID: $0) }
             .navigationDestination(item: $openedProgram) { ProgramDetailView(programID: $0) }
             .sheet(isPresented: $newProgram) {
@@ -164,6 +180,7 @@ struct PlanEditor: View {
                         exercise: $exercise,
                         isLive: false,
                         supersetPosition: plan.exercises.supersetPosition(of: exercise.id),
+                        groupLabel: plan.exercises.groupLabel(of: exercise.id),
                         supersetCandidates: plan.exercises.supersetCandidates(for: exercise.id)
                             .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
                         onSuperset: { plan.exercises.linkSuperset(exercise.id, with: $0) },
