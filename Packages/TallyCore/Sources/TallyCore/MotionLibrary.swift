@@ -25,10 +25,14 @@ public enum MotionLibrary {
     static let stand = P()
     static let rack = P(upperArm: 210, forearm: 20)            // bar on the upper back
     static let frontRack = P(upperArm: 115, forearm: 330)      // bar on the front of the shoulders
-    static let overhead = P(upperArm: 5, forearm: 5)
+    static let overhead = P(upperArm: 0, forearm: 0, shrug: 0.6)
+    // Gripping a bar on the floor: bar over the midfoot, shoulders just ahead of it, hips above the knees.
+    static let floorPull = P(torso: 65, upperArm: 189, forearm: 189, thigh: 122, shin: 190)
+    // Bar on the front of the shoulders with the forearms upright under it, ready to press.
+    static let pressRack = P(torso: 356, upperArm: 160, forearm: 355)
 
     // A flat bench under someone lying with the hip at (0, 46), head to the right.
-    static let flatBench = MotionFixture.block(x: -18, y: 0, width: 90, height: 40)
+    static let flatBench = MotionFixture.block(x: -18, y: 0, width: 90, height: 38)
     static let seat = MotionFixture.block(x: -16, y: 0, width: 30, height: 40)
 
     static func pattern(_ move: MotionMove) -> MotionPattern {
@@ -36,20 +40,20 @@ public enum MotionLibrary {
         // MARK: Legs
         case .squat:
             MotionPattern(start: P(torso: 5, upperArm: 210, forearm: 20),
-                          end: P(torso: 42, upperArm: 225, forearm: 30, thigh: 95, shin: 207))
+                          end: P(torso: 42, upperArm: 225, forearm: 30, thigh: 86, shin: 207))
         case .frontSquat:
             MotionPattern(start: P(torso: 3, upperArm: 115, forearm: 330),
-                          end: P(torso: 22, upperArm: 120, forearm: 335, thigh: 92, shin: 210))
+                          end: P(torso: 22, upperArm: 120, forearm: 335, thigh: 87, shin: 211))
         case .airSquat:
-            MotionPattern(start: stand, end: P(torso: 38, upperArm: 95, forearm: 92, thigh: 95, shin: 207))
+            MotionPattern(start: stand, end: P(torso: 38, upperArm: 95, forearm: 92, thigh: 87, shin: 207))
         case .wallSit:
             MotionPattern(start: P(torso: 0, upperArm: 180, forearm: 175, thigh: 92, shin: 180),
                           end: P(torso: 2, upperArm: 180, forearm: 172, thigh: 93, shin: 180),
                           fixtures: [.line(Pt(-48, 0), Pt(-48, 150))], duration: 3.2)
         case .deadlift:
-            MotionPattern(start: P(torso: 62, thigh: 135, shin: 195), end: stand)
+            MotionPattern(start: floorPull, end: stand)
         case .romanianDeadlift:
-            MotionPattern(start: stand, end: P(torso: 78, thigh: 165, shin: 182))
+            MotionPattern(start: stand, end: P(torso: 76, upperArm: 203, forearm: 203, thigh: 155, shin: 180))
         case .goodMorning:
             MotionPattern(start: rack, end: P(torso: 80, upperArm: 290, forearm: 100, thigh: 168, shin: 182))
         case .lunge:
@@ -94,12 +98,14 @@ public enum MotionLibrary {
 
         // MARK: Hips
         case .hipThrust:
-            MotionPattern(start: P(torso: 70, upperArm: 255, forearm: 260, thigh: 318, shin: 182, foot: 270),
-                          end: P(torso: 96, upperArm: 280, forearm: 268, thigh: 288, shin: 178, foot: 270),
-                          fixtures: [.block(x: 30, y: 0, width: 40, height: 24)], loadAtHip: true)
+            // Upper back on the bench, which the body pivots on: hips from just off the floor up to a
+            // straight line from shoulders to knees, with the shins upright at the top.
+            MotionPattern(start: P(torso: 59, upperArm: 225, forearm: 262, thigh: 304, shin: 201, foot: 270),
+                          end: P(torso: 91, upperArm: 258, forearm: 290, thigh: 271, shin: 180, foot: 270),
+                          fixtures: [.block(x: 76, y: 0, width: 40, height: 30)], loadAtHip: true, faceUp: true)
         case .gluteBridge:
             MotionPattern(start: P(torso: 92, upperArm: 270, forearm: 270, thigh: 300, shin: 200, foot: 270),
-                          end: P(torso: 118, upperArm: 268, forearm: 270, thigh: 282, shin: 185, foot: 270))
+                          end: P(torso: 108, upperArm: 268, forearm: 270, thigh: 282, shin: 185, foot: 270), faceUp: true)
         case .gluteKickback:
             MotionPattern(start: P(torso: 25, upperArm: 120, forearm: 95, thigh: 180, shin: 185, farThigh: 180, farShin: 180),
                           end: P(torso: 28, upperArm: 120, forearm: 95, thigh: 228, shin: 220, farThigh: 180, farShin: 180),
@@ -117,51 +123,51 @@ public enum MotionLibrary {
 
         // MARK: Chest
         case .benchPress:
-            MotionPattern(anchor: .hip(Pt(0, 46)),
-                          start: P(torso: 90, upperArm: 0, forearm: 0, thigh: 262, shin: 180, foot: 270),
-                          end: P(torso: 90, upperArm: 205, forearm: 0, thigh: 262, shin: 180, foot: 270),
-                          fixtures: [flatBench])
+            MotionPattern(anchor: .hip(Pt(0, 52)),
+                          start: P(torso: 90, upperArm: 0, forearm: 0, thigh: 255, shin: 180, foot: 270),
+                          end: P(torso: 90, upperArm: 218, forearm: 0, thigh: 255, shin: 180, foot: 270, elbowOut: 0.42),
+                          fixtures: [flatBench], faceUp: true, straightHands: true)
         case .inclinePress:
-            MotionPattern(anchor: .hip(Pt(0, 46)),
-                          start: P(torso: 55, upperArm: 15, forearm: 15, thigh: 262, shin: 180, foot: 270),
-                          end: P(torso: 55, upperArm: 210, forearm: 10, thigh: 262, shin: 180, foot: 270),
-                          fixtures: [.block(x: -16, y: 0, width: 32, height: 40), .line(Pt(4, 38), Pt(48, 82))])
+            MotionPattern(anchor: .hip(Pt(0, 52)),
+                          start: P(torso: 55, upperArm: 0, forearm: 0, thigh: 255, shin: 180, foot: 270),
+                          end: P(torso: 55, upperArm: 195, forearm: 0, thigh: 255, shin: 180, foot: 270, elbowOut: 0.42),
+                          fixtures: [.block(x: -16, y: 0, width: 32, height: 40), .line(Pt(4, 38), Pt(48, 82))], faceUp: true, straightHands: true)
         case .chestPress:
             MotionPattern(anchor: .hip(Pt(0, 48)),
                           start: P(torso: 0, upperArm: 215, forearm: 90, thigh: 90, shin: 180),
                           end: P(torso: 0, upperArm: 92, forearm: 90, thigh: 90, shin: 180),
                           fixtures: [.block(x: -14, y: 0, width: 36, height: 44), .line(Pt(-14, 44), Pt(-16, 112))],
-                          pulley: Pt(-60, 95))
+                          pulley: Pt(-60, 95), straightHands: true)
         case .dumbbellFly:
-            MotionPattern(anchor: .hip(Pt(0, 46)),
-                          start: P(torso: 90, upperArm: 0, forearm: 5, thigh: 262, shin: 180, foot: 270),
-                          end: P(torso: 90, upperArm: 172, forearm: 160, thigh: 262, shin: 180, foot: 270),
-                          fixtures: [flatBench])
+            MotionPattern(anchor: .hip(Pt(0, 52)),
+                          start: P(torso: 90, upperArm: 0, forearm: 5, thigh: 255, shin: 180, foot: 270),
+                          end: P(torso: 90, upperArm: 240, forearm: 330, thigh: 255, shin: 180, foot: 270, elbowOut: 0.6),
+                          fixtures: [flatBench], faceUp: true)
         case .cableFly:
             MotionPattern(view: .front, start: P(upperArm: 100, forearm: 110), end: P(upperArm: 150, forearm: 160),
                           pulley: Pt(78, 175))
         case .pushUp:
             MotionPattern(anchor: .floor(hands: true),
                           start: P(torso: 66, upperArm: 180, forearm: 180, thigh: 246, shin: 246, foot: 150),
-                          end: P(torso: 82, upperArm: 255, forearm: 118, thigh: 262, shin: 262, foot: 165))
+                          end: P(torso: 82, upperArm: 255, forearm: 118, thigh: 262, shin: 262, foot: 165), straightHands: true)
         case .dip:
             MotionPattern(anchor: .hands(Pt(0, 112)),
                           start: P(torso: 5, upperArm: 180, forearm: 180, thigh: 185, shin: 240),
                           end: P(torso: 22, upperArm: 315, forearm: 180, thigh: 175, shin: 235),
-                          fixtures: [.line(Pt(-15, 112), Pt(15, 112)), .line(Pt(-8, 112), Pt(-8, 0))])
+                          fixtures: [.line(Pt(-15, 112), Pt(15, 112)), .line(Pt(-8, 112), Pt(-8, 0))], straightHands: true)
         case .benchDip:
             MotionPattern(anchor: .hands(Pt(0, 44)),
                           start: P(torso: 0, upperArm: 180, forearm: 180, thigh: 90, shin: 120),
                           end: P(torso: 8, upperArm: 330, forearm: 180, thigh: 75, shin: 135),
-                          fixtures: [.block(x: -40, y: 0, width: 44, height: 40)])
+                          fixtures: [.block(x: -40, y: 0, width: 44, height: 40)], straightHands: true)
 
         // MARK: Shoulders
         case .overheadPress:
-            MotionPattern(start: P(upperArm: 155, forearm: 10), end: overhead)
+            MotionPattern(start: pressRack, end: overhead, straightHands: true)
         case .seatedPress:
             MotionPattern(anchor: .hip(Pt(0, 48)),
-                          start: P(upperArm: 155, forearm: 10, thigh: 90, shin: 180), end: P(upperArm: 5, forearm: 5, thigh: 90, shin: 180),
-                          fixtures: [.block(x: -14, y: 0, width: 36, height: 44), .line(Pt(-12, 44), Pt(-14, 122))])
+                          start: P(upperArm: 160, forearm: 355, thigh: 90, shin: 180), end: P(upperArm: 0, forearm: 0, thigh: 90, shin: 180, shrug: 0.6),
+                          fixtures: [.block(x: -14, y: 0, width: 36, height: 44), .line(Pt(-12, 44), Pt(-14, 122))], straightHands: true)
         case .lateralRaise:
             MotionPattern(view: .front, start: P(upperArm: 175, forearm: 175), end: P(upperArm: 95, forearm: 98),
                           pulley: Pt(-30, 5))
@@ -171,7 +177,7 @@ public enum MotionLibrary {
             MotionPattern(view: .front, start: P(torso: 0, upperArm: 165, forearm: 160), end: P(upperArm: 98, forearm: 100),
                           pulley: Pt(-70, 150))
         case .uprightRow:
-            MotionPattern(start: P(upperArm: 180, forearm: 180), end: P(upperArm: 95, forearm: 200))
+            MotionPattern(start: P(upperArm: 180, forearm: 180), end: P(upperArm: 95, forearm: 200), straightHands: true)
         case .facePull:
             MotionPattern(start: P(upperArm: 75, forearm: 80), end: P(upperArm: 275, forearm: 60), pulley: Pt(110, 140))
         case .shrug:
@@ -180,37 +186,37 @@ public enum MotionLibrary {
         // MARK: Back
         case .pullUp:
             MotionPattern(anchor: .hands(Pt(0, 200)),
-                          start: P(upperArm: 0, forearm: 0, thigh: 182, shin: 205),
-                          end: P(torso: 12, upperArm: 132, forearm: 0, thigh: 175, shin: 210),
-                          fixtures: [.line(Pt(-30, 200), Pt(30, 200))])
+                          start: P(upperArm: 0, forearm: 0, thigh: 184, shin: 208),
+                          end: P(torso: 352, upperArm: 172, forearm: 0, thigh: 180, shin: 215, elbowOut: 0.2),
+                          fixtures: [.line(Pt(-30, 200), Pt(30, 200))], straightHands: true)
         case .pulldown:
             MotionPattern(anchor: .hip(Pt(0, 48)),
                           start: P(torso: 355, upperArm: 8, forearm: 5, thigh: 90, shin: 180),
                           end: P(torso: 345, upperArm: 165, forearm: 20, thigh: 90, shin: 180),
                           fixtures: [.block(x: -14, y: 0, width: 36, height: 44), .block(x: 12, y: 62, width: 22, height: 8)],
-                          pulley: Pt(10, 200))
+                          pulley: Pt(10, 200), straightHands: true)
         case .straightArmPulldown:
             MotionPattern(start: P(torso: 25, upperArm: 50, forearm: 50, thigh: 175, shin: 182),
                           end: P(torso: 25, upperArm: 185, forearm: 185, thigh: 175, shin: 182), pulley: Pt(55, 190))
         case .row:
-            MotionPattern(start: P(torso: 65, upperArm: 180, forearm: 180, thigh: 160, shin: 188),
-                          end: P(torso: 65, upperArm: 228, forearm: 178, thigh: 160, shin: 188))
+            MotionPattern(start: P(torso: 70, upperArm: 180, forearm: 180, thigh: 150, shin: 186),
+                          end: P(torso: 70, upperArm: 300, forearm: 180, thigh: 150, shin: 186, elbowOut: 0.6), straightHands: true)
         case .oneArmRow:
             MotionPattern(anchor: .hip(Pt(0, 80)),
                           start: P(torso: 85, upperArm: 180, forearm: 180, thigh: 180, shin: 180, farUpperArm: 180, farForearm: 180, farThigh: 145, farShin: 90),
                           end: P(torso: 85, upperArm: 240, forearm: 180, thigh: 180, shin: 180, farUpperArm: 180, farForearm: 180, farThigh: 145, farShin: 90),
-                          fixtures: [.block(x: 10, y: 0, width: 80, height: 40)])
+                          fixtures: [.block(x: 10, y: 0, width: 80, height: 40)], straightHands: true)
         case .seatedRow:
             MotionPattern(anchor: .hip(Pt(0, 22)),
                           start: P(torso: 18, upperArm: 92, forearm: 90, thigh: 80, shin: 115),
                           end: P(torso: 355, upperArm: 215, forearm: 95, thigh: 80, shin: 115),
                           fixtures: [.block(x: -26, y: 0, width: 40, height: 18), .block(x: 72, y: 0, width: 8, height: 30)],
-                          pulley: Pt(110, 25))
+                          pulley: Pt(110, 25), straightHands: true)
         case .invertedRow:
             MotionPattern(anchor: .hands(Pt(0, 80)),
                           start: P(torso: 290, upperArm: 0, forearm: 0, thigh: 110, shin: 110),
                           end: P(torso: 280, upperArm: 330, forearm: 0, thigh: 100, shin: 100),
-                          fixtures: [.line(Pt(-25, 80), Pt(25, 80))])
+                          fixtures: [.line(Pt(-25, 80), Pt(25, 80))], straightHands: true)
         case .backExtension:
             MotionPattern(anchor: .hip(Pt(0, 70)),
                           start: P(torso: 165, upperArm: 160, forearm: 40, thigh: 245, shin: 245),
@@ -242,10 +248,10 @@ public enum MotionLibrary {
             MotionPattern(start: P(torso: 5, upperArm: 10, forearm: 195), end: P(torso: 5, upperArm: 10, forearm: 10),
                           pulley: Pt(-40, 10), duration: 2.2)
         case .skullCrusher:
-            MotionPattern(anchor: .hip(Pt(0, 46)),
-                          start: P(torso: 90, upperArm: 10, forearm: 10, thigh: 262, shin: 180, foot: 270),
-                          end: P(torso: 90, upperArm: 10, forearm: 140, thigh: 262, shin: 180, foot: 270),
-                          fixtures: [flatBench], duration: 2.2)
+            MotionPattern(anchor: .hip(Pt(0, 52)),
+                          start: P(torso: 90, upperArm: 10, forearm: 10, thigh: 255, shin: 180, foot: 270),
+                          end: P(torso: 90, upperArm: 10, forearm: 140, thigh: 255, shin: 180, foot: 270),
+                          fixtures: [flatBench], duration: 2.2, faceUp: true)
         case .kickback:
             MotionPattern(start: P(torso: 70, upperArm: 255, forearm: 180, thigh: 165, shin: 190),
                           end: P(torso: 70, upperArm: 255, forearm: 258, thigh: 165, shin: 190), duration: 2.0)
@@ -256,13 +262,13 @@ public enum MotionLibrary {
                           start: P(torso: 80, upperArm: 180, forearm: 92, thigh: 260, shin: 260, foot: 170),
                           end: P(torso: 81, upperArm: 182, forearm: 92, thigh: 261, shin: 261, foot: 170), duration: 3.2)
         case .crunch:
-            MotionPattern(anchor: .hip(Pt(0, 7)),
-                          start: P(torso: 90, upperArm: 30, forearm: 300, thigh: 320, shin: 170, foot: 270),
-                          end: P(torso: 58, upperArm: 0, forearm: 280, thigh: 320, shin: 170, foot: 270), duration: 2.0)
+            MotionPattern(anchor: .hip(Pt(0, 13)),
+                          start: P(torso: 90, upperArm: 312, forearm: 296, thigh: 311, shin: 170, foot: 270),
+                          end: P(torso: 62, upperArm: 300, forearm: 288, thigh: 311, shin: 170, foot: 270), duration: 2.0, faceUp: true)
         case .sitUp:
-            MotionPattern(anchor: .hip(Pt(0, 7)),
-                          start: P(torso: 90, upperArm: 30, forearm: 300, thigh: 320, shin: 170, foot: 270),
-                          end: P(torso: 15, upperArm: 330, forearm: 230, thigh: 320, shin: 170, foot: 270))
+            MotionPattern(anchor: .hip(Pt(0, 13)),
+                          start: P(torso: 90, upperArm: 312, forearm: 296, thigh: 311, shin: 170, foot: 270),
+                          end: P(torso: 15, upperArm: 262, forearm: 268, thigh: 311, shin: 170, foot: 270), faceUp: true)
         case .machineCrunch:
             MotionPattern(anchor: .hip(Pt(0, 48)),
                           start: P(torso: 355, upperArm: 30, forearm: 160, thigh: 90, shin: 180),
@@ -279,11 +285,11 @@ public enum MotionLibrary {
                           end: P(torso: 345, upperArm: 0, forearm: 0, thigh: 88, shin: 92),
                           fixtures: [.line(Pt(-30, 200), Pt(30, 200))])
         case .lyingLegRaise:
-            MotionPattern(anchor: .hip(Pt(0, 7)),
+            MotionPattern(anchor: .hip(Pt(0, 13)),
                           start: P(torso: 90, upperArm: 270, forearm: 270, thigh: 268, shin: 268, foot: 270),
-                          end: P(torso: 90, upperArm: 270, forearm: 270, thigh: 358, shin: 358, foot: 270))
+                          end: P(torso: 90, upperArm: 270, forearm: 270, thigh: 358, shin: 358, foot: 270), faceUp: true)
         case .russianTwist:
-            MotionPattern(anchor: .hip(Pt(0, 7)),
+            MotionPattern(anchor: .hip(Pt(0, 11)),
                           start: P(torso: 335, upperArm: 120, forearm: 70, thigh: 55, shin: 120, foot: 90),
                           end: P(torso: 340, upperArm: 165, forearm: 120, thigh: 55, shin: 120, foot: 90), duration: 1.6)
         case .abWheel:
@@ -291,9 +297,9 @@ public enum MotionLibrary {
                           start: P(torso: 25, upperArm: 150, forearm: 150, thigh: 180, shin: 270, foot: 270),
                           end: P(torso: 72, upperArm: 95, forearm: 95, thigh: 235, shin: 270, foot: 270))
         case .deadBug:
-            MotionPattern(anchor: .hip(Pt(0, 7)),
+            MotionPattern(anchor: .hip(Pt(0, 13)),
                           start: P(torso: 90, upperArm: 0, forearm: 0, thigh: 0, shin: 270, foot: 0),
-                          end: P(torso: 90, upperArm: 80, forearm: 85, thigh: 272, shin: 272, foot: 0, farUpperArm: 0, farForearm: 0, farThigh: 0, farShin: 270))
+                          end: P(torso: 90, upperArm: 80, forearm: 85, thigh: 272, shin: 272, foot: 0, farUpperArm: 0, farForearm: 0, farThigh: 0, farShin: 270), faceUp: true)
         case .woodchop:
             MotionPattern(start: P(torso: 0, upperArm: 30, forearm: 30), end: P(torso: 20, upperArm: 150, forearm: 150, thigh: 165, shin: 190),
                           pulley: Pt(60, 190))
@@ -343,9 +349,9 @@ public enum MotionLibrary {
             MotionPattern(start: P(torso: 68, upperArm: 200, forearm: 205, thigh: 155, shin: 190),
                           end: P(torso: 355, upperArm: 92, forearm: 90), duration: 1.6)
         case .powerClean:
-            MotionPattern(start: P(torso: 62, thigh: 135, shin: 195), end: frontRack, duration: 2.2)
+            MotionPattern(start: floorPull, end: frontRack, duration: 2.2)
         case .thruster:
-            MotionPattern(start: P(torso: 22, upperArm: 120, forearm: 335, thigh: 92, shin: 210), end: overhead, duration: 2.2)
+            MotionPattern(start: P(torso: 22, upperArm: 120, forearm: 335, thigh: 92, shin: 210), end: overhead, duration: 2.2, straightHands: true)
         }
     }
 

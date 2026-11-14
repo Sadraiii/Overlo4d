@@ -212,7 +212,7 @@ struct ExerciseDemoCard: View {
             case .figure(let move, let load):
                 MotionFigureView(
                     move: move, load: load,
-                    primary: Set(exercise.primary), secondary: Set(exercise.secondary)
+                    primary: Set(exercise.primary), secondary: Set(exercise.secondary), tertiary: Set(exercise.tertiary)
                 )
                 .padding(.vertical, 8)
                 .background(Theme.fill.opacity(0.6))
@@ -325,7 +325,7 @@ struct ExerciseDemoThumbnail: View {
         Group {
             switch store.media(for: exercise) {
             case .figure(let move, let load):
-                MotionFigureView(move: move, load: load, primary: Set(exercise.primary), secondary: Set(exercise.secondary), animated: false)
+                MotionFigureView(move: move, load: load, primary: Set(exercise.primary), secondary: Set(exercise.secondary), tertiary: Set(exercise.tertiary), animated: false)
                     .padding(size * 0.06)
                     .background(Theme.fill)
             case .some(let media):

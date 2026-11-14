@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- Cards of the animated exercise figure; scripts/mockups/exercise-gifs.js fills them with setup() and steps frame(). -->
+<html><head><meta charset="utf-8"><style>
+@font-face { font-family: Body; font-weight: 500; src: url(../../Resources/Fonts/SchibstedGrotesk-Medium.ttf); }
+@font-face { font-family: Body; font-weight: 600; src: url(../../Resources/Fonts/SchibstedGrotesk-SemiBold.ttf); }
+@font-face { font-family: Body; font-weight: 700; src: url(../../Resources/Fonts/SchibstedGrotesk-Bold.ttf); }
+.light { --card: #FFFFFF; --ink: #111411; --ink2: #4F554F; --ink3: #868C85; --accent: #5A3E8A; --body: #E9EBE6; --muscle: #D1D5CE; --tissue: #DCDFD9; --line2: #D4D8D1; --fill: #F1F2EF; }
+.dark { --card: #171A17; --ink: #EEF0EC; --ink2: #B2B8AF; --ink3: #858C83; --accent: #B9A0E6; --body: #252925; --muscle: #434943; --tissue: #343934; --line2: #363C36; --fill: #222622; }
+body { margin: 0; display: grid; grid-template-columns: repeat(6, 440px); font-family: Body; --sec: color-mix(in oklab, var(--accent) 55%, var(--card)); --ter: color-mix(in oklab, var(--accent) 28%, var(--card)); }
+.card { width: 440px; height: 470px; box-sizing: border-box; padding: 22px 24px; background: var(--card); color: var(--ink); position: relative; overflow: hidden; }
+h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.sub { font-size: 14px; font-weight: 500; color: var(--ink3); margin-top: 3px; white-space: nowrap; }
+svg { display: block; margin: 12px auto 0; }
+.legend { position: absolute; left: 0; right: 0; bottom: 18px; display: flex; gap: 18px; justify-content: center; font-size: 13px; font-weight: 600; color: var(--ink2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+</style></head><body>
+<script src="motion-data.js"></script>
+<script src="motion-shapes.js"></script>
+<script src="motion-figure.js"></script>
+<script>
+const query = new URLSearchParams(location.search);
+document.body.className = query.get('mode') || 'light';
+const NAMES = { chest: 'Chest', frontDelts: 'Front delts', sideDelts: 'Side delts', rearDelts: 'Rear delts', biceps: 'Biceps', triceps: 'Triceps',
+  forearms: 'Forearms', abs: 'Abs', obliques: 'Obliques', traps: 'Traps', upperBack: 'Upper back', lats: 'Lats', lowerBack: 'Lower back',
+  glutes: 'Glutes', quads: 'Quads', hamstrings: 'Hamstrings', adductors: 'Adductors', calves: 'Calves' };
+let cards = [];
+// list: [{ id, title, move, load, p, s, t }], muscle roles as in ExerciseLibrary.swift.
+window.setup = list => {
+  document.body.replaceChildren();
+  cards = list.map(c => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `<h1>${c.title}</h1><div class="sub">${c.p.map(m => NAMES[m]).join(', ')}</div><svg width="392" height="318" preserveAspectRatio="xMidYMax meet"></svg>`
+      + '<div class="legend"><span><i style="background:var(--accent)"></i>Primary</span><span><i style="background:var(--sec)"></i>Secondary</span><span><i style="background:var(--ter)"></i>Tertiary</span></div>';
+    document.body.append(el);
+    const move = MOTION.moves[c.move], svg = el.querySelector('svg');
+    svg.setAttribute('viewBox', motionViewBox(move, c.load === 'barbell' ? 22 : 14).join(' '));
+    return { ...c, move, svg };
+  });
+  frame(0);
+};
+window.frame = seconds => cards.forEach(c => {
+  const phase = motionPhase(seconds, c.move.duration);
+  const fill = m => c.p.includes(m) ? 'var(--accent)' : c.s.includes(m) ? 'var(--sec)' : c.t.includes(m) ? 'var(--ter)' : 'var(--muscle)';
+  const effort = m => c.p.includes(m) ? 1 : c.s.includes(m) ? .6 : c.t.includes(m) ? .3 : 0;
+  c.svg.replaceChildren();
+  // The worked muscles glow harder toward the end position, where the lift is heaviest.
+  c.svg.append(drawMotion(c.svg, c.move, phase, fill, { load: c.load, glow: .3 + .7 * phase, effort }));
+});
+</script></body></html>

@@ -127,6 +127,43 @@ private let catalogue = [
         }
     }
 
+    @Test func barsTravelInAStraightLine() {
+        // Measured from the hips, which stay put in these lifts.
+        for move in [MotionMove.benchPress, .overheadPress, .row] {
+            let pattern = move.pattern
+            func bar(_ phase: Double) -> MotionPoint {
+                let s = pattern.skeleton(at: phase)
+                return MotionPoint(s.hand.x - s.hip.x, s.hand.y - s.hip.y)
+            }
+            let start = bar(0), middle = bar(0.5), end = bar(1)
+            #expect(abs(middle.x - (start.x + end.x) / 2) < 0.01)
+            #expect(abs(middle.y - (start.y + end.y) / 2) < 0.01)
+        }
+    }
+
+    @Test func flaredElbowsShortenTheUpperArmFromTheSide() {
+        let s = MotionMove.benchPress.pattern.skeleton(at: 1)
+        #expect(s.shoulder.distance(to: s.elbow) < MotionBody.upperArm * 0.7)
+        #expect(abs(s.elbow.distance(to: s.hand) - MotionBody.forearm) < 0.001)
+    }
+
+    @Test func bigLiftsFollowTheFormGuides() {
+        // Squat: the hip crease ends below the knee.
+        let squat = MotionMove.squat.pattern.skeleton(at: 1)
+        #expect(squat.hip.y < squat.knee.y)
+        // Deadlift: bar over the foot, hips between knees and shoulders, shoulders just in front of the bar.
+        let pull = MotionMove.deadlift.pattern.skeleton(at: 0)
+        #expect(pull.hand.x > pull.ankle.x && pull.hand.x < pull.toe.x)
+        #expect(pull.hip.y > pull.knee.y && pull.hip.y < pull.shoulder.y)
+        #expect(pull.shoulder.x > pull.hand.x)
+        // Bench press: the bar comes down from over the shoulders to the chest, forearms upright.
+        let bench = MotionMove.benchPress.pattern
+        let top = bench.skeleton(at: 0), bottom = bench.skeleton(at: 1)
+        #expect(abs(top.hand.x - top.shoulder.x) < 1)
+        #expect(bottom.hand.x < bottom.shoulder.x - 5)
+        #expect(abs(bottom.hand.x - bottom.elbow.x) < 1)
+    }
+
     @Test func anglesBlendTheShortWay() {
         let pose = MotionPose(torso: 350).blended(to: MotionPose(torso: 20), 0.5)
         #expect(abs((pose.torso - 5).truncatingRemainder(dividingBy: 360)) < 0.001)

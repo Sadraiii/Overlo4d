@@ -19,12 +19,16 @@ public struct MotionPose: Equatable, Sendable {
     public var shrug: Double
     /// Extra height above the anchor, for jumps.
     public var lift: Double
+    /// 0...1, how far the elbows point out to the sides, toward the viewer. From the side that
+    /// shortens the upper arm as drawn, which is what lets the bar reach the chest in a bench press
+    /// or a row. The front view ignores it.
+    public var elbowOut: Double
 
     public init(
         torso: Double = 0, upperArm: Double = 180, forearm: Double = 180,
         thigh: Double = 180, shin: Double = 180, foot: Double = 90,
         farUpperArm: Double? = nil, farForearm: Double? = nil, farThigh: Double? = nil, farShin: Double? = nil,
-        shrug: Double = 0, lift: Double = 0
+        shrug: Double = 0, lift: Double = 0, elbowOut: Double = 0
     ) {
         self.torso = torso
         self.upperArm = upperArm
@@ -38,6 +42,7 @@ public struct MotionPose: Equatable, Sendable {
         self.farShin = farShin
         self.shrug = shrug
         self.lift = lift
+        self.elbowOut = elbowOut
     }
 
     public static let standing = MotionPose()
@@ -58,7 +63,8 @@ public struct MotionPose: Equatable, Sendable {
             farForearm: mix(farForearm ?? forearm, other.farForearm ?? other.forearm),
             farThigh: mix(farThigh ?? thigh, other.farThigh ?? other.thigh),
             farShin: mix(farShin ?? shin, other.farShin ?? other.shin),
-            shrug: shrug + (other.shrug - shrug) * t, lift: lift + (other.lift - lift) * t
+            shrug: shrug + (other.shrug - shrug) * t, lift: lift + (other.lift - lift) * t,
+            elbowOut: elbowOut + (other.elbowOut - elbowOut) * t
         )
     }
 }
@@ -133,14 +139,15 @@ public enum MotionBody {
     public static let torso = 50.0
     public static let neck = 6.0
     public static let headRadius = 9.5
-    public static let upperArm = 28.0
-    public static let forearm = 25.0
+    public static let upperArm = 30.0
+    /// Elbow to the middle of the grip.
+    public static let forearm = 30.0
     public static let thigh = 42.0
     public static let shin = 40.0
     public static let foot = 12.0
     /// Half the shoulder and hip width in the front view.
-    public static let shoulderHalf = 12.0
-    public static let hipHalf = 7.0
+    public static let shoulderHalf = 20.0
+    public static let hipHalf = 8.5
 }
 
 /// One movement: two poses the figure moves between, how it is fixed and what is around it.
@@ -156,10 +163,18 @@ public struct MotionPattern: Equatable, Sendable {
     public var duration: Double
     /// Barbell resting on the hips (hip thrusts) rather than in the hands.
     public var loadAtHip: Bool
+    /// Lying on the back with the head toward +x (bench press, crunch, hip thrust): the front of the
+    /// body is then the other side of each limb, which matters once the figure has a front and a back.
+    public var faceUp: Bool
+    /// The hands travel in a straight line between the two poses, as a bar does in a press, a row or
+    /// a pull-up, with the elbows bending to follow. Without it each arm segment just turns from its
+    /// first angle to its last, which swings the hands through an arc.
+    public var straightHands: Bool
 
     public init(
         view: MotionView = .side, anchor: MotionAnchor = .floor(), start: MotionPose, end: MotionPose,
-        fixtures: [MotionFixture] = [], pulley: MotionPoint? = nil, duration: Double = 2.6, loadAtHip: Bool = false
+        fixtures: [MotionFixture] = [], pulley: MotionPoint? = nil, duration: Double = 2.6, loadAtHip: Bool = false,
+        faceUp: Bool = false, straightHands: Bool = false
     ) {
         self.view = view
         self.anchor = anchor
@@ -169,6 +184,8 @@ public struct MotionPattern: Equatable, Sendable {
         self.pulley = pulley
         self.duration = duration
         self.loadAtHip = loadAtHip
+        self.faceUp = faceUp
+        self.straightHands = straightHands
     }
 
     /// 0 at the start pose, 1 at the end pose, easing in and out, back and forth.
@@ -179,10 +196,46 @@ public struct MotionPattern: Equatable, Sendable {
 
     public func pose(at phase: Double) -> MotionPose { start.blended(to: end, phase) }
 
-    public func skeleton(at phase: Double) -> MotionSkeleton { skeleton(for: pose(at: phase)) }
+    public func skeleton(at phase: Double) -> MotionSkeleton {
+        let pose = pose(at: phase)
+        var s = joints(pose)
+        if straightHands && view == .side {
+            let a = joints(start), b = joints(end)
+            let upper = MotionBody.upperArm * (1 - pose.elbowOut)
+            func between(_ p: MotionPoint, _ q: MotionPoint) -> MotionPoint {
+                MotionPoint(p.x + (q.x - p.x) * phase, p.y + (q.y - p.y) * phase)
+            }
+            (s.elbow, s.hand) = Self.reach(from: s.shoulder, to: between(a.hand, b.hand), upper: upper, fore: MotionBody.forearm, near: s.elbow)
+            (s.farElbow, s.farHand) = Self.reach(from: s.farShoulder, to: between(a.farHand, b.farHand), upper: upper, fore: MotionBody.forearm, near: s.farElbow)
+        }
+        return anchored(s, pose)
+    }
 
-    public func skeleton(for pose: MotionPose) -> MotionSkeleton {
-        var s = view == .side ? Self.sideKinematics(pose) : Self.frontKinematics(pose)
+    public func skeleton(for pose: MotionPose) -> MotionSkeleton { anchored(joints(pose), pose) }
+
+    /// Joint positions with the hip at the origin, before the figure is fixed in the scene.
+    private func joints(_ pose: MotionPose) -> MotionSkeleton {
+        view == .side ? Self.sideKinematics(pose) : Self.frontKinematics(pose)
+    }
+
+    /// The elbow and hand of an arm reaching from `shoulder` to `target`: of the two ways the elbow
+    /// can bend, the one closer to `near`. A target out of reach is approached as far as the arm goes.
+    static func reach(from shoulder: MotionPoint, to target: MotionPoint, upper: Double, fore: Double, near: MotionPoint) -> (MotionPoint, MotionPoint) {
+        let dx = target.x - shoulder.x, dy = target.y - shoulder.y
+        let length = max(hypot(dx, dy), 0.0001)
+        let ux = dx / length, uy = dy / length
+        let d = min(max(length, abs(upper - fore) + 0.01), upper + fore - 0.01)
+        let along = (upper * upper - fore * fore + d * d) / (2 * d)
+        let off = max(upper * upper - along * along, 0).squareRoot()
+        let base = MotionPoint(shoulder.x + ux * along, shoulder.y + uy * along)
+        let one = MotionPoint(base.x - uy * off, base.y + ux * off)
+        let other = MotionPoint(base.x + uy * off, base.y - ux * off)
+        let elbow = one.distance(to: near) <= other.distance(to: near) ? one : other
+        return (elbow, MotionPoint(shoulder.x + ux * d, shoulder.y + uy * d))
+    }
+
+    private func anchored(_ skeleton: MotionSkeleton, _ pose: MotionPose) -> MotionSkeleton {
+        var s = skeleton
         switch anchor {
         case .floor(let hands):
             var contacts = [s.ankle, s.toe, s.farAnkle, s.farToe, s.knee, s.farKnee]
@@ -207,7 +260,7 @@ public struct MotionPattern: Equatable, Sendable {
         let shoulder = hip + direction(p.torso, MotionBody.torso) + MotionPoint(0, 4 * p.shrug)
         let head = shoulder + direction(p.torso, MotionBody.neck + MotionBody.headRadius) + MotionPoint(0, -2 * p.shrug)
         func arm(_ upper: Double, _ fore: Double) -> (MotionPoint, MotionPoint) {
-            let elbow = shoulder + direction(upper, MotionBody.upperArm)
+            let elbow = shoulder + direction(upper, MotionBody.upperArm * (1 - p.elbowOut))
             return (elbow, elbow + direction(fore, MotionBody.forearm))
         }
         func leg(_ thigh: Double, _ shin: Double) -> (MotionPoint, MotionPoint, MotionPoint) {

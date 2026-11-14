@@ -38,6 +38,9 @@ enum Changelog {
             "Progress › Trends: pick 4 weeks, 12 weeks, 6 months or a year and see workouts, volume, sets, records and session length against the same time before, the estimated 1RM of your most trained lifts, how your sets split over push, pull, legs and core, and workouts per month.",
             "The workout summary compares volume, sets and time with the last session of the same plan.",
             "Edit Home: hide cards you don't use and drag the rest into your order.",
+            "The body figure is redrawn: a smooth outline with separate heads for the quads, hamstrings, calves, forearms and triceps, plus collarbones, kneecaps and spine.",
+            "Worked muscles pulse on the exercise screen and when you pick a muscle on the workout card, the primary ones hardest. Still when Reduce Motion is on.",
+            "The animated exercise figure is now a muscled body instead of a stick figure. It shows the primary, secondary and tertiary muscles in colour, glowing as the lift gets heavy, and moves the way the lift is done: bar over the midfoot in squats and deadlifts, a straight bar path in presses and rows, elbows tucked on the bench.",
         ]),
         ChangelogEntry(version: "0.10", date: DateComponents(year: 2026, month: 11, day: 7), changes: [
             "Recovery: Home shows which muscles are still recovering and what's ready to train, on the body figure. Tap it for every muscle with the time it's ready again.",

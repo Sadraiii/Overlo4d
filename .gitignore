@@ -8,3 +8,4 @@ DerivedData/
 
 /xtool
 .superpowers/
+__pycache__/
