@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- Cards for the animated muscle previews; scripts/mockups/muscle-gifs.js steps frame() and records GIFs. -->
+<html><head><meta charset="utf-8"><style>
+@font-face { font-family: Body; font-weight: 500; src: url(../../Resources/Fonts/SchibstedGrotesk-Medium.ttf); }
+@font-face { font-family: Body; font-weight: 600; src: url(../../Resources/Fonts/SchibstedGrotesk-SemiBold.ttf); }
+@font-face { font-family: Body; font-weight: 700; src: url(../../Resources/Fonts/SchibstedGrotesk-Bold.ttf); }
+.light { --card: #FFFFFF; --ink: #111411; --ink2: #4F554F; --ink3: #868C85; --accent: #5A3E8A; --body: #E9EBE6; --muscle: #D1D5CE; --tissue: #DCDFD9; }
+.dark { --card: #171A17; --ink: #EEF0EC; --ink2: #B2B8AF; --ink3: #858C83; --accent: #B9A0E6; --body: #252925; --muscle: #434943; --tissue: #343934; }
+body { margin: 0; display: grid; grid-template-columns: repeat(6, 540px); font-family: Body; --sec: color-mix(in oklab, var(--accent) 55%, var(--card)); --ter: color-mix(in oklab, var(--accent) 28%, var(--card)); }
+.card { width: 540px; height: 620px; box-sizing: border-box; padding: 26px 28px; background: var(--card); color: var(--ink); position: relative; }
+h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
+.sub { font-size: 15.5px; font-weight: 500; color: var(--ink3); margin-top: 3px; }
+svg { display: block; margin: 14px auto 0; }
+.legend { position: absolute; left: 0; right: 0; bottom: 22px; display: flex; gap: 20px; justify-content: center; font-size: 14px; font-weight: 600; color: var(--ink2); }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; }
+</style></head><body>
+<script src="anatomy.js"></script>
+<script src="figure.js"></script>
+<script>
+const query = new URLSearchParams(location.search);
+document.body.className = query.get('mode') || 'light';
+const MUSCLES = { chest: ['Chest', 'Torso'], frontDelts: ['Front delts', 'Shoulders'], sideDelts: ['Side delts', 'Shoulders'], rearDelts: ['Rear delts', 'Shoulders'],
+  biceps: ['Biceps', 'Arms'], triceps: ['Triceps', 'Arms'], forearms: ['Forearms', 'Arms'], abs: ['Abs', 'Core'], obliques: ['Obliques', 'Core'],
+  traps: ['Traps', 'Back'], upperBack: ['Upper back', 'Back'], lats: ['Lats', 'Back'], lowerBack: ['Lower back', 'Back'], glutes: ['Glutes', 'Hips'],
+  quads: ['Quads', 'Legs'], hamstrings: ['Hamstrings', 'Legs'], adductors: ['Adductors', 'Legs'], calves: ['Calves', 'Legs'] };
+// Roles as in ExerciseLibrary.swift.
+const EXERCISES = [
+  ['bench-press', 'Bench press', ['chest'], ['frontDelts', 'triceps'], ['lats']],
+  ['squat', 'Squat', ['quads', 'glutes'], ['adductors', 'hamstrings', 'lowerBack'], ['abs', 'calves']],
+  ['deadlift', 'Deadlift', ['lowerBack', 'glutes', 'hamstrings'], ['traps', 'quads', 'lats', 'forearms'], ['abs', 'adductors']],
+  ['pull-ups', 'Pull-ups', ['lats'], ['biceps', 'upperBack', 'forearms'], ['rearDelts', 'abs']],
+  ['overhead-press', 'Overhead press', ['frontDelts'], ['sideDelts', 'triceps', 'traps'], ['abs', 'upperBack']],
+  ['bent-over-row', 'Bent over row', ['upperBack', 'lats'], ['rearDelts', 'biceps', 'lowerBack'], ['hamstrings', 'forearms']],
+];
+const cards = query.get('set') === 'exercises'
+  ? EXERCISES.map(([id, title, p, s, t]) => ({ id, title, sub: p.map(m => MUSCLES[m][0]).join(', '), p, s, t, legend: true }))
+  : Object.entries(MUSCLES).map(([m, [title, sub]]) => ({ id: m, title, sub, p: [m], s: [], t: [] }));
+window.cards = cards.map(c => c.id);
+cards.forEach(c => {
+  c.el = document.createElement('div');
+  c.el.className = 'card';
+  c.el.innerHTML = `<h1>${c.title}</h1><div class="sub">${c.sub}</div><svg width="470" height="${470 * 406 / 412}" viewBox="-3 -3 412 406"></svg>` + (c.legend
+    ? '<div class="legend"><span><i style="background:var(--accent)"></i>Primary</span><span><i style="background:var(--sec)"></i>Secondary</span><span><i style="background:var(--ter)"></i>Tertiary</span></div>' : '');
+  document.body.append(c.el);
+});
+window.frame = time => cards.forEach(c => {
+  const svg = c.el.querySelector('svg');
+  svg.replaceChildren();
+  const fill = m => c.p.includes(m) ? 'var(--accent)' : c.s.includes(m) ? 'var(--sec)' : c.t.includes(m) ? 'var(--ter)' : 'var(--muscle)';
+  const effort = m => c.p.includes(m) ? 1 : c.s.includes(m) ? .6 : c.t.includes(m) ? .3 : 0;
+  svg.append(drawFigure(svg, 'front', fill, { fibres: true, effort, time }));
+  const back = drawFigure(svg, 'back', fill, { fibres: true, effort, time });
+  back.setAttribute('transform', 'translate(206 0)');
+  svg.append(back);
+});
+frame(FIG_PERIOD * 0.4);
+</script></body></html>

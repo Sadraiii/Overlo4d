@@ -46,6 +46,7 @@ final class BackupStore {
     private static let settingsKeys = [
         "defaultRestSeconds", "rest.autoStart", "recap.dismissedWeek", "changelog.seenVersion",
         "coach.goal", "coach.model",
+        "training.weeklyGoal", "progression.enabled", "progression.step", "home.layout",
         "sleep.goalHours", "sleep.wakeMinutes", "sleep.reminders", "sleep.windDownMinutes", "sleep.morningCheckIn", "sleep.caffeineCutoff",
         "clock.mode", "clock.work", "clock.rest", "clock.rounds", "clock.countdown", "clock.minutes",
     ]

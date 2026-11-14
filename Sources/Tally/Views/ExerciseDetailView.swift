@@ -9,6 +9,7 @@ struct ExerciseDetailView: View {
 
     @State private var metric: ChartMetric?
     @State private var editing = false
+    @State private var editingPin = false
 
     enum ChartMetric: String, CaseIterable, Identifiable {
         case heaviest = "Heaviest"
@@ -106,10 +107,20 @@ struct ExerciseDetailView: View {
                     Text(exercise.name).display(34).lineLimit(2)
                 }
 
-                ExerciseDemoCard(exercise: exercise)
+                if gym.pinnedNote(for: exercise.id).isEmpty {
+                    Button("Pin a note", systemImage: "pin") { editingPin = true }
+                        .font(Typo.body(14, .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .buttonStyle(.plain)
+                } else {
+                    PinnedNoteRow(exerciseID: exercise.id, isEditing: $editingPin)
+                }
 
-                ExerciseDetailsCard(exercise: exercise)
+                // What it trains first, then how to do it.
+                MuscleTargetsCard(exercise: exercise)
                     .card()
+
+                ExerciseDemoCard(exercise: exercise)
 
                 if sessions.isEmpty {
                     Text("Not logged yet")
@@ -211,6 +222,7 @@ struct ExerciseDetailView: View {
             }
         }
         .sheet(isPresented: $editing) { ExerciseEditor(exercise: exercise) }
+        .pinnedNoteEditor(for: exercise.id, isPresented: $editingPin)
     }
 }
 

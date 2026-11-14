@@ -82,6 +82,8 @@ struct TallyApp: App {
                 }
         }
         .onChange(of: scenePhase) { _, phase in
+            // Anything typed in the last moment is written before the app can be suspended.
+            if phase != .active { gym.flush() }
             if phase == .background {
                 backup.backUpIfChanged()
                 let toolbox = CoachToolbox(gym: gym, sleep: sleep, food: food, body: bodyStore, programs: programs)
@@ -104,6 +106,7 @@ struct TallyApp: App {
 
     /// Reads every store's file again after a restore.
     private func reloadData() {
+        gym.cancelPendingSave()
         gym = GymStore()
         food = FoodStore()
         sleep = SleepStore()

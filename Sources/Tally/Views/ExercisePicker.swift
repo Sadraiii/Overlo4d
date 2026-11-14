@@ -5,6 +5,8 @@ import SwiftUI
 struct ExercisePicker: View {
     @Environment(GymStore.self) private var gym
     @Environment(\.dismiss) private var dismiss
+    /// Pick one exercise and close at once (used to replace an exercise).
+    var single = false
     let onAdd: ([ExerciseDef]) -> Void
 
     @State private var search = ""
@@ -15,7 +17,10 @@ struct ExercisePicker: View {
         NavigationStack {
             ExerciseList(search: search) { exercise in
                 Button {
-                    if let index = selected.firstIndex(of: exercise.id) {
+                    if single {
+                        onAdd([exercise])
+                        dismiss()
+                    } else if let index = selected.firstIndex(of: exercise.id) {
                         selected.remove(at: index)
                     } else {
                         selected.append(exercise.id)
@@ -40,7 +45,7 @@ struct ExercisePicker: View {
             }
             .animation(.snappy, value: selected)
             .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
-            .navigationTitle("Add exercises")
+            .navigationTitle(single ? "Replace with" : "Add exercises")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

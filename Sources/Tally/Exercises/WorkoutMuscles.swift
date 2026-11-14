@@ -82,7 +82,9 @@ struct WorkoutMusclesCard: View {
                     tertiary: summary.muscles(.tertiary),
                     selected: selected,
                     onTap: select,
-                    labels: true
+                    labels: true,
+                    // The muscle being inspected contracts, so it's easy to find on the body.
+                    animated: selected != nil
                 )
                 .frame(height: 260)
                 .frame(maxWidth: .infinity)

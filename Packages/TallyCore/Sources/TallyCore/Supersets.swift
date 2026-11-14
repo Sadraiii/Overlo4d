@@ -67,4 +67,52 @@ public enum Supersets {
             return new
         }
     }
+
+    /// What a group of this many exercises is called.
+    public static func groupName(size: Int) -> String {
+        switch size {
+        case ...2: "Superset"
+        case 3: "Giant set"
+        default: "Circuit"
+        }
+    }
+
+    /// The indices of the exercises grouped with the one at `index` (itself included), in order.
+    public static func members(of index: Int, in ids: [UUID?]) -> [Int] {
+        guard ids.indices.contains(index), let id = ids[index], position(at: index, in: ids) != .none else { return [] }
+        var start = index, end = index
+        while start > 0, ids[start - 1] == id { start -= 1 }
+        while end + 1 < ids.count, ids[end + 1] == id { end += 1 }
+        return Array(start...end)
+    }
+
+    /// A letter per group in list order (A, B, C…), nil for exercises on their own.
+    public static func letters(_ ids: [UUID?]) -> [String?] {
+        var letters: [UUID: String] = [:]
+        return ids.indices.map { index in
+            guard let id = ids[index], position(at: index, in: ids) != .none else { return nil }
+            if let letter = letters[id] { return letter }
+            let scalar = UnicodeScalar(UInt8(65 + letters.count % 26))
+            let letter = String(Character(scalar))
+            letters[id] = letter
+            return letter
+        }
+    }
+
+    /// Which exercise to do after finishing a set of the one at `index`. `remaining` holds the sets
+    /// still to do per exercise. Inside a group the next member with sets left comes first (wrapping
+    /// round to the start); otherwise the same exercise until it's done, then the next one down the
+    /// list with sets left, then any earlier one. Nil when everything is done.
+    public static func next(after index: Int, in ids: [UUID?], remaining: [Int]) -> Int? {
+        guard ids.indices.contains(index), remaining.count == ids.count else { return nil }
+        let group = members(of: index, in: ids)
+        if let place = group.firstIndex(of: index) {
+            let rotated = Array(group[(place + 1)...]) + Array(group[...place])
+            if let next = rotated.first(where: { remaining[$0] > 0 }) { return next }
+        } else if remaining[index] > 0 {
+            return index
+        }
+        let after = ids.indices.filter { $0 > index && remaining[$0] > 0 }
+        return after.first ?? ids.indices.first { remaining[$0] > 0 }
+    }
 }

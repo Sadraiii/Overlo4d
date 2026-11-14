@@ -193,6 +193,11 @@ struct WorkoutDetailView: View {
                             Text(Fmt.set(set, kind: def?.kind ?? .weightReps))
                                 .font(Typo.display(22))
                                 .monospacedDigit()
+                            if let rpe = set.rpe {
+                                Text("@\(RPE.format(rpe))")
+                                    .font(Typo.body(12, .bold))
+                                    .foregroundStyle(Theme.accent)
+                            }
                             Spacer()
                             if let kinds = gym.records[set.id] {
                                 Label(kinds.map(\.label).joined(separator: ", "), systemImage: "trophy.fill")
@@ -265,6 +270,7 @@ struct EditWorkoutView: View {
                         exercise: $exercise,
                         isLive: false,
                         supersetPosition: workout.exercises.supersetPosition(of: exercise.id),
+                        groupLabel: workout.exercises.groupLabel(of: exercise.id),
                         supersetCandidates: workout.exercises.supersetCandidates(for: exercise.id)
                             .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
                         onSuperset: { workout.exercises.linkSuperset(exercise.id, with: $0) },

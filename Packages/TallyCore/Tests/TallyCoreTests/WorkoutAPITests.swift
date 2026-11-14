@@ -96,3 +96,45 @@ private let catalogue = [
         #expect(WorkoutAPIMatcher.bestMatch(for: "Bicep Curl (Dumbbell)", in: list)?.name == "Dumbbell Biceps Curl")
     }
 }
+
+@Suite struct MotionTests {
+    @Test func everyExerciseInTheTableHasAMove() {
+        #expect(MotionLibrary.exercises.count >= 129)
+        #expect(MotionLibrary.motion(for: "Pull-ups")?.move == .pullUp)
+        #expect(MotionLibrary.motion(for: "Squat (Barbell)")?.load == .barbell)
+    }
+
+    @Test func customNamesFallBackToKeywords() {
+        #expect(MotionLibrary.motion(for: "Paused Box Squat", equipment: "barbell")?.move == .squat)
+        #expect(MotionLibrary.motion(for: "Cable Hammer Curl", equipment: "cable")?.load == .cable)
+        #expect(MotionLibrary.motion(for: "Sled Push") == nil)
+    }
+
+    @Test func limbsKeepTheirLength() {
+        for move in MotionMove.allCases {
+            let s = move.pattern.skeleton(at: 0.37)
+            #expect(abs(s.elbow.distance(to: s.hand) - MotionBody.forearm) < 0.001)
+            #expect(abs(s.knee.distance(to: s.ankle) - MotionBody.shin) < 0.001)
+        }
+    }
+
+    @Test func floorAnchorKeepsFeetDown() {
+        let squat = MotionMove.squat.pattern
+        for phase in [0, 0.5, 1.0] {
+            let s = squat.skeleton(at: phase)
+            #expect(abs(min(s.ankle.y, s.toe.y)) < 0.001)
+            #expect(abs(s.ankle.x) < 0.001)
+        }
+    }
+
+    @Test func anglesBlendTheShortWay() {
+        let pose = MotionPose(torso: 350).blended(to: MotionPose(torso: 20), 0.5)
+        #expect(abs((pose.torso - 5).truncatingRemainder(dividingBy: 360)) < 0.001)
+    }
+
+    @Test func phaseGoesThereAndBack() {
+        #expect(MotionPattern.phase(at: 0, duration: 2) == 0)
+        #expect(abs(MotionPattern.phase(at: 1, duration: 2) - 1) < 0.001)
+        #expect(abs(MotionPattern.phase(at: 2, duration: 2)) < 0.001)
+    }
+}
