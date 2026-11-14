@@ -1,167 +1,252 @@
 """Anatomy figure generator for Tally.
 
-Muscle regions are drawn for the viewer's left half of a 200x400 figure and mirrored. The same data
-produces an SVG preview (for review) and the Swift source with the path strings:
+The body is drawn for the viewer's left half of a 200x400 figure and mirrored. Every shape is a
+list of points; the generator runs a smooth closed curve through them, so a muscle is edited by
+moving its points rather than hand-writing Bezier handles. A point written "!x,y" is a sharp corner.
 
     python3 scripts/anatomy.py swift > Sources/Tally/Exercises/AnatomyShapes.swift
     python3 scripts/anatomy.py js > scripts/mockups/anatomy.js
-    python3 scripts/anatomy.py svg chest,triceps frontDelts > preview.svg
 
-Paths use only absolute M, L, C and Z so the Swift parser stays tiny.
+Each side has an outline (the silhouette, which clips everything else), muscle regions and a few
+open contour lines (collarbones, kneecaps, spine) that are only stroked. Muscles may overshoot the
+outline; the clip trims them to the body. Output paths use only absolute M, L, C and Z so the Swift
+parser stays tiny.
 """
 import json
-import re
 import sys
 
 W = 200
-
-# (muscle or None for body parts, path, mirrored?[, DETAIL])
-# Regions are drawn in order, so a later region can sit on top of an earlier one. Overlaying a
-# muscle head on its own muscle (the rectus femoris on the quads, the gastrocnemius heads on the
-# calves) draws the line between the heads without changing what is tapped or filled. Those
-# overlays are marked DETAIL and drawn with a finer line than the gaps between muscles.
 DETAIL = True
 
+# The silhouette's left half, from the top of the head down the outside of the body and back up the
+# inside of the leg to the crotch.
+OUTLINE = (
+    "100,5 91,7.5 84.5,15 82.5,26 83.5,36 86.5,44.5 90.5,50 91,57 89,63.5 81,68.5 71,71.5 60,74 "
+    "49,78 41,86 36.5,97 35,110 34,124 32,138 30,151 27,165 24.5,182 24,198 24.5,210 22,220 "
+    "20.5,231 22,241 25,247.5 !28.5,249 32,246 36,240.5 39.5,231 41,220 41,211 44.5,198 49,182 "
+    "53,167 56,153 58,140 59.5,128 !61.5,119 62.5,132 65,146 67.5,160 68.5,172 66.5,186 62.5,200 "
+    "59.5,216 56.5,234 55.5,252 57,270 60.5,286 63.5,298 64,308 60,320 57.5,334 59,349 64,363 69,374 69.5,381 "
+    "66,388 63.5,393.5 !66,397.5 !88,397.5 89.5,392 87,384 86,376 89,362 92.5,346 94,330 91.5,316 "
+    "90.5,304 92,292 94.5,276 96.5,258 98.5,242 !100,231"
+)
+
+# (muscle or None, points, mirrored?[, DETAIL])
+# Regions are drawn in order. A DETAIL region sits on its own muscle and only adds the line between
+# two heads (upper and lower chest, the serratus on the obliques); it isn't tapped or measured.
 FRONT = [
-    (None, "M100,6 C112,6 119,16 119,29 C119,42 111,53 100,53 C89,53 81,42 81,29 C81,16 88,6 100,6 Z", False),
-    (None, "M90,44 C92,54 91,62 86,72 L82,84 L118,84 L114,72 C109,62 108,54 110,44 Z", False),
-    ("traps", "M91,58 C87,64 78,69 64,73 C70,75 78,75 86,73 C89,71 91,69 92,66 Z", True),
-    ("sideDelts", "M62,73 C50,74 42,80 38,92 C36,99 36,106 38,112 C41,104 45,96 51,90 C55,85 59,80 64,77 Z", True),
-    ("frontDelts", "M64,77 C57,82 50,90 45,99 C42,105 40,110 40,114 C45,116 51,114 54,110 C56,100 60,92 67,86 C69,83 70,80 70,78 C68,77 66,77 64,77 Z", True),
-    ("chest", "M71,78 C66,84 60,93 57,103 C56,110 58,117 63,122 C70,128 82,130 92,129 C97,128 99,125 99,120 L99,80 C92,76 80,76 71,78 Z", True),
-    ("chest", "M71,78 C66,84 62,90 60,95 C72,93 86,92 99,93 L99,80 C92,76 80,76 71,78 Z", True, DETAIL),
-    ("biceps", "M40,116 C36,126 35,138 36,148 C38,157 45,159 50,155 C53,142 55,130 55,116 C51,119 45,119 40,116 Z", True),
-    ("triceps", "M56,112 C59,122 60,134 58,146 C56,150 53,152 51,153 C54,140 56,126 56,112 Z", True),
-    ("forearms", "M36,152 C32,166 30,184 31,204 C33,210 39,210 42,206 C47,190 52,172 54,154 C49,158 41,158 36,152 Z", True),
-    ("forearms", "M36,152 C33,164 32,176 33,190 C38,180 43,168 46,157 C42,157 39,155 36,152 Z", True, DETAIL),
-    (None, "M32,208 C27,212 25,222 26,232 C28,240 36,241 39,234 C42,226 42,216 41,209 C38,211 35,211 32,208 Z", True),
-    ("abs", "M89,131 C93,130 97,130 99,131 L99,148 L88,149 C87,143 87,136 89,131 Z", True),
-    ("abs", "M88,152 L99,151 L99,167 L88,168 C87,163 87,157 88,152 Z", True),
-    ("abs", "M88,171 L99,170 L99,186 L88,187 C87,182 87,176 88,171 Z", True),
-    ("abs", "M88,190 L99,189 L99,214 C95,218 91,215 89,209 C88,203 88,196 88,190 Z", True),
-    ("obliques", "M64,124 C70,128 78,131 85,132 C84,150 84,172 85,194 C85,200 84,204 82,206 C77,200 73,192 71,184 C68,170 66,156 66,142 C65,136 64,130 64,124 Z", True),
-    ("obliques", "M64,124 C67,127 70,129 73,130 L72,136 C69,135 66,133 65,131 Z", True, DETAIL),
-    ("obliques", "M65,136 C68,138 71,140 74,141 L73,147 C70,146 67,144 66,142 Z", True, DETAIL),
-    (None, "M71,186 C74,196 79,204 86,210 C91,215 96,220 99,222 L99,232 L88,228 C80,222 73,212 68,200 Z", True),
-    ("quads", "M66,206 C60,226 58,250 60,272 C61,288 66,298 74,302 C82,304 89,298 92,288 C95,272 94,254 90,238 C86,226 79,216 72,208 Z", True),
-    ("quads", "M74,216 C81,230 86,248 86,266 C86,280 83,290 79,296 C74,288 70,276 70,262 C70,246 71,230 74,216 Z", True, DETAIL),
-    ("quads", "M93,272 C95,282 93,292 88,298 C85,301 81,303 78,302 C81,294 87,282 93,272 Z", True, DETAIL),
-    ("adductors", "M90,232 C95,236 99,242 99,252 C99,264 97,276 93,284 C94,268 94,250 90,232 Z", True),
-    (None, "M66,300 C63,320 62,344 65,366 C67,378 71,386 74,390 L86,390 C88,382 91,372 92,360 C94,340 93,318 91,300 Z", True),
-    (None, "M70,300 C73,307 83,309 90,303 C90,310 88,316 84,319 C77,320 71,314 70,300 Z", True),
-    (None, "M76,318 L85,318 C86,340 86,362 84,386 L77,386 C76,362 76,340 76,318 Z", True),
-    ("calves", "M65,318 C60,332 60,350 63,364 C66,374 72,376 76,370 L76,320 C72,317 68,317 65,318 Z", True),
-    ("calves", "M87,318 C93,330 94,348 92,362 C90,370 87,372 85,368 L85,320 C86,318 86,317 87,318 Z", True),
-    (None, "M72,384 C68,388 64,394 67,398 L87,398 C89,394 88,389 86,384 Z", True),
+    ("traps", "91.5,56 88.5,62.5 80,67.5 66,71.5 !60,74.5 72,74.6 84,73.8 !92.5,72 93,64", True),
+    ("sideDelts", "61,73 49,76 40,84 34,97 33,112 !38.5,121 41.5,108 46,96 52.5,86.5 !61.5,78", True),
+    ("frontDelts", "64,79 55.5,87 49,97 44.5,108 !42,120.5 46.5,121.5 52.5,117 56,107 61,97 67,88 !70.5,79.5", True),
+    ("chest", "72.5,79.8 86,78.2 !98.6,80.5 98.7,100 !98.4,121 92,126.8 81,128.2 70,125 62.5,118 58.5,109 61,99 66,89", True),
+    ("chest", "72.5,79.8 86,78.2 !98.6,80.5 !98.7,94.5 86,94.5 73,97.5 !62,100.5 66,89", True, DETAIL),
+    ("biceps", "!42,122.5 38.5,134 37.5,146 39.5,155.5 44,160.5 49.5,158.5 53.5,149 56,137 57,126 !56.5,118.5 50.5,122.5", True),
+    ("triceps", "!39,123 35.5,133 34,144 33.5,153 !35.5,158 36,146 37,134", True),
+    ("triceps", "!58.5,121 60.5,131 59.5,143 57,153 !54.5,157.5 57.5,146 58.5,133", True),
+    ("forearms", "!35.5,160.5 30,170 26,184 24.5,198 !25.5,209 !32,210 36,198 39.5,184 41.5,172 !41.5,162.5", True),
+    ("forearms", "!44,163.5 44.5,174 42,188 38,200 !34.5,210 !40.5,211 45,198 49.5,183 53.5,168 !55,158 50,162.5", True),
+    ("abs", "R 88.2,131.2 98.7,129.8 98.7,144.6 87,145.8", True),
+    ("abs", "R 86.8,148.6 98.7,147.4 98.7,162.2 86.2,163.2", True),
+    ("abs", "R 86,166 98.7,165 98.7,179.8 86.4,180.6", True),
+    ("abs", "!86.6,183.4 !98.7,182.6 !98.7,215 96.5,220.5 92,214 88.5,203 87,193", True),
+    ("obliques", "!61,121 70,127.5 !84.5,131.5 83.6,150 83.2,170 84,188 !87,206 80.5,202 73.5,194 69,184 70,172 68.5,160 66,146 63,133", True),
+    ("obliques", "62,125 69.5,129.5 75.5,133 !77,136 71,136.5 !63.5,134", True, DETAIL),
+    ("obliques", "64.5,138.5 71.5,140.5 76.5,144 !77.5,147.5 72,148 !66.5,146.5", True, DETAIL),
+    ("obliques", "67,151 73,153 77,156.5 !77.5,160 72.5,160.5 !68.2,159", True, DETAIL),
+    ("quads", "!65,208 59.5,222 56,240 55,258 57,274 61.5,288 !66.5,297.5 71,286 70.5,270 69,252 69,234 70.5,220", True),
+    ("quads", "!72.5,212 70.5,226 69.5,244 70.5,262 73.5,278 77.5,290 !80.5,295 83.5,284 86,268 87,250 85,234 81,222", True),
+    ("quads", "!88,264 87,276 85,287 82.5,295 85,302 90.5,301 93.5,293 95,281 93.5,270", True),
+    ("adductors", "!82,217 90,225 !98.8,234 98.6,246 96,260 !92.5,272 91,258 88.5,242 85.5,228", True),
+    ("calves", "!65,311 59.5,321 57,334 58.5,348 63,360 !68.5,371 72,358 73.5,342 73,326 !71,312", True),
+    ("calves", "!88.5,311 93,321 94.5,334 93,347 89,357 !84.5,366 82.5,352 82.5,336 83.5,322 !85.5,311", True),
+]
+FRONT_LINES = [
+    ("!70,76.2 82,75.8 92,77.4 !98,81", True),          # collarbone
+    ("!91.5,52 94.5,62 !98.5,76.5", True),              # neck
+    ("!70.5,301 72,296.5 77,294.5 82,297 !83,302", True),  # top of the kneecap
+    ("!71.5,306.5 77,310.5 !82.5,306.5", True),         # under the kneecap
+    ("!77.5,314 78,340 !77,372", True),                 # shin
+    ("!69.5,186 76,200 !90,217", True),                 # hip crease
 ]
 BACK = [
-    (None, "M100,6 C112,6 119,16 119,29 C119,42 111,53 100,53 C89,53 81,42 81,29 C81,16 88,6 100,6 Z", False),
-    (None, "M91,46 L109,46 L111,64 L89,64 Z", False),
-    ("sideDelts", "M62,73 C50,74 42,80 38,92 C36,99 36,106 38,112 C41,104 45,96 51,90 C55,85 59,80 64,77 Z", True),
-    ("rearDelts", "M64,77 C57,82 50,90 45,99 C42,105 40,110 40,114 C45,116 51,114 54,110 C56,102 61,94 68,88 C70,84 70,80 68,78 Z", True),
-    ("upperBack", "M66,79 C61,88 59,98 60,110 C63,116 69,119 76,118 C82,116 87,111 91,104 C86,93 77,84 66,79 Z", True),
-    ("triceps", "M40,116 C36,126 35,138 36,148 C38,157 45,159 50,155 C53,142 55,130 55,116 C51,119 45,119 40,116 Z", True),
-    ("triceps", "M47,118 C46,128 44,138 42,146 C40,140 39,130 40,118 C42,119 45,119 47,118 Z", True, DETAIL),
-    ("forearms", "M36,152 C32,166 30,184 31,204 C33,210 39,210 42,206 C47,190 52,172 54,154 C49,158 41,158 36,152 Z", True),
-    (None, "M32,208 C27,212 25,222 26,232 C28,240 36,241 39,234 C42,226 42,216 41,209 C38,211 35,211 32,208 Z", True),
-    ("lats", "M58,104 C56,126 60,150 67,168 C72,180 80,190 90,196 C91,182 92,166 93,150 C93,138 93,128 94,120 C88,122 82,121 76,119 C68,116 62,111 58,104 Z", True),
-    ("lowerBack", "M95,138 C98,137 99,139 99,141 L99,212 C94,213 89,210 87,204 C86,192 87,178 89,166 C91,156 93,146 95,138 Z", True),
-    ("traps", "M100,52 C96,60 86,66 66,72 C76,77 86,86 92,100 C95,112 98,128 100,146 C102,128 105,112 108,100 C114,86 124,77 134,72 C114,66 104,60 100,52 Z", False),
-    ("glutes", "M68,202 C61,214 59,232 63,248 C68,262 84,266 99,258 L99,214 C92,208 80,202 68,202 Z", True),
-    ("glutes", "M68,202 C64,208 62,214 61,220 C68,216 76,214 84,213 C80,207 74,203 68,202 Z", True, DETAIL),
-    ("hamstrings", "M62,252 C59,270 60,288 65,300 C70,307 80,308 86,302 C90,288 93,272 93,260 C84,264 72,263 62,252 Z", True),
-    ("hamstrings", "M78,262 C83,263 88,262 92,261 C92,276 90,290 86,302 C83,305 80,306 78,305 C77,290 77,276 78,262 Z", True, DETAIL),
-    ("adductors", "M94,262 C97,272 98,284 96,294 C94,297 92,296 91,293 C92,284 93,272 94,262 Z", True),
-    (None, "M65,300 C62,320 61,344 64,366 C67,378 71,386 73,390 L85,390 C88,382 91,372 92,360 C94,340 93,318 90,300 Z", True),
-    (None, "M66,302 C70,309 82,311 88,305 C89,312 86,318 82,320 C75,321 68,316 66,302 Z", True),
-    ("calves", "M66,318 C61,330 60,346 63,358 C66,366 71,370 76,366 L80,366 C85,370 90,366 91,356 C93,344 92,330 88,318 C82,316 72,316 66,318 Z", True),
-    ("calves", "M66,320 C60,332 59,348 62,358 C66,356 72,352 76,346 L77,319 C73,319 69,319 66,320 Z", True, DETAIL),
-    ("calves", "M78,319 L79,346 C82,352 86,356 90,358 C92,346 92,332 88,320 C85,319 81,319 78,319 Z", True, DETAIL),
-    (None, "M72,366 C74,372 75,380 75,386 L83,386 C83,380 84,372 86,366 C82,369 76,369 72,366 Z", True),
-    (None, "M70,386 C67,390 65,395 68,398 L86,398 C88,395 87,390 85,386 Z", True),
+    ("traps", "!100,49.5 95,57 88.5,63.5 78,69 !62,74 74,79.5 84,89 90.5,102 95.5,120 !100,141 "
+              "104.5,120 109.5,102 116,89 126,79.5 !138,74 122,69 111.5,63.5 105,57", False),
+    ("sideDelts", "61,73 49,76 40,84 34,97 33,112 !38.5,121 41.5,108 46,96 52.5,86.5 !61.5,78", True),
+    ("rearDelts", "!63.5,78 55,86.5 48.5,97 44,108 !42,120.5 47,121.5 53.5,116 58.5,107 64.5,98.5 !71,91 68.5,83", True),
+    ("upperBack", "!72.5,83 66.5,94 62,104 61.5,113 67,119.5 76,120.5 84.5,115.5 !90,107.5 86.5,97.5 81,89.5", True),
+    ("lats", "!60.5,116.5 61,132 63.5,148 68,164 75.5,178 84.5,189 !92,195 93.8,176 95.2,156 !95.8,128 92,113 86,119.5 76,124 67.5,122.5", True),
+    ("lowerBack", "!96.2,146 !98.8,143.5 !98.8,207 !91.5,206.5 90.2,192 91.6,176 93.8,160", True),
+    ("obliques", "!67,168 71,180 77.5,190 !88,199.5 !87.5,206.5 76,205.5 !66,203 65.5,190 67.5,178", True),
+    ("triceps", "!41,123 36,133 34,145 34.5,155 !38.5,160 43.5,156 46,145 47,133 !46.5,122.5", True),
+    ("triceps", "!49.5,121.5 50,134 48.5,147 !47.5,158.5 52.5,159.5 56.5,150 59,137 60,126 !57.5,117.5 53.5,120.5", True),
+    ("forearms", "!35.5,162.5 30,172 26,186 24.5,198 !25.5,209 !32,210 36,198 39.5,184 41.5,172 !41.5,163.5", True),
+    ("forearms", "!44.5,163.5 44.5,174 42,188 38,200 !34.5,210 !40.5,211 45,198 49.5,183 53.5,168 !55,160 50,163", True),
+    ("glutes", "!65.5,206.5 60,218 57.5,232 59,244 67,252 78,256.5 90,255.5 !98.8,250 !98.8,222 95.5,213 88,209 77,207", True),
+    ("hamstrings", "!59.5,254 56.5,268 57.5,282 61,294 !66,303 74,300 77.5,288 78.5,274 !78,260.5 68.5,258.5", True),
+    ("hamstrings", "!79.5,261.5 80,276 78.5,290 !77,301 83,305.5 88.5,298 91.5,284 !92.5,260 86.5,262", True),
+    ("adductors", "!95.5,258 98.6,254 98.4,266 96.5,280 !93.5,292 94.5,276", True),
+    ("calves", "!65.5,314 59.5,324 57,337 59,349 64.5,357 71.5,359.5 !76,354 77,340 76.5,326 !73.5,313.5", True),
+    ("calves", "!79.5,314 79,328 79,342 !80,354.5 85,358.5 91,352 94,340 93.5,326 !89.5,313.5", True),
+    ("calves", "!66.5,361.5 72,363.5 78,360 84.5,362.5 !88.5,360.5 86.5,370 !85,378 !71.5,378 69,370", True),
+]
+BACK_LINES = [
+    ("!100,143 !100,206", False),                       # spine
+    ("!91.5,52 93.5,58", True),                         # neck
+    ("!68,302.5 77,307.5 !87,304", True),               # back of the knee
+    ("!100,212 !100,254", False),                       # between the glutes
 ]
 
 
-def mirror(path: str) -> str:
-    """Mirror x around the figure's centre line."""
-    def flip(match):
-        x, y = float(match.group(1)), float(match.group(2))
-        return f"{W - x:g},{y:g}"
-    return re.sub(r"(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)", flip, path)
+def points(text):
+    """[(x, y, corner)] from "x,y !x,y ..."."""
+    out = []
+    for token in text.split():
+        corner = token.startswith("!")
+        x, y = token.lstrip("!").split(",")
+        out.append((float(x), float(y), corner))
+    return out
+
+
+def fmt(value):
+    return f"{round(value, 1):g}"
+
+
+def spline(pts, closed=True):
+    """A Catmull-Rom curve through the points as cubic Beziers; corners get no tangent."""
+    n = len(pts)
+
+    def tangent(i):
+        if pts[i][2]:
+            return (0.0, 0.0)
+        if closed:
+            a, b = pts[(i - 1) % n], pts[(i + 1) % n]
+        else:
+            a, b = pts[max(i - 1, 0)], pts[min(i + 1, n - 1)]
+        return ((b[0] - a[0]) / 6, (b[1] - a[1]) / 6)
+
+    d = [f"M{fmt(pts[0][0])},{fmt(pts[0][1])}"]
+    for i in range(n if closed else n - 1):
+        p, q = pts[i], pts[(i + 1) % n]
+        tp, tq = tangent(i), tangent((i + 1) % n)
+        d.append(f"C{fmt(p[0] + tp[0])},{fmt(p[1] + tp[1])} {fmt(q[0] - tq[0])},{fmt(q[1] - tq[1])} {fmt(q[0])},{fmt(q[1])}")
+    if closed:
+        d.append("Z")
+    return " ".join(d)
+
+
+def rounded(pts, radius=2.6):
+    """A polygon with rounded corners, for the blocks of the abs."""
+    n = len(pts)
+
+    def toward(a, b, distance):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length = (dx * dx + dy * dy) ** 0.5
+        t = min(distance / length, 0.5)
+        return (a[0] + dx * t, a[1] + dy * t)
+
+    d = []
+    for i in range(n):
+        corner, before, after = pts[i], pts[i - 1], pts[(i + 1) % n]
+        start, end = toward(corner, before, radius), toward(corner, after, radius)
+        d.append(f"{'M' if i == 0 else 'L'}{fmt(start[0])},{fmt(start[1])}")
+        c1 = (start[0] + (corner[0] - start[0]) * 0.6, start[1] + (corner[1] - start[1]) * 0.6)
+        c2 = (end[0] + (corner[0] - end[0]) * 0.6, end[1] + (corner[1] - end[1]) * 0.6)
+        d.append(f"C{fmt(c1[0])},{fmt(c1[1])} {fmt(c2[0])},{fmt(c2[1])} {fmt(end[0])},{fmt(end[1])}")
+    d.append("Z")
+    return " ".join(d)
+
+
+def flip(pts):
+    return [(W - x, y, corner) for x, y, corner in reversed(pts)]
+
+
+def shape(text, mirrored=False, closed=True):
+    is_rounded = text.startswith("R ")
+    pts = points(text[2:] if is_rounded else text)
+    if mirrored:
+        pts = flip(pts)
+    return rounded(pts) if is_rounded else spline(pts, closed)
+
+
+def outline():
+    half = points(OUTLINE)
+    # The centre-line points belong to both halves, so the mirrored half skips them.
+    return spline(half + [p for p in flip(half) if p[0] != W / 2])
 
 
 def expand(shapes):
     out = []
-    for muscle, path, mirrored, *rest in shapes:
+    for muscle, text, mirrored, *rest in shapes:
         detail = bool(rest and rest[0])
-        out.append((muscle, path, detail))
+        out.append((muscle, shape(text), detail))
         if mirrored:
-            out.append((muscle, mirror(path), detail))
+            out.append((muscle, shape(text, mirrored=True), detail))
     return out
 
 
-def svg(primary, secondary):
-    """Preview in the app's light colours: body parts lighter than untrained muscles."""
-    def fill(muscle):
-        if muscle is None:
-            return "#E7E9E3"
-        if muscle in primary:
-            return "#5A3E8A"
-        if muscle in secondary:
-            return "#B7A6D6"
-        return "#D5D9D0"
-
-    parts = []
-    for offset, shapes in ((0, FRONT), (W + 20, BACK)):
-        group = "".join(
-            f'<path d="{p}" fill="{fill(m)}" stroke="#FAFBF8" stroke-width="{0.7 if d else 1.2}" stroke-linejoin="round"/>'
-            for m, p, d in expand(shapes)
-        )
-        parts.append(f'<g transform="translate({offset} 0)">{group}</g>')
-    width = W * 2 + 40
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * 2}" height="840" viewBox="-10 -10 {width} 420">'
-            f'<rect x="-10" y="-10" width="{width}" height="420" fill="#FAFBF8"/>{"".join(parts)}</svg>')
+def lines(shapes):
+    out = []
+    for text, mirrored in shapes:
+        out.append(shape(text, closed=False))
+        if mirrored:
+            out.append(shape(text, mirrored=True, closed=False))
+    return out
 
 
 def js():
     """The same shapes for the README mockups: [muscle, path, detail]."""
-    data = {view: [[m, p, d] for m, p, d in expand(shapes)] for view, shapes in (("front", FRONT), ("back", BACK))}
+    data = {
+        "outline": outline(),
+        "front": [[m, p, d] for m, p, d in expand(FRONT)],
+        "back": [[m, p, d] for m, p, d in expand(BACK)],
+        "frontLines": lines(FRONT_LINES),
+        "backLines": lines(BACK_LINES),
+    }
     return ("// Generated by scripts/anatomy.py from the same shapes as AnatomyShapes.swift (200 x 400).\n"
             f"const ANATOMY = {json.dumps(data)};\n")
 
 
 def swift():
-    def literal(shapes):
-        lines = []
+    def regions(shapes):
+        rows = []
         for muscle, path, detail in expand(shapes):
             name = f".{muscle}" if muscle else "nil"
-            lines.append(f'        (muscle: {name}, path: "{path}", detail: {"true" if detail else "false"}),')
-        return "\n".join(lines)
+            rows.append(f'        (muscle: {name}, path: "{path}", detail: {"true" if detail else "false"}),')
+        return "\n".join(rows)
+
+    def strings(paths):
+        return "\n".join(f'        "{path}",' for path in paths)
 
     return f'''// Generated by scripts/anatomy.py. Edit the generator, not this file.
 
-/// Muscle regions for the front and back body figures, in a 200 × 400 coordinate space.
+/// The body outline, muscle regions and contour lines for the front and back figures, in a
+/// 200 × 400 coordinate space.
 enum AnatomyShapes {{
     static let width = 200.0
     static let height = 400.0
 
+    /// The silhouette, the same from the front and the back. Muscles are clipped to it.
+    static let outline = "{outline()}"
+
     static let front: [(muscle: Muscle?, path: String, detail: Bool)] = [
-{literal(FRONT)}
+{regions(FRONT)}
     ]
 
     static let back: [(muscle: Muscle?, path: String, detail: Bool)] = [
-{literal(BACK)}
+{regions(BACK)}
+    ]
+
+    /// Open lines drawn over the skin: collarbones, kneecaps, hip creases.
+    static let frontLines = [
+{strings(lines(FRONT_LINES))}
+    ]
+
+    /// The spine and the backs of the knees.
+    static let backLines = [
+{strings(lines(BACK_LINES))}
     ]
 }}
 '''
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == "svg":
-        primary = set(filter(None, (sys.argv[2] if len(sys.argv) > 2 else "").split(",")))
-        secondary = set(filter(None, (sys.argv[3] if len(sys.argv) > 3 else "").split(",")))
-        sys.stdout.write(svg(primary, secondary))
-    elif sys.argv[1] == "js":
-        sys.stdout.write(js())
-    else:
-        sys.stdout.write(swift())
+    sys.stdout.write(js() if sys.argv[1] == "js" else swift())
