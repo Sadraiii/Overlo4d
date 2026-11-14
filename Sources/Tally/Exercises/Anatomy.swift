@@ -153,19 +153,42 @@ extension MuscleGroup {
 
 /// One region of a body figure, in the 200 × 400 figure space.
 struct FigureRegion: @unchecked Sendable {
+    /// Nil for parts that aren't tracked (neck, kneecaps), drawn in a neutral tone.
     let muscle: Muscle?
     let path: Path
     /// A muscle head drawn over its own muscle; only its outline adds anything.
     let detail: Bool
+    let bounds: CGRect
+    /// The point the region swells around when it contracts: its own middle, or for a detail the
+    /// middle of the muscle it sits on, so the two move as one.
+    let anchor: CGPoint
 }
 
 enum Figure {
-    static let front = AnatomyShapes.front.map { FigureRegion(muscle: $0.muscle, path: parse($0.path), detail: $0.detail) }
-    static let back = AnatomyShapes.back.map { FigureRegion(muscle: $0.muscle, path: parse($0.path), detail: $0.detail) }
+    static let front = build(AnatomyShapes.front)
+    static let back = build(AnatomyShapes.back)
     /// The silhouette both sides are clipped to.
     static let outline = parse(AnatomyShapes.outline)
     static let frontLines = AnatomyShapes.frontLines.map(parse)
     static let backLines = AnatomyShapes.backLines.map(parse)
+
+    private static func build(_ shapes: [(muscle: Muscle?, path: String, detail: Bool)]) -> [FigureRegion] {
+        let paths = shapes.map { parse($0.path) }
+        let bounds = paths.map(\.boundingRect)
+        return shapes.indices.map { index in
+            let shape = shapes[index]
+            var anchor = CGPoint(x: bounds[index].midX, y: bounds[index].midY)
+            if shape.detail {
+                let parent = shapes.indices.first {
+                    !shapes[$0].detail && shapes[$0].muscle == shape.muscle && bounds[$0].contains(anchor)
+                }
+                if let parent {
+                    anchor = CGPoint(x: bounds[parent].midX, y: bounds[parent].midY)
+                }
+            }
+            return FigureRegion(muscle: shape.muscle, path: paths[index], detail: shape.detail, bounds: bounds[index], anchor: anchor)
+        }
+    }
 
     /// Parses an SVG path string that uses only absolute M, L, C and Z commands.
     static func parse(_ d: String) -> Path {
@@ -225,12 +248,20 @@ struct AnatomyFigure: View {
     /// The slice of the body to show, top to bottom in figure units (0–400), for compact figures
     /// zoomed in on the trained area. The cut edges fade out.
     var window: ClosedRange<Double>?
+    /// Makes the worked muscles contract in a slow loop: primary ones hardest, secondary and
+    /// tertiary ones less and a moment later. Only for figures coloured by role; still when Reduce
+    /// Motion is on.
+    var animated = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The body behind the muscles, and the gaps between them.
     static let skin = Theme.line
     /// Muscles the workout or exercise doesn't touch, a step darker than the skin so every muscle
     /// stays readable when nothing is highlighted.
     static let untrained = Theme.line2.mix(with: Theme.ink, by: 0.07)
+    /// Parts that aren't tracked as muscles, such as the neck and kneecaps.
+    static let tissue = Theme.line.mix(with: Theme.line2, by: 0.55)
     /// Room around the figure, in figure units.
     private static let pad = 3.0
 
@@ -260,66 +291,33 @@ struct AnatomyFigure: View {
     }
 
     private func figure(_ regions: [FigureRegion], back: Bool) -> some View {
-        let fills = regions.map { color($0.muscle) }
-        let untrained = Self.untrained
-        let selected = selected
-        let skin = Self.skin
-        let contour = Self.untrained
-        let outline = Theme.ink
         let pad = Self.pad
         let slice = slice
-        let body = Figure.outline
-        let lines = back ? Figure.backLines : Figure.frontLines
-        return Canvas { context, size in
-            let scale = size.width / (AnatomyShapes.width + pad * 2)
-            context.scaleBy(x: scale, y: scale)
-            context.translateBy(x: pad, y: -slice.top)
-            // The silhouette in the skin colour, a touch darker toward its sides so it reads as round.
-            context.fill(body, with: .color(skin))
-            context.fill(body, with: .linearGradient(
-                Self.bodyShade,
-                startPoint: CGPoint(x: 20, y: 0),
-                endPoint: CGPoint(x: AnatomyShapes.width - 20, y: 0)
-            ))
-            // Everything else is clipped to the body, so muscles can run to its edge.
-            context.clip(to: body)
-            // At least 0.5 pt on screen so small figures keep the gaps between muscles.
-            let lineWidth = max(1.5, 0.5 / scale)
-            // Lines between muscle heads are finer, and left out where they'd only add noise.
-            let detailWidth = scale >= 0.4 ? max(0.7, 0.3 / scale) : 0
-            for (region, fill) in zip(regions, fills) where region.muscle != nil {
-                let faded = selected != nil && region.muscle != selected
-                context.fill(region.path, with: .color(faded ? fill.opacity(0.35) : fill))
-                // Light from the upper left: each muscle belly brighter in the middle and darker at
-                // its edges, so the body reads as rounded rather than flat cut-outs.
-                if !region.detail && !faded, let muscle = region.muscle {
-                    let rect = region.path.boundingRect
-                    context.fill(region.path, with: Self.shading(rect))
-                    // Fine fibre lines in the direction the muscle runs, where they're big enough to see.
-                    if scale >= 0.6, let fibres = Self.fibres(muscle, back: back, in: rect) {
-                        var layer = context
-                        layer.clip(to: region.path)
-                        let lit = fill != untrained
-                        layer.stroke(fibres, with: .color(lit ? .white.opacity(0.13) : .black.opacity(0.05)), lineWidth: 0.5)
+        let drawing = FigureDrawing(
+            regions: regions,
+            fills: regions.map { color($0.muscle) },
+            effort: regions.map { effort($0.muscle) },
+            lines: back ? Figure.backLines : Figure.frontLines,
+            back: back,
+            selected: selected,
+            skin: Self.skin,
+            tissue: Self.tissue,
+            untrained: Self.untrained,
+            ink: Theme.ink,
+            pad: pad,
+            top: slice.top
+        )
+        return Group {
+            if drawing.moves && !reduceMotion {
+                TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
+                    let time = timeline.date.timeIntervalSinceReferenceDate
+                    Canvas { context, size in
+                        drawing.draw(&context, size: size, time: time)
                     }
                 }
-                let width = region.detail ? detailWidth : lineWidth
-                if width > 0 {
-                    context.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: width, lineJoin: .round))
-                }
-            }
-            // Collarbones, kneecaps, spine: only where they're big enough to read.
-            if scale >= 0.3 {
-                for line in lines {
-                    context.stroke(line, with: .color(contour), style: StrokeStyle(lineWidth: 1.1, lineCap: .round, lineJoin: .round))
-                }
-            }
-            // A rim of skin around the body (half of this width falls inside the clip), so no muscle
-            // touches the edge.
-            context.stroke(body, with: .color(skin), style: StrokeStyle(lineWidth: max(3.2, 1 / scale), lineJoin: .round))
-            if let selected {
-                for region in regions where region.muscle == selected && !region.detail {
-                    context.stroke(region.path, with: .color(outline), style: StrokeStyle(lineWidth: lineWidth, lineJoin: .round))
+            } else {
+                Canvas { context, size in
+                    drawing.draw(&context, size: size, time: nil)
                 }
             }
         }
@@ -342,70 +340,14 @@ struct AnatomyFigure: View {
         }
     }
 
-    private static let bodyShade = Gradient(stops: [
-        .init(color: .black.opacity(0.05), location: 0),
-        .init(color: .black.opacity(0), location: 0.5),
-        .init(color: .black.opacity(0.05), location: 1),
-    ])
-
-    private static let shade = Gradient(stops: [
-        .init(color: .white.opacity(0.22), location: 0),
-        .init(color: .white.opacity(0), location: 0.55),
-        .init(color: .black.opacity(0.16), location: 1),
-    ])
-
-    /// Fibre direction per muscle in degrees from vertical; positive leans the top of the line
-    /// toward the outside of the body.
-    private static func fibreAngle(_ muscle: Muscle, back: Bool) -> Double {
-        switch muscle {
-        case .chest: -62
-        case .frontDelts: 18
-        case .sideDelts: 10
-        case .rearDelts: -15
-        case .traps: back ? 58 : 70
-        case .upperBack: -55
-        case .lats: 38
-        case .biceps, .triceps: 6
-        case .forearms: 8
-        case .abs, .lowerBack, .calves: 0
-        case .obliques: -38
-        case .quads: 8
-        case .hamstrings: 4
-        case .adductors: back ? -10 : -22
-        case .glutes: -48
-        }
-    }
-
-    /// Parallel lines across a muscle's bounding box at its fibre angle, to be clipped to the muscle.
-    private static func fibres(_ muscle: Muscle, back: Bool, in rect: CGRect) -> Path? {
-        // Regions left of the centre line are the figure's other side, so the lean flips.
-        let outwardIsLeft = rect.midX < AnatomyShapes.width / 2
-        let degrees = fibreAngle(muscle, back: back) * (outwardIsLeft ? -1 : 1)
-        // The traps on the back are one shape across both sides; fan them from the middle instead.
-        if muscle == .traps && back && abs(rect.midX - AnatomyShapes.width / 2) < 1 { return nil }
-        let radians = degrees * .pi / 180
-        let direction = CGPoint(x: sin(radians), y: -cos(radians))
-        let normal = CGPoint(x: -direction.y, y: direction.x)
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let reach = hypot(rect.width, rect.height) / 2 + 2
-        var path = Path()
-        var offset = -reach
-        while offset <= reach {
-            let base = CGPoint(x: center.x + normal.x * offset, y: center.y + normal.y * offset)
-            path.move(to: CGPoint(x: base.x - direction.x * reach, y: base.y - direction.y * reach))
-            path.addLine(to: CGPoint(x: base.x + direction.x * reach, y: base.y + direction.y * reach))
-            offset += 2.6
-        }
-        return path
-    }
-
-    private static func shading(_ rect: CGRect) -> GraphicsContext.Shading {
-        .radialGradient(
-            shade,
-            center: CGPoint(x: rect.minX + rect.width * 0.4, y: rect.minY + rect.height * 0.3),
-            startRadius: 0,
-            endRadius: max(rect.width, rect.height) * 0.8
-        )
+    /// How hard a muscle contracts in the animated figure; 0 keeps it still.
+    private func effort(_ muscle: Muscle?) -> Double {
+        guard animated, shades == nil, weeklySets == nil, let muscle else { return 0 }
+        if let selected, selected != muscle { return 0 }
+        if primary.contains(muscle) { return 1 }
+        if secondary.contains(muscle) { return 0.6 }
+        if tertiary.contains(muscle) { return 0.3 }
+        return 0
     }
 
     /// Fades the figure out where the window cuts through the body, so a zoomed figure doesn't end
@@ -444,8 +386,7 @@ struct AnatomyFigure: View {
     }
 
     private func color(_ muscle: Muscle?) -> Color {
-        // Head, hands, knees and feet are part of the skin, so the muscles read first.
-        guard let muscle else { return Self.skin }
+        guard let muscle else { return Self.tissue }
         if let shades {
             return shades[muscle] ?? Self.untrained
         }
@@ -456,6 +397,197 @@ struct AnatomyFigure: View {
         if secondary.contains(muscle) { return MuscleRole.secondary.color }
         if tertiary.contains(muscle) { return MuscleRole.tertiary.color }
         return Self.untrained
+    }
+}
+
+/// Everything one side of the figure needs to draw itself, so the same code draws the still figure
+/// and every frame of the animated one.
+private struct FigureDrawing {
+    let regions: [FigureRegion]
+    let fills: [Color]
+    /// How hard each region contracts when animated; 0 for regions that stay still.
+    let effort: [Double]
+    /// Collarbones, kneecaps, spine.
+    let lines: [Path]
+    let back: Bool
+    let selected: Muscle?
+    let skin: Color
+    let tissue: Color
+    let untrained: Color
+    let ink: Color
+    let pad: Double
+    let top: Double
+
+    /// Seconds for one squeeze and release.
+    static let period = 2.2
+
+    var moves: Bool { effort.contains { $0 > 0 } }
+
+    /// - Parameter time: Seconds on a running clock for the animated figure, nil for the still one.
+    func draw(_ context: inout GraphicsContext, size: CGSize, time: Double?) {
+        let body = Figure.outline
+        let scale = size.width / (AnatomyShapes.width + pad * 2)
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: pad, y: -top)
+        // The silhouette in the skin colour, a touch darker toward its sides so it reads as round.
+        context.fill(body, with: .color(skin))
+        context.fill(body, with: .linearGradient(
+            Self.bodyShade,
+            startPoint: CGPoint(x: 20, y: 0),
+            endPoint: CGPoint(x: AnatomyShapes.width - 20, y: 0)
+        ))
+        // Everything else is clipped to the body, so muscles can run to its edge.
+        context.clip(to: body)
+
+        // Still regions first, then the contracting ones over them, since those swell past their gaps.
+        let tension = regions.indices.map { index in
+            time.map { Self.tension(at: $0, effort: effort[index]) } ?? 0
+        }
+        for index in regions.indices where tension[index] == 0 {
+            paint(index, tension: 0, scale: scale, in: context)
+        }
+        // Collarbones, kneecaps, spine: only where they're big enough to read.
+        if scale >= 0.3 {
+            for line in lines {
+                context.stroke(line, with: .color(untrained), style: StrokeStyle(lineWidth: 1.1, lineCap: .round, lineJoin: .round))
+            }
+        }
+        for index in regions.indices where tension[index] > 0 {
+            paint(index, tension: tension[index], scale: scale, in: context)
+        }
+        // A rim of skin around the body (half of this width falls inside the clip), so no muscle
+        // touches the edge.
+        context.stroke(body, with: .color(skin), style: StrokeStyle(lineWidth: max(3.2, 1 / scale), lineJoin: .round))
+        if let selected {
+            let width = max(1.5, 0.5 / scale)
+            for region in regions where region.muscle == selected && !region.detail {
+                context.stroke(region.path, with: .color(ink), style: StrokeStyle(lineWidth: width, lineJoin: .round))
+            }
+        }
+    }
+
+    private func paint(_ index: Int, tension: Double, scale: Double, in context: GraphicsContext) {
+        let region = regions[index]
+        let fill = fills[index]
+        var layer = context
+        if tension > 0 {
+            // A contracting muscle swells around its middle.
+            let swell = 1 + 0.05 * tension
+            layer.translateBy(x: region.anchor.x, y: region.anchor.y)
+            layer.scaleBy(x: swell, y: swell)
+            layer.translateBy(x: -region.anchor.x, y: -region.anchor.y)
+            if !region.detail {
+                // A soft halo in the muscle's own colour.
+                layer.stroke(region.path, with: .color(fill.opacity(0.2 * tension)), style: StrokeStyle(lineWidth: 9, lineJoin: .round))
+                layer.stroke(region.path, with: .color(fill.opacity(0.3 * tension)), style: StrokeStyle(lineWidth: 5, lineJoin: .round))
+            }
+        }
+        let faded = selected != nil && region.muscle != selected
+        layer.fill(region.path, with: .color(faded ? fill.opacity(0.35) : fill))
+        // Light from the upper left: each muscle belly brighter in the middle and darker at its
+        // edges, so the body reads as rounded rather than flat cut-outs.
+        if !region.detail && !faded, let muscle = region.muscle {
+            layer.fill(region.path, with: Self.shading(region.bounds))
+            // Fine fibre lines in the direction the muscle runs, where they're big enough to see.
+            if scale >= 0.6, let fibres = Self.fibres(muscle, back: back, in: region.bounds) {
+                var clipped = layer
+                clipped.clip(to: region.path)
+                let lit = fill != untrained
+                clipped.stroke(fibres, with: .color(lit ? .white.opacity(0.13) : .black.opacity(0.05)), lineWidth: 0.5)
+            }
+        }
+        if tension > 0 {
+            // It brightens a little as it tightens, without drifting toward the next role's colour.
+            layer.fill(region.path, with: .color(.white.opacity(0.1 * tension)))
+        }
+        // At least 0.5 pt on screen so small figures keep the gaps between muscles. Lines between
+        // muscle heads are finer, and left out where they'd only add noise.
+        let width = region.detail
+            ? (scale >= 0.4 ? max(0.7, 0.3 / scale) : 0)
+            : max(1.5, 0.5 / scale)
+        if width > 0 {
+            layer.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: width, lineJoin: .round))
+        }
+    }
+
+    /// 0…effort over one cycle: a quick squeeze, a short hold, a slower release. Muscles working
+    /// less start a moment after the primary ones.
+    static func tension(at time: Double, effort: Double) -> Double {
+        guard effort > 0 else { return 0 }
+        let delay = (1 - effort) * 0.35
+        let cycles = (time - delay) / period
+        let phase = cycles - cycles.rounded(.down)
+        return effort * smooth(phase / 0.3) * (1 - smooth((phase - 0.5) / 0.4))
+    }
+
+    private static func smooth(_ value: Double) -> Double {
+        let t = min(max(value, 0), 1)
+        return t * t * (3 - 2 * t)
+    }
+
+    private static let shade = Gradient(stops: [
+        .init(color: .white.opacity(0.22), location: 0),
+        .init(color: .white.opacity(0), location: 0.55),
+        .init(color: .black.opacity(0.16), location: 1),
+    ])
+
+    private static let bodyShade = Gradient(stops: [
+        .init(color: .black.opacity(0.05), location: 0),
+        .init(color: .black.opacity(0), location: 0.5),
+        .init(color: .black.opacity(0.05), location: 1),
+    ])
+
+    private static func shading(_ rect: CGRect) -> GraphicsContext.Shading {
+        .radialGradient(
+            shade,
+            center: CGPoint(x: rect.minX + rect.width * 0.4, y: rect.minY + rect.height * 0.3),
+            startRadius: 0,
+            endRadius: max(rect.width, rect.height) * 0.8
+        )
+    }
+
+    /// Fibre direction per muscle in degrees from vertical; positive leans the top of the line
+    /// toward the outside of the body.
+    private static func fibreAngle(_ muscle: Muscle, back: Bool) -> Double {
+        switch muscle {
+        case .chest: -62
+        case .frontDelts: 18
+        case .sideDelts: 10
+        case .rearDelts: -15
+        case .traps: back ? 58 : 70
+        case .upperBack: -55
+        case .lats: 38
+        case .biceps, .triceps: 6
+        case .forearms: 8
+        case .abs, .lowerBack, .calves: 0
+        case .obliques: -38
+        case .quads: 8
+        case .hamstrings: 4
+        case .adductors: back ? -10 : -22
+        case .glutes: -48
+        }
+    }
+
+    /// Parallel lines across a muscle's bounding box at its fibre angle, to be clipped to the muscle.
+    private static func fibres(_ muscle: Muscle, back: Bool, in rect: CGRect) -> Path? {
+        // The traps on the back are one shape across both sides, so no single direction fits.
+        if muscle == .traps && back && abs(rect.midX - AnatomyShapes.width / 2) < 1 { return nil }
+        // Regions left of the centre line are the figure's other side, so the lean flips.
+        let outwardIsLeft = rect.midX < AnatomyShapes.width / 2
+        let radians = fibreAngle(muscle, back: back) * (outwardIsLeft ? -1 : 1) * .pi / 180
+        let direction = CGPoint(x: sin(radians), y: -cos(radians))
+        let normal = CGPoint(x: -direction.y, y: direction.x)
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let reach = hypot(rect.width, rect.height) / 2 + 2
+        var path = Path()
+        var offset = -reach
+        while offset <= reach {
+            let base = CGPoint(x: center.x + normal.x * offset, y: center.y + normal.y * offset)
+            path.move(to: CGPoint(x: base.x - direction.x * reach, y: base.y - direction.y * reach))
+            path.addLine(to: CGPoint(x: base.x + direction.x * reach, y: base.y + direction.y * reach))
+            offset += 2.6
+        }
+        return path
     }
 }
 

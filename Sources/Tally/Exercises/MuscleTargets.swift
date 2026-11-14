@@ -222,7 +222,8 @@ struct MuscleTargetsCard: View {
             primary: Set(exercise.primary),
             secondary: Set(exercise.secondary),
             tertiary: Set(exercise.tertiary),
-            labels: true
+            labels: true,
+            animated: true
         )
         .accessibilityElement()
         .accessibilityLabel("Body figure. \(MuscleSummaryText.spoken(exercise)).")
