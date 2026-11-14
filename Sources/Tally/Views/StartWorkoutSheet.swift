@@ -237,6 +237,8 @@ struct SettingsSheet: View {
 
                     ExportSettingsSection()
 
+                    PeptideSettingsSection()
+
                     AboutSection()
                 }
                 .padding(16)

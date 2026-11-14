@@ -46,6 +46,7 @@ All JSON in the app's Documents folder unless noted. Every store loads at init a
 | `body.json` | `BodyStore` | measurements (one `BodyEntry` per day) + photo metadata; photos are JPEGs (2048 px, file protection on) in `Documents/ProgressPhotos`, never in the photo library |
 | `programs.json` | `ProgramStore` | strength programs and progress |
 | `coach.json`, `coach-chat.json` | `CoachStore` / chat | saved feedback, chat transcripts |
+| `peptides.json` | `PeptideStore` (created only while the tracker is open) | peptide profiles + log; deliberately **not** in `BackupStore.documentFiles`, widgets, coach or `CoachToolbox`; own JSON export/import |
 | `reps.json`, `activity.json`, `food-widget.json` | App Group container (`SharedStorage`) | quick-rep counters and snapshots the widgets read |
 | `exercises.json` + GIF/photo cache | `ExerciseMediaStore` (Caches-like folder) | Workout API catalogue and downloaded demos, fetched once |
 
@@ -82,6 +83,8 @@ UserDefaults settings (those that belong to the user are in `BackupStore.setting
 **Body** (`Body/*`; TallyCore `Body`): measurements (body fat and waist also read from Health), progress photos front/side/back, side-by-side and slider compare. Photos are not in the iCloud backup.
 
 **Health** (`Health/*`): HealthKit read (steps, energy, exercise minutes, sleep, weight, body fat, waist, workouts) and write (finished workouts); imports other apps' / Watch workouts, merges overlapping sessions (`TallyCore/Overlap`, `HealthLinking`). Health access is re-granted on a new phone.
+
+**Peptides** (`Peptides/*`; TallyCore `Peptides`): private tracker opened only from Settings › Private (full-screen cover, Hide button closes it and Settings). `Reconstitution` maths for U-100 syringes (mg/mL = vial mg ÷ water mL; mcg per unit = mcg/mL ÷ 100; units = target mcg ÷ mcg per unit, rounded to the nearest 1 or 0.5 unit mark), `SyringeGauge` (Canvas), schedules, site rotation, vial countdown, 4-digit PIN (salted SHA-256 in Keychain account `peptides.pin`), re-locks on background. Ships no suggested amounts; keep it that way and keep it isolated from the rest of the app.
 
 **Tools and extras**: `Tools/` plate calculator, 1RM calculator, stopwatch/countdown/intervals/EMOM; `QuickCount/` rep counter (Outdoor Office style, shared with the Reps widget); `Share/` story-style share cards (PNG), export to CSV/text/JSON (`TallyCore/Export`); `About/Changelog.swift`; Edit Home sheet (`HomeLayout`, hide/reorder cards); Home is `Views/HomeTab` (greeting, week card with weekly goal, tool tiles, Today and Training sections).
 
