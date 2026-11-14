@@ -37,6 +37,15 @@ struct ExerciseDetailView: View {
         /// The session's value for this chart, or nil when the session has nothing to plot
         /// (e.g. a run logged with time only has no distance or pace).
         func value(_ session: ExerciseSession) -> Double? {
+            guard let raw = kilograms(session) else { return nil }
+            switch self {
+            case .heaviest, .oneRepMax, .volume, .assistance: return Units.weight.fromKg(raw)
+            default: return raw
+            }
+        }
+
+        /// The value as stored: weights in kilograms.
+        private func kilograms(_ session: ExerciseSession) -> Double? {
             let sets = session.sets.filter { $0.type != .warmup }
             switch self {
             case .heaviest:
@@ -67,7 +76,7 @@ struct ExerciseDetailView: View {
 
         var unit: String {
             switch self {
-            case .heaviest, .oneRepMax, .volume, .assistance: "kg"
+            case .heaviest, .oneRepMax, .volume, .assistance: Fmt.unit
             case .reps: "reps"
             case .time: ""
             case .distance: "km"
@@ -182,6 +191,7 @@ struct ExerciseDetailView: View {
                     .card()
 
                     if exercise.kind == .weightReps {
+                        ForecastCard(exercise: exercise)
                         RepMaxCard(sessions: sessions)
                     }
 
@@ -256,7 +266,7 @@ private struct RepMaxCard: View {
                                 .font(Typo.body(12.5))
                                 .foregroundStyle(Theme.ink3)
                             Spacer()
-                            Text("\(Fmt.weight(entry.weight)) kg")
+                            Text(Fmt.mass(entry.weight))
                                 .font(Typo.display(20))
                                 .monospacedDigit()
                         }

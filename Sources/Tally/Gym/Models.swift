@@ -181,10 +181,12 @@ struct GymData: Codable, Sendable {
     var activeWorkout: Workout?
     /// Notes pinned to an exercise (seat height, grip cues…), shown every time it's done.
     var exerciseNotes: [String: String]?
+    /// Cardio logged by hand (runs, rides…), apart from lifting workouts.
+    var cardio: [CardioSession]?
 
     // Plans were called routines in earlier versions; keep the stored key.
     enum CodingKeys: String, CodingKey {
-        case exercises, workouts, activeWorkout, exerciseNotes
+        case exercises, workouts, activeWorkout, exerciseNotes, cardio
         case plans = "routines"
     }
 }

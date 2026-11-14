@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 
@@ -91,7 +92,7 @@ struct SetHeader: View {
             if showsPrevious { Text("Previous").frame(maxWidth: .infinity) }
             switch kind {
             case .weightReps, .weightedBodyweight, .assistedBodyweight:
-                Text(kind == .weightedBodyweight ? "+Kg" : kind == .assistedBodyweight ? "−Kg" : "Kg").frame(width: 66)
+                Text((kind == .weightedBodyweight ? "+" : kind == .assistedBodyweight ? "−" : "") + Fmt.unit.capitalized).frame(width: 66)
                 Text("Reps").frame(width: 58)
             case .repsOnly:
                 Text("Reps").frame(width: 76)
@@ -179,12 +180,12 @@ struct SetRow: View {
 
             switch kind {
             case .weightReps, .weightedBodyweight:
-                NumberField(value: $set.weight, placeholder: previous?.weight.map(Fmt.weight) ?? "0", decimal: true, step: weightStep, base: previous?.weight)
+                NumberField(value: shownWeight, placeholder: previous?.weight.map(Fmt.load) ?? "0", decimal: true, step: unit.fromKg(weightStep), base: previous?.weight.map(unit.fromKg))
                     .frame(width: 66)
                 NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0", step: 1, base: previous?.reps)
                     .frame(width: 58)
             case .assistedBodyweight:
-                NumberField(value: $set.assistance, placeholder: previous?.assistance.map(Fmt.weight) ?? "0", decimal: true, step: weightStep, base: previous?.assistance)
+                NumberField(value: shownAssistance, placeholder: previous?.assistance.map(Fmt.load) ?? "0", decimal: true, step: unit.fromKg(weightStep), base: previous?.assistance.map(unit.fromKg))
                     .frame(width: 66)
                 NumberField(value: $set.reps, placeholder: previous?.reps.map(String.init) ?? "0", step: 1, base: previous?.reps)
                     .frame(width: 58)
@@ -238,6 +239,17 @@ struct SetRow: View {
         case .drop: Theme.accent
         case .failure: Theme.danger
         }
+    }
+
+    private var unit: WeightUnit { Units.weight }
+
+    /// Weight is typed in the chosen unit and stored in kilograms.
+    private var shownWeight: Binding<Double?> {
+        Binding(get: { set.weight.map { Units.weight.fromKg($0) } }, set: { set.weight = $0.map { Units.weight.toKg($0) } })
+    }
+
+    private var shownAssistance: Binding<Double?> {
+        Binding(get: { set.assistance.map { Units.weight.fromKg($0) } }, set: { set.assistance = $0.map { Units.weight.toKg($0) } })
     }
 
     /// Distance is typed in km and stored in metres.

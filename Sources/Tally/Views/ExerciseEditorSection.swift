@@ -272,7 +272,7 @@ struct LastTimeRow: View {
 
     private func compact(_ set: WorkoutSet) -> String {
         switch kind {
-        case .weightReps: "\(Fmt.weight(set.weight ?? 0))×\(set.reps ?? 0)"
+        case .weightReps: "\(Fmt.load(set.weight ?? 0))×\(set.reps ?? 0)"
         case .repsOnly: "\(set.reps ?? 0)"
         case .duration: Fmt.seconds(set.seconds ?? 0)
         case .weightedBodyweight, .assistedBodyweight, .distanceDuration: Fmt.set(set, kind: kind)
@@ -299,7 +299,7 @@ struct LastTimeRow: View {
                             .frame(width: 30, height: 30)
                             .background(Theme.card, in: .circle)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Today: \(Fmt.weight(suggestion.weight)) kg × \(suggestion.reps)")
+                            Text("Today: \(Fmt.mass(suggestion.weight)) × \(suggestion.reps)")
                                 .font(Typo.body(14, .bold))
                                 .foregroundStyle(Theme.ink)
                             Text(suggestion.reason)
@@ -319,7 +319,7 @@ struct LastTimeRow: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Use \(Fmt.weight(suggestion.weight)) kilos for \(suggestion.reps) reps. \(suggestion.reason)")
+                .accessibilityLabel("Use \(Fmt.load(suggestion.weight)) \(Units.weight == .kg ? "kilos" : "pounds") for \(suggestion.reps) reps. \(suggestion.reason)")
             }
         }
     }

@@ -223,9 +223,13 @@ struct SettingsSheet: View {
                         .background(Theme.line, in: .rect(cornerRadius: 15))
                     }
 
+                    UnitsSettingsSection()
+
                     TrainingSettingsSection()
 
                     RestSettingsSection()
+
+                    ReminderSettingsSection()
 
                     HealthSettingsSection()
 
@@ -236,6 +240,8 @@ struct SettingsSheet: View {
                     BackupSettingsSection()
 
                     ExportSettingsSection()
+
+                    ShortcutsSettingsSection()
 
                     PeptideSettingsSection()
 
@@ -295,7 +301,12 @@ struct TrainingSettingsSection: View {
     @AppStorage("progression.enabled") private var suggestions = true
     @AppStorage("progression.step") private var step = 0.0
 
-    private static let steps: [Double] = [0, 0.5, 1, 1.25, 2, 2.5, 5]
+    /// Jumps offered, in the chosen unit; 0 = by equipment. Stored in kilograms.
+    private var steps: [Double] {
+        let unit = Units.weight
+        let values: [Double] = unit == .kg ? [0, 0.5, 1, 1.25, 2, 2.5, 5] : [0, 1, 2.5, 5, 10]
+        return values.map(unit.toKg)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -327,8 +338,8 @@ struct TrainingSettingsSection: View {
                         Text("Weight step").font(Typo.body(15, .semibold))
                         Spacer()
                         Picker("Weight step", selection: $step) {
-                            ForEach(Self.steps, id: \.self) { value in
-                                Text(value == 0 ? "By equipment" : "\(Fmt.weight(value)) kg").tag(value)
+                            ForEach(steps, id: \.self) { value in
+                                Text(value == 0 ? "By equipment" : Fmt.mass(value)).tag(value)
                             }
                         }
                         .pickerStyle(.menu)

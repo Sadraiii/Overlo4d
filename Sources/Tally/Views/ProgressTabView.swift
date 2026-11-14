@@ -215,10 +215,10 @@ struct ProgressOverview: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Volume per week").display(16)
                     Spacer()
-                    Text("kg").font(Typo.body(12.5)).foregroundStyle(Theme.ink3)
+                    Text(Fmt.unit).font(Typo.body(12.5)).foregroundStyle(Theme.ink3)
                 }
                 Chart(weeks) { week in
-                    BarMark(x: .value("Week", week.week, unit: .weekOfYear), y: .value("Volume", week.volume))
+                    BarMark(x: .value("Week", week.week, unit: .weekOfYear), y: .value("Volume", Units.weight.fromKg(week.volume)))
                         .foregroundStyle(Theme.accent)
                         .clipShape(.rect(cornerRadius: 5))
                 }

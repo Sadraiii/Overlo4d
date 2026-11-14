@@ -62,7 +62,7 @@ extension ShareModel {
         var stats: [Stat] = []
         let hero: Stat
         if workout.volume > 0 {
-            hero = Stat(label: "Volume", value: Int(workout.volume.rounded()).formatted(), unit: "kg")
+            hero = Stat(label: "Volume", value: Int(Units.weight.fromKg(workout.volume).rounded()).formatted(), unit: Fmt.unit)
             stats.append(duration(workout.duration))
         } else {
             hero = duration(workout.duration)
@@ -124,7 +124,7 @@ extension ShareModel {
             title: "Training week",
             hero: Stat(label: "Workouts", value: "\(workouts.count)"),
             stats: [
-                Stat(label: "Volume", value: Int(workouts.reduce(0) { $0 + $1.volume }.rounded()).formatted(), unit: "kg"),
+                Stat(label: "Volume", value: Int(Units.weight.fromKg(workouts.reduce(0) { $0 + $1.volume }).rounded()).formatted(), unit: Fmt.unit),
                 duration(workouts.reduce(0) { $0 + $1.duration }),
                 Stat(label: "Sets", value: "\(workouts.reduce(0) { $0 + $1.completedSets.count })"),
             ],

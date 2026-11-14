@@ -76,6 +76,10 @@ final class HealthManager {
         HKQuantityType(.bodyMass),
         HKQuantityType(.bodyFatPercentage),
         HKQuantityType(.waistCircumference),
+        // Distance of cardio logged by hand.
+        HKQuantityType(.distanceWalkingRunning),
+        HKQuantityType(.distanceCycling),
+        HKQuantityType(.distanceSwimming),
         HKQuantityType(.dietaryEnergyConsumed),
         HKQuantityType(.dietaryCarbohydrates),
         HKQuantityType(.dietaryProtein),
@@ -398,6 +402,85 @@ final class HealthManager {
                 HKMetadataKeyWorkoutBrandName: "Overlo4d",
             ])
             try await builder.endCollection(at: end)
+            return try await builder.finishWorkout()?.uuid
+        } catch {
+            builder.discardWorkout()
+            return nil
+        }
+    }
+}
+
+// MARK: Cardio
+
+extension CardioActivity {
+    var healthType: HKWorkoutActivityType {
+        switch self {
+        case .run: .running
+        case .walk: .walking
+        case .cycle: .cycling
+        case .row: .rowing
+        case .swim: .swimming
+        case .elliptical: .elliptical
+        case .stairs: .stairClimbing
+        case .hike: .hiking
+        case .hiit: .highIntensityIntervalTraining
+        case .jumpRope: .jumpRope
+        case .other: .mixedCardio
+        }
+    }
+
+    /// The Health distance type that goes with the activity, if there is one.
+    var healthDistance: HKQuantityTypeIdentifier? {
+        switch self {
+        case .run, .walk, .hike, .elliptical: .distanceWalkingRunning
+        case .cycle: .distanceCycling
+        case .swim: .distanceSwimming
+        default: nil
+        }
+    }
+}
+
+extension HealthManager {
+    /// Saves a cardio session logged by hand to Health, with its distance and energy. Returns the
+    /// saved workout's UUID.
+    func save(_ session: CardioSession) async -> UUID? {
+        guard isAvailable, isConnected, savesWorkouts, session.seconds > 0 else { return nil }
+        let bodyMass = weights.last?.kg
+        return await Self.saveCardio(session, bodyMass: bodyMass, store: store)
+    }
+
+    private nonisolated static func saveCardio(_ session: CardioSession, bodyMass: Double?, store: HKHealthStore) async -> UUID? {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = session.activity.healthType
+        let builder = HKWorkoutBuilder(healthStore: store, configuration: configuration, device: .local())
+        do {
+            try await builder.beginCollection(at: session.start)
+            // Like strength workouts: only add energy when nothing else measured it.
+            let measured = await sum(.activeEnergyBurned, unit: .kilocalorie(), from: session.start, to: session.end, store: store) ?? 0
+            if measured < 1, let kcal = session.energy(bodyMass: bodyMass), kcal > 0 {
+                let sample = HKQuantitySample(
+                    type: HKQuantityType(.activeEnergyBurned),
+                    quantity: HKQuantity(unit: .kilocalorie(), doubleValue: kcal),
+                    start: session.start,
+                    end: session.end
+                )
+                try await builder.addSamples([sample])
+            }
+            if let meters = session.meters, meters > 0, let type = session.activity.healthDistance {
+                let sample = HKQuantitySample(
+                    type: HKQuantityType(type),
+                    quantity: HKQuantity(unit: .meter(), doubleValue: meters),
+                    start: session.start,
+                    end: session.end
+                )
+                // Without permission for distance the workout is still worth saving.
+                try? await builder.addSamples([sample])
+            }
+            try await builder.addMetadata([
+                HKMetadataKeyExternalUUID: session.id.uuidString,
+                HKMetadataKeyWorkoutBrandName: "Overlo4d",
+            ])
+            try await builder.endCollection(at: session.end)
             return try await builder.finishWorkout()?.uuid
         } catch {
             builder.discardWorkout()

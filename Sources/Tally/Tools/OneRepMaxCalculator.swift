@@ -7,9 +7,11 @@ struct OneRepMaxSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var weight: Double?
     @State private var reps: Int?
+    private let unit = Units.weight
 
+    /// `weight` is in the chosen unit; the maths is the same in kilograms and pounds.
     init(weight: Double? = nil, reps: Int? = nil) {
-        _weight = State(initialValue: weight ?? 100)
+        _weight = State(initialValue: weight ?? (Units.weight == .kg ? 100 : 225))
         _reps = State(initialValue: reps ?? 5)
     }
 
@@ -23,7 +25,7 @@ struct OneRepMaxSheet: View {
                             Text("Weight").eyebrow(11.5)
                             HStack(alignment: .lastTextBaseline, spacing: 6) {
                                 NumberField(value: $weight, placeholder: "100", decimal: true)
-                                Text("kg").eyebrow(13)
+                                Text(unit.label).eyebrow(13)
                             }
                         }
                         VStack(alignment: .leading, spacing: 8) {
@@ -39,7 +41,7 @@ struct OneRepMaxSheet: View {
                                 .font(Typo.display(64))
                                 .monospacedDigit()
                                 .contentTransition(.numericText())
-                            Text("kg").eyebrow(13)
+                            Text(unit.label).eyebrow(13)
                         }
                         if (reps ?? 0) > 12 {
                             Text("Estimates get less reliable above 12 reps.")
@@ -55,7 +57,7 @@ struct OneRepMaxSheet: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Percentages").eyebrow(11.5)
                             VStack(spacing: 0) {
-                                ForEach(Array(OneRepMax.table(oneRepMax: oneRepMax).enumerated()), id: \.offset) { index, row in
+                                ForEach(Array(OneRepMax.table(oneRepMax: oneRepMax, step: unit.loadStep).enumerated()), id: \.offset) { index, row in
                                     if index > 0 { Rectangle().fill(Theme.line).frame(height: 1) }
                                     HStack {
                                         Text("\(row.percent)%")
@@ -65,7 +67,7 @@ struct OneRepMaxSheet: View {
                                             .font(Typo.body(13))
                                             .foregroundStyle(Theme.ink3)
                                         Spacer()
-                                        Text("\(Fmt.weight(row.weight)) kg")
+                                        Text("\(Fmt.weight(row.weight)) \(unit.label)")
                                             .font(Typo.display(22))
                                             .monospacedDigit()
                                     }
@@ -74,7 +76,7 @@ struct OneRepMaxSheet: View {
                                 }
                             }
                             .card(padding: 0, cornerRadius: 18)
-                            Text("Epley formula, rounded to 2.5 kg.")
+                            Text("Epley formula, rounded to \(Fmt.weight(unit.loadStep)) \(unit.label).")
                                 .font(Typo.body(12.5))
                                 .foregroundStyle(Theme.ink3)
                         }

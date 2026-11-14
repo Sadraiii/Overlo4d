@@ -32,6 +32,12 @@ final class GymStore {
     private(set) var healthWorkouts: [HealthWorkout] = []
     /// Notes pinned to exercises, by exercise ID.
     private(set) var exerciseNotes: [UUID: String]
+    /// Cardio sessions logged by hand, newest first.
+    var cardio: [CardioSession]
+    /// When the running (or last) deload week was started.
+    var deloadStart: Date? {
+        didSet { UserDefaults.standard.set(deloadStart?.timeIntervalSince1970 ?? 0, forKey: "deload.start") }
+    }
 
     private let fileURL = URL.documentsDirectory.appending(path: "gym.json")
     /// A write waiting for typing to settle (see `saveSoon`).
@@ -54,6 +60,9 @@ final class GymStore {
         plans = data.plans
         activeWorkout = data.activeWorkout
         exerciseNotes = Dictionary(uniqueKeysWithValues: (data.exerciseNotes ?? [:]).compactMap { key, value in UUID(uuidString: key).map { ($0, value) } })
+        cardio = (data.cardio ?? []).sorted { $0.start > $1.start }
+        let deload = UserDefaults.standard.double(forKey: "deload.start")
+        deloadStart = deload > 0 ? Date(timeIntervalSince1970: deload) : nil
         let migrated = migrateAssistedSets()
         if exercises != data.exercises || migrated { save() }
         recomputeRecords()
@@ -68,7 +77,7 @@ final class GymStore {
     func save() {
         pendingSave?.cancel()
         pendingSave = nil
-        let data = GymData(exercises: exercises, workouts: workouts, plans: plans, activeWorkout: activeWorkout, exerciseNotes: exerciseNotes.isEmpty ? nil : Dictionary(uniqueKeysWithValues: exerciseNotes.map { ($0.key.uuidString, $0.value) }))
+        let data = GymData(exercises: exercises, workouts: workouts, plans: plans, activeWorkout: activeWorkout, exerciseNotes: exerciseNotes.isEmpty ? nil : Dictionary(uniqueKeysWithValues: exerciseNotes.map { ($0.key.uuidString, $0.value) }), cardio: cardio.isEmpty ? nil : cardio)
         guard let encoded = try? JSONEncoder().encode(data) else { return }
         try? encoded.write(to: fileURL, options: .atomic)
     }
@@ -177,7 +186,7 @@ final class GymStore {
         let exercises = templates.map { template in
             WorkoutExercise(
                 exerciseID: template.exerciseID,
-                sets: template.sets.map { $0.copyForNewSet() },
+                sets: deloaded(template.sets).map { $0.copyForNewSet() },
                 restSeconds: restSeconds ?? template.restSeconds,
                 notes: template.notes,
                 supersetID: template.supersetID
@@ -282,6 +291,16 @@ final class GymStore {
         writeSnapshot()
     }
 
+    /// Puts a deleted workout back (Undo in History).
+    func restoreWorkout(_ workout: Workout) {
+        guard !workouts.contains(where: { $0.id == workout.id }) else { return }
+        workouts.append(workout)
+        workouts.sort { $0.startedAt > $1.startedAt }
+        recomputeRecords()
+        save()
+        writeSnapshot()
+    }
+
     func updateWorkout(_ workout: Workout) {
         guard let index = workouts.firstIndex(where: { $0.id == workout.id }) else { return }
         workouts[index] = workout
@@ -308,7 +327,7 @@ final class GymStore {
     func progressionStep(for exerciseID: UUID, weight: Double) -> Double {
         let chosen = UserDefaults.standard.double(forKey: "progression.step")
         if chosen > 0 { return chosen }
-        return Progression.step(equipment: exercise(exerciseID)?.equipment?.rawValue, weight: weight)
+        return Progression.step(equipment: exercise(exerciseID)?.equipment?.rawValue, weight: weight, unit: Units.weight)
     }
 
     /// What to load next time, from the last sessions of the exercise: more weight once every set
@@ -323,7 +342,16 @@ final class GymStore {
             if history.count == 3 { break }
         }
         guard let top = history.first?.map(\.weight).max() else { return nil }
-        return Progression.suggest(sessions: history, targetReps: targetReps, step: progressionStep(for: exerciseID, weight: top))
+        let step = progressionStep(for: exerciseID, weight: top)
+        if isDeloading {
+            // During a deload week the suggestion is lighter on purpose, whatever last time looked like.
+            guard let reps = targetReps ?? history.first?.first?.reps, reps > 0 else { return nil }
+            return Progression.Suggestion(
+                weight: Deload.weight(top, step: step), reps: reps, action: .deload,
+                reason: "Deload week: about 10% lighter, and stop well short of failure."
+            )
+        }
+        return Progression.suggest(sessions: history, targetReps: targetReps, step: step, unit: Units.weight)
     }
 
     /// Weight to try next time, for callers that only need the number.
@@ -409,7 +437,7 @@ final class GymStore {
     // MARK: Apple Health
 
     /// Start dates of Tally and Health workouts, for the calendar, week streak and widget.
-    var activityDates: [Date] { workouts.map(\.startedAt) + healthWorkouts.map(\.start) }
+    var activityDates: [Date] { workouts.map(\.startedAt) + healthWorkouts.map(\.start) + cardio.map(\.start) }
 
     /// Takes the latest workouts from Health. Links Tally workouts to the strength sessions that
     /// overlap them, and keeps the rest to show in History. Returns the IDs of Tally's own Health
@@ -576,6 +604,7 @@ final class GymStore {
             weekOf: date,
             sessions: sessionSummaries,
             activities: healthWorkouts.map { ActivitySummary(start: $0.start, duration: $0.duration, energy: $0.energy) }
+                + cardio.map { ActivitySummary(start: $0.start, duration: $0.duration, energy: $0.kcal) }
         )
     }
 
@@ -688,6 +717,20 @@ final class GymStore {
             weekStreak: weekStreak,
             lastWorkout: last
         )
+    }
+
+    /// Adds workouts read from another app's export, with the exercises they need.
+    func addImported(workouts added: [Workout], exercises newExercises: [ExerciseDef]) {
+        exercises += newExercises
+        workouts = (workouts + added).sorted { $0.startedAt > $1.startedAt }
+        recomputeRecords()
+        save()
+        writeSnapshot()
+    }
+
+    /// Redraws the Training widget after a change outside lifting workouts.
+    func refreshWidgets() {
+        writeSnapshot()
     }
 
     /// Shares a summary with the Training widget.

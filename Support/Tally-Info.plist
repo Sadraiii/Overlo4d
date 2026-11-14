@@ -5,9 +5,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>Overlo4d</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.11</string>
+	<string>0.12</string>
 	<key>CFBundleVersion</key>
-	<string>11</string>
+	<string>12</string>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
@@ -29,12 +29,39 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>tally://start</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Start workout</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>play.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>tally://cardio</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Log cardio</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>figure.run</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>tally://reps</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Rep counter</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>number</string>
+		</dict>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Overlo4d uses the camera to scan food barcodes and take progress photos.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Overlo4d shows your steps, active energy, heart rate, body weight, body fat, waist and sleep next to your training.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Overlo4d saves finished workouts, food, weight, body fat and waist to Apple Health.</string>
+	<string>Overlo4d saves finished workouts, cardio with its distance, food, weight, body fat and waist to Apple Health.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Overlo4d saves share images to your photo library.</string>
 	<key>NSSupportsLiveActivities</key>

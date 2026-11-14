@@ -82,7 +82,7 @@ final class ProgramStore {
 
     /// Starts the day as a workout with the weights filled in.
     func start(_ program: StrengthProgram, week: Int, day: Int, gym: GymStore) {
-        let items = program.items(week: week, day: day, logs: logs(for: program, gym: gym))
+        let items = program.items(week: week, day: day, logs: logs(for: program, gym: gym), step: Units.loadStepKg)
         let exercises = items.map { item in
             let def = gym.programExercise(named: item.exercise)
             let suggested = item.isMainLift ? nil : gym.suggestedWeight(for: def.id, targetReps: item.sets.first?.reps)?.weight

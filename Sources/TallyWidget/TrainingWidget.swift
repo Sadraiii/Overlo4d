@@ -183,7 +183,7 @@ struct TrainingWidgetView: View {
     }
 
     private func details(of last: ActivitySnapshot.LastWorkout, compact: Bool) -> String {
-        var parts = ["\(Int(last.volume.rounded()).formatted()) kg", "\(last.sets) sets"]
+        var parts = ["\(Int(SharedUnit.value(last.volume).rounded()).formatted()) \(SharedUnit.label)", "\(last.sets) sets"]
         if !compact {
             if last.duration >= 60 { parts.append("\(Int(last.duration / 60)) min") }
             if last.records > 0 { parts.append(last.records == 1 ? "1 PR" : "\(last.records) PRs") }

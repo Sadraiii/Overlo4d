@@ -12,7 +12,10 @@ struct MonthCalendar: View {
         let interval = calendar.dateInterval(of: .month, for: month)
         let workouts = gym.workouts.filter { interval?.contains($0.startedAt) ?? false }
         let trained = Set(workouts.map { calendar.startOfDay(for: $0.startedAt) })
-        let watchDays = Set(gym.healthWorkouts.filter { interval?.contains($0.start) ?? false }.map { calendar.startOfDay(for: $0.start) })
+        let watchDays = Set(
+            gym.healthWorkouts.filter { interval?.contains($0.start) ?? false }.map { calendar.startOfDay(for: $0.start) }
+                + gym.cardio.filter { interval?.contains($0.start) ?? false }.map { calendar.startOfDay(for: $0.start) }
+        )
         let days = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
         let leading = ActivitySnapshot.weekdayIndex(of: month)
         let isCurrent = calendar.isDate(month, equalTo: .now, toGranularity: .month)

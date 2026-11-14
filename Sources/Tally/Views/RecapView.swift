@@ -60,6 +60,10 @@ struct RecapView: View {
                         .display(40)
                 }
 
+                if let report = gym.weeklyReport(weekOf: weekStart) {
+                    CoachReportCard(report: report)
+                }
+
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
                     RecapTile(label: "Workouts", value: "\(recap.totals.workouts)",
                               change: Double(recap.totals.workouts - recap.previous.workouts)) { "\(Int($0))" }
@@ -96,7 +100,7 @@ struct RecapView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Most improved").display(16)
                         ExerciseLabel(exercise: def)
-                        Text("Est. 1RM \(Fmt.weight(improvement.before)) → \(Fmt.weight(improvement.after)) kg (+\(Fmt.weight(improvement.change)) kg)")
+                        Text("Est. 1RM \(Fmt.load(improvement.before)) → \(Fmt.mass(improvement.after)) (+\(Fmt.mass(improvement.change)))")
                             .font(Typo.body(14, .semibold))
                             .foregroundStyle(Theme.good)
                     }
@@ -206,6 +210,13 @@ struct LastWeekCard: View {
                             Text("\(Fmt.duration(recap.totals.duration)) · \(Fmt.volume(recap.totals.volume))")
                                 .font(Typo.body(13))
                                 .foregroundStyle(Theme.ink2)
+                            if let report = gym.weeklyReport(weekOf: lastWeek) {
+                                Label("\(report.headline) · \(report.score)/100. Read your report", systemImage: "sparkles")
+                                    .font(Typo.body(12.5, .bold))
+                                    .foregroundStyle(Theme.accent)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
                         }
                         Spacer(minLength: 0)
                         AnatomyFigure(weeklySets: gym.weeklyMuscleSets(in: recap.week))

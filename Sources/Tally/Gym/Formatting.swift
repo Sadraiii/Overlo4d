@@ -1,13 +1,41 @@
 import Foundation
 import TallyCore
+import TallyKit
+
+/// The weight unit chosen in Settings › Units. Weights are stored in kilograms and converted for
+/// display and typing.
+enum Units {
+    static let key = SharedUnit.storageKey
+
+    static var weight: WeightUnit {
+        WeightUnit(rawValue: SharedStorage.defaults.string(forKey: key) ?? "") ?? .kg
+    }
+
+    /// The smallest usual jump (2.5 kg or 5 lb), in kilograms.
+    static var loadStepKg: Double { weight.toKg(weight.loadStep) }
+}
 
 enum Fmt {
-    static func weight(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(0...2)))
+    /// A plain number with up to two decimals. For a weight in kilograms use `load` or `mass`.
+    static func weight(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    /// "kg" or "lb".
+    static var unit: String { Units.weight.label }
+
+    /// Kilograms as a number in the chosen unit: "82.5" or "181.88".
+    static func load(_ kg: Double) -> String {
+        weight(Units.weight.fromKg(kg))
+    }
+
+    /// Kilograms with the chosen unit: "82.5 kg" or "181.88 lb".
+    static func mass(_ kg: Double) -> String {
+        "\(load(kg)) \(unit)"
     }
 
     static func volume(_ kg: Double) -> String {
-        "\(Int(kg.rounded()).formatted()) kg"
+        "\(Int(Units.weight.fromKg(kg).rounded()).formatted()) \(unit)"
     }
 
     static func seconds(_ total: Int) -> String {
@@ -27,15 +55,15 @@ enum Fmt {
     static func set(_ set: WorkoutSet, kind: ExerciseKind) -> String {
         switch kind {
         case .weightReps:
-            "\(weight(set.weight ?? 0)) kg × \(set.reps ?? 0)"
+            "\(mass(set.weight ?? 0)) × \(set.reps ?? 0)"
         case .repsOnly:
             "\(set.reps ?? 0) reps"
         case .duration:
             seconds(set.seconds ?? 0)
         case .weightedBodyweight:
-            (set.weight ?? 0) > 0 ? "+\(weight(set.weight ?? 0)) kg × \(set.reps ?? 0)" : "\(set.reps ?? 0) reps"
+            (set.weight ?? 0) > 0 ? "+\(mass(set.weight ?? 0)) × \(set.reps ?? 0)" : "\(set.reps ?? 0) reps"
         case .assistedBodyweight:
-            (set.assistance ?? 0) > 0 ? "−\(weight(set.assistance ?? 0)) kg × \(set.reps ?? 0)" : "\(set.reps ?? 0) reps"
+            (set.assistance ?? 0) > 0 ? "−\(mass(set.assistance ?? 0)) × \(set.reps ?? 0)" : "\(set.reps ?? 0) reps"
         case .distanceDuration:
             distanceSet(set)
         }
@@ -52,12 +80,12 @@ enum Fmt {
 
     static func record(_ value: Double, kind: RecordKind, exercise: ExerciseKind = .weightReps) -> String {
         switch kind {
-        case .heaviestWeight: exercise == .weightedBodyweight ? "+\(weight(value)) kg" : "\(weight(value)) kg"
-        case .bestOneRepMax: "\(weight(value)) kg"
+        case .heaviestWeight: exercise == .weightedBodyweight ? "+\(mass(value))" : mass(value)
+        case .bestOneRepMax: mass(value)
         case .bestSetVolume: volume(value)
         case .mostReps: "\(Int(value)) reps"
         case .longestDuration: seconds(Int(value))
-        case .leastAssistance: value > 0 ? "−\(weight(value)) kg" : "None"
+        case .leastAssistance: value > 0 ? "−\(mass(value))" : "None"
         case .longestDistance: Pace.distance(value)
         case .bestPace: Pace.format(secondsPerKm: value)
         }

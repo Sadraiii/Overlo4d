@@ -20,6 +20,19 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.12", date: DateComponents(year: 2026, month: 11, day: 14), changes: [
+            "Kilograms or pounds: pick your unit in Settings › Units. Every weight, the suggestions, the plate calculator (45 lb bar and plates), the 1RM table and programs follow it. Your log stays as it is.",
+            "Cardio: log a run, walk, ride, row, swim and more from Home or History with time, distance, effort and a note. Pace or speed and calories are worked out for you, and sessions count towards your week and streak.",
+            "Cardio is saved to Apple Health as the right kind of workout, with its distance. Health asks once for permission to write distance.",
+            "Undo in History: swipe a workout or cardio session away and you get a few seconds to put it back.",
+            "Prediction on every lift: where your estimated 1RM is heading in 4 and 12 weeks, when you reach the next round number, and which sets would beat your record today.",
+            "Deload weeks: Home tells you when one is due, after many hard weeks in a row, lifts slipping back or very high effort. Start it and for seven days workouts begin with fewer sets and suggest about 10% less weight.",
+            "Coach report: each weekly recap opens with a score, what went well, what to keep an eye on and up to three things to do next week. It needs no AI key and works offline.",
+            "Reminders in Settings: choose your training days and a time, get a nudge after a break of your choosing, and a note when the weekly report is ready. Today's reminder is skipped once you have trained.",
+            "Import from Strong, Hevy or an Overlo4d spreadsheet in Settings › Your data. You see what will be added first, workouts already in your log are skipped, and unknown exercises become your own.",
+            "Siri and Shortcuts: links in Settings start a workout, a plan by name, the cardio log, the rep counter and more from the Shortcuts app, the Action Button or by voice.",
+            "Hold the app icon on the Home Screen for Start workout, Log cardio and Rep counter.",
+        ]),
         ChangelogEntry(version: "0.11", date: DateComponents(year: 2026, month: 11, day: 12), changes: [
             "Progression: each exercise shows what to aim for today from your last sessions. More weight once every set hit its reps, the same weight while reps are missing, one more go after a max-effort set, and 10% lighter after three stuck sessions. Tap Use to fill the sets.",
             "The step follows the equipment (2.5 kg on bars, 2 kg on dumbbells, 5 kg on heavy machines), or pick your own in Settings › Training, where suggestions can also be switched off.",

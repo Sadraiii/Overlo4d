@@ -323,6 +323,7 @@ struct ExportSheet: View {
 /// Settings row that opens the export screen.
 struct ExportSettingsSection: View {
     @State private var exporting = false
+    @State private var importing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -351,6 +352,31 @@ struct ExportSettingsSection: View {
             }
             .buttonStyle(.plain)
             .card(padding: 0, cornerRadius: 18)
+            Button {
+                importing = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Import workouts").font(Typo.body(15, .semibold))
+                        Text("From Strong, Hevy or a CSV export")
+                            .font(Typo.body(13))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.ink3)
+                }
+                .foregroundStyle(Theme.ink)
+                .padding(14)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .card(padding: 0, cornerRadius: 18)
+            .sheet(isPresented: $importing) { ImportSheet() }
         }
         .sheet(isPresented: $exporting) { ExportSheet() }
     }

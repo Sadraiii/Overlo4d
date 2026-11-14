@@ -119,7 +119,7 @@ private struct VolumeTrend: View {
                     .foregroundStyle(change > 0 ? Theme.good : change < 0 ? Theme.danger : Theme.ink3)
             }
             Chart(Array(sessions.enumerated()), id: \.element.id) { index, session in
-                BarMark(x: .value("Session", index), y: .value("kg", session.volume))
+                BarMark(x: .value("Session", index), y: .value("Volume", Units.weight.fromKg(session.volume)))
                     .foregroundStyle(index == sessions.count - 1 ? Theme.accent : Theme.accent.opacity(0.35))
                     .clipShape(.rect(cornerRadius: 5))
             }
@@ -208,7 +208,7 @@ struct SetChange {
         case .weightReps, .weightedBodyweight:
             let dw = (set.weight ?? 0) - (previous.weight ?? 0)
             if abs(dw) >= 0.01 {
-                text = "\(dw > 0 ? "+" : "−")\(Fmt.weight(abs(dw))) kg"
+                text = "\(dw > 0 ? "+" : "−")\(Fmt.mass(abs(dw)))"
                 color = dw > 0 ? Theme.good : Theme.danger
             } else if let reps {
                 text = reps
@@ -223,7 +223,7 @@ struct SetChange {
         case .assistedBodyweight:
             let da = (set.assistance ?? 0) - (previous.assistance ?? 0)
             if abs(da) >= 0.01 {
-                text = "\(da > 0 ? "+" : "−")\(Fmt.weight(abs(da))) kg"
+                text = "\(da > 0 ? "+" : "−")\(Fmt.mass(abs(da)))"
                 color = da < 0 ? Theme.good : Theme.danger
             } else if let reps {
                 text = reps

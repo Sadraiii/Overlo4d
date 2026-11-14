@@ -130,7 +130,7 @@ private struct PeriodCard: View {
 
     /// "12.4 t" from 12 400 kg; small totals stay in kg.
     static func tonnes(_ kg: Double) -> String {
-        kg >= 10_000 ? "\((kg / 1000).formatted(.number.precision(.fractionLength(1)))) t" : Fmt.volume(kg)
+        kg >= 10_000 && Units.weight == .kg ? "\((kg / 1000).formatted(.number.precision(.fractionLength(1)))) t" : Fmt.volume(kg)
     }
 }
 
@@ -164,7 +164,7 @@ private struct StrengthTrendsCard: View {
                     .font(Typo.body(14.5, .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
-                Text("\(Fmt.weight(lift.first.rounded())) → \(Fmt.weight(lift.last.rounded())) kg · \(lift.points.count) sessions")
+                Text("\(Fmt.weight(Units.weight.fromKg(lift.first).rounded())) → \(Fmt.weight(Units.weight.fromKg(lift.last).rounded())) \(Fmt.unit) · \(lift.points.count) sessions")
                     .font(Typo.body(12.5))
                     .foregroundStyle(Theme.ink3)
                     .lineLimit(1)
@@ -292,7 +292,7 @@ struct SessionComparisonCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Compared with \(before.startedAt.formatted(.dateTime.weekday(.abbreviated).day().month()))").eyebrow()
             HStack(spacing: 12) {
-                delta("Volume", workout.volume - before.volume) { "\(Fmt.weight(abs($0).rounded())) kg" }
+                delta("Volume", workout.volume - before.volume) { Fmt.volume(abs($0)) }
                 delta("Sets", Double(workout.completedSets.count - before.completedSets.count)) { "\(Int(abs($0)))" }
                 delta("Time", (workout.duration - before.duration) / 60, higherIsBetter: false) { "\(Int(abs($0).rounded())) min" }
             }

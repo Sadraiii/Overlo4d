@@ -26,11 +26,11 @@ struct ProgramEditor: View {
                             HStack {
                                 Text(program.lifts[index].exercise).font(Typo.body(15))
                                 Spacer()
-                                TextField("kg", value: $program.lifts[index].trainingMax, format: FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...2)))
+                                TextField(Fmt.unit, value: Binding(get: { Units.weight.fromKg(program.lifts[index].trainingMax) }, set: { program.lifts[index].trainingMax = Units.weight.toKg($0) }), format: FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...2)))
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .frame(width: 80)
-                                Text("kg").foregroundStyle(Theme.ink3)
+                                Text(Fmt.unit).foregroundStyle(Theme.ink3)
                             }
                         }
                     } header: {

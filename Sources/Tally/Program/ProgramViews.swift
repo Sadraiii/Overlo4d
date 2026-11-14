@@ -141,11 +141,11 @@ struct ProgramDetailView: View {
                                 Text(lift.exercise).font(Typo.body(15, .semibold))
                                 Spacer()
                                 if now > lift.trainingMax {
-                                    Text("+\(Fmt.weight(now - lift.trainingMax))")
+                                    Text("+\(Fmt.load(now - lift.trainingMax))")
                                         .font(Typo.body(13, .semibold))
                                         .foregroundStyle(Theme.good)
                                 }
-                                Text("\(Fmt.weight(now)) kg").font(Typo.body(15, .semibold)).monospacedDigit()
+                                Text(Fmt.mass(now)).font(Typo.body(15, .semibold)).monospacedDigit()
                             }
                             .padding(.vertical, 11)
                         }
@@ -189,7 +189,7 @@ struct ProgramDetailView: View {
                             program: program,
                             week: shown,
                             day: day,
-                            items: program.items(week: shown, day: day, logs: logs),
+                            items: program.items(week: shown, day: day, logs: logs, step: Units.loadStepKg),
                             logged: store.workout(for: program, week: shown, day: day, gym: gym),
                             isNext: next.map { $0 == (shown, day) } ?? false
                         ) {
@@ -285,12 +285,12 @@ struct ProgramDayCard: View {
             }
         }
         return groups.map { group in
-            let weight = group.set.weight.map(Fmt.weight) ?? "–"
+            let weight = group.set.weight.map(Fmt.load) ?? "–"
             var text = group.count > 1 ? "\(group.count) × \(group.set.reps) @ \(weight)" : "\(weight) × \(group.set.reps)"
             if group.set.amrap { text += "+" }
             return group.set.warmup ? "(\(text))" : text
         }
-        .joined(separator: ", ") + " kg"
+        .joined(separator: ", ") + " \(Fmt.unit)"
     }
 }
 
@@ -341,11 +341,11 @@ struct NewProgramSheet: View {
                         HStack {
                             Text(lift).font(Typo.body(15))
                             Spacer()
-                            TextField("kg", value: Binding(get: { maxes[lift] }, set: { maxes[lift] = $0 }), format: FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1)))
+                            TextField(Fmt.unit, value: Binding(get: { maxes[lift].map(Units.weight.fromKg) }, set: { maxes[lift] = $0.map(Units.weight.toKg) }), format: FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1)))
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                                 .frame(width: 80)
-                            Text("kg").foregroundStyle(Theme.ink3)
+                            Text(Fmt.unit).foregroundStyle(Theme.ink3)
                         }
                     }
                 } header: {

@@ -56,3 +56,18 @@ public enum SharedStorage {
         try? data.write(to: url(for: file), options: .atomic)
     }
 }
+
+/// The weight unit chosen in Settings, readable by the widgets. Weights are stored in kilograms.
+public enum SharedUnit {
+    public static let storageKey = "units.weight"
+
+    /// "kg" or "lb".
+    public static var label: String {
+        SharedStorage.defaults.string(forKey: storageKey) == "lb" ? "lb" : "kg"
+    }
+
+    /// Kilograms in the chosen unit.
+    public static func value(_ kg: Double) -> Double {
+        label == "lb" ? kg / 0.45359237 : kg
+    }
+}

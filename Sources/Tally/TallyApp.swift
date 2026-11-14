@@ -1,3 +1,4 @@
+import TallyCore
 import TallyKit
 import SwiftUI
 import UIKit
@@ -18,10 +19,53 @@ final class AppUI {
     var showingFood = false
     /// Bumped after a backup is restored, so the stores reload their files.
     var dataVersion = 0
+    /// A sheet opened from anywhere: a Home shortcut, a tally:// link or the Home Screen menu.
+    var sheet: AppSheet?
+}
+
+enum AppSheet: String, Identifiable {
+    case cardio, plates, timer, report
+
+    var id: String { rawValue }
+}
+
+/// A link that arrived before the interface was ready (the Home Screen menu on a cold start).
+@MainActor
+@Observable
+final class LinkInbox {
+    static let shared = LinkInbox()
+    var link: AppLink?
+}
+
+/// Start workout, Log cardio and Rep counter when the app icon is held on the Home Screen.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        if let item = options.shortcutItem { SceneDelegate.open(item) }
+        let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        configuration.delegateClass = SceneDelegate.self
+        return configuration
+    }
+}
+
+final class SceneDelegate: NSObject, UIWindowSceneDelegate {
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
+        Self.open(shortcutItem)
+    }
+
+    /// Menu items carry their tally:// link as the type.
+    @MainActor @discardableResult
+    static func open(_ item: UIApplicationShortcutItem) -> Bool {
+        guard let url = URL(string: item.type), let link = AppLink.parse(url) else { return false }
+        LinkInbox.shared.link = link
+        return true
+    }
 }
 
 @main
 struct TallyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var reps = RepModel()
     @State private var gym = GymStore()
     @State private var rest = RestTimer()
@@ -37,6 +81,7 @@ struct TallyApp: App {
     @State private var cloud = CoachCloudStore()
     @AppStorage(Accent.storageKey, store: SharedStorage.defaults) private var accent = Accent.violet.rawValue
     @AppStorage(AppearanceMode.storageKey, store: SharedStorage.defaults) private var appearance = AppearanceMode.system.rawValue
+    @AppStorage(Units.key, store: SharedStorage.defaults) private var unit = WeightUnit.kg.rawValue
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -60,8 +105,8 @@ struct TallyApp: App {
                 .environment(programs)
                 .environment(cloud)
                 .tint(Theme.accent)
-                // Rebuild with the new accent colour when it changes.
-                .id(accent)
+                // Rebuild with the new accent colour or weight unit when it changes.
+                .id("\(accent).\(unit)")
                 .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym).environment(ui).environment(backup)
                         .environment(cloud).environment(sleep).environment(food).environment(bodyStore).environment(programs) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
@@ -84,6 +129,7 @@ struct TallyApp: App {
         .onChange(of: scenePhase) { _, phase in
             // Anything typed in the last moment is written before the app can be suspended.
             if phase != .active { gym.flush() }
+            if phase != .inactive { TrainingReminders.reschedule(gym: gym) }
             if phase == .background {
                 backup.backUpIfChanged()
                 let toolbox = CoachToolbox(gym: gym, sleep: sleep, food: food, body: bodyStore, programs: programs)
@@ -118,6 +164,7 @@ struct TallyApp: App {
         bodyStore.health = health
         food.scheduleMealReminders()
         sleep.scheduleReminders()
+        TrainingReminders.reschedule(gym: gym)
         WidgetCenter.shared.reloadAllTimelines()
         Task {
             await HealthSync.refresh(gym: gym, health: health)
@@ -148,6 +195,8 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var gym = gym
+        @Bindable var ui = ui
+        let inbox = LinkInbox.shared
 
         TabView(selection: Binding(get: { tab }, set: select)) {
             Tab("Home", systemImage: "house.fill", value: AppTab.home) {
@@ -182,19 +231,61 @@ struct RootView: View {
         .fullScreenCover(isPresented: $gym.isPresentingWorkout) {
             WorkoutFlowView()
         }
-        .onOpenURL { url in
-            // Widgets deep-link with tally://reps and tally://train; tally://food opens the food diary.
-            switch url.host() {
-            case "reps":
-                tab = .home
-                ui.showingReps = true
-            case "food":
-                tab = .home
-                ui.showingFood = true
-            case "train":
-                tab = .home
-            default: break
+        .sheet(item: $ui.sheet) { sheet in
+            switch sheet {
+            case .cardio: CardioLogSheet()
+            case .plates: PlateCalculatorSheet()
+            case .timer: TimerSheet()
+            case .report:
+                NavigationStack {
+                    RecapView(weekStart: Calendar.current.date(byAdding: .day, value: -1, to: gym.weekStart(.now)) ?? .now)
+                }
             }
+        }
+        .onOpenURL { url in
+            // Widgets, the Home Screen menu and shortcuts in the Shortcuts app all open tally:// links.
+            if let link = AppLink.parse(url) { open(link) }
+        }
+        .onChange(of: inbox.link) { takeLink() }
+        .onAppear { takeLink() }
+    }
+
+    /// Acts on a link that came in through the Home Screen menu.
+    private func takeLink() {
+        guard let link = LinkInbox.shared.link else { return }
+        LinkInbox.shared.link = nil
+        open(link)
+    }
+
+    private func open(_ link: AppLink) {
+        switch link {
+        case .reps:
+            tab = .home
+            ui.showingReps = true
+        case .food:
+            tab = .home
+            ui.showingFood = true
+        case .train:
+            tab = .home
+        case .history:
+            tab = .history
+        case .start(let plan):
+            if gym.activeWorkout != nil {
+                gym.isPresentingWorkout = true
+            } else if let plan {
+                // A plan named in the link starts straight away; an unknown name opens the start sheet.
+                if let index = AppLink.match(plan: plan, in: gym.plans.map(\.name)) {
+                    gym.startWorkout(from: gym.plans[index])
+                } else {
+                    showingStart = true
+                }
+            } else {
+                gym.startEmptyWorkout()
+            }
+        case .cardio: ui.sheet = .cardio
+        case .plates: ui.sheet = .plates
+        case .timer: ui.sheet = .timer
+        case .report: ui.sheet = .report
         }
     }
 

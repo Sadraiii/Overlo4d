@@ -58,7 +58,10 @@ struct HomeTab: View {
 
                     WeekCard(onStart: onStart)
 
+                    DeloadCard()
+
                     HStack(spacing: 8) {
+                        ToolButton(title: "Cardio", symbol: "figure.run") { ui.sheet = .cardio }
                         ToolButton(title: "Timer", symbol: "stopwatch") { showingTimer = true }
                         ToolButton(title: "Plates", symbol: "circle.grid.2x1") { showingPlates = true }
                         ToolButton(title: "1RM", symbol: "percent") { showingOneRepMax = true }

@@ -116,7 +116,7 @@ UserDefaults settings (those that belong to the user are in `BackupStore.setting
 ## Conventions
 - **UI**: `.card()` (white, radius 22, faint edge, soft shadow), `Theme.fill` for wells/badges, `.eyebrow()` for small sentence-case labels, headings Schibsted Grotesk bold in sentence case (`Typo.title`, `.display()` renders Grotesk). **Big Shoulders condensed only for numbers** (`Typo.display`). No all-caps headings, no ticket/bib styling. Colours via `Theme`/`Accent` tokens (light + dark), never hard-coded.
 - User-facing copy says "Overlo4d". Plain, short sentences.
-- Every release: bump version in **both** `Support/Tally-Info.plist` and `Support/TallyWidget-Info.plist` (version + build) and add a `Changelog.entries` item at the top (`About/Changelog.swift`). Currently 0.11 / 11, stage "Beta".
+- Every release: bump version in **both** `Support/Tally-Info.plist` and `Support/TallyWidget-Info.plist` (version + build) and add a `Changelog.entries` item at the top (`About/Changelog.swift`). Currently 0.12 / 12, stage "Beta".
 - New data file → add to `BackupStore.documentFiles`; new user setting → add to `BackupStore.settingsKeys`; new widget-visible data → App Group file via `SharedStorage`.
 - Pure logic + tests in TallyCore first, then wire UI. Keep structs `Sendable`; mind Swift 6 strict concurrency (stores are `@MainActor`).
 - Don't add dependencies. Don't commit keys or tokens.
@@ -130,3 +130,11 @@ UserDefaults settings (those that belong to the user are in `BackupStore.setting
 
 ## Working with the user
 mahmud is on a Windows PC only (no Mac). They can't see cloud-container output, so deliver previews as images/files in `/mnt/project-files/`. Verify claims before stating them; say plainly when app-layer code is uncompiled. Release notes the user reads are the `Changelog` entries.
+
+## Added in 0.12 (app layer uncompiled, TallyCore tested)
+- **Units**: `Units.weight` (kg/lb, key `units.weight` in the App Group defaults, `SharedUnit` for widgets). Weights are always stored in kg. Show them with `Fmt.load` / `Fmt.mass` / `Fmt.volume`; `Fmt.weight` is a plain number formatter. Body weight is still kg only.
+- **Cardio**: `CardioSession` (TallyCore) in `gym.json` under `cardio`; `Views/CardioViews.swift`; saved to Health by `HealthManager.save(_: CardioSession)`.
+- **Deload**: `Deload.assess` + `GymStore.deloadAdvice/startDeload` (`deload.start`), `DeloadCard` on Home. **Forecast**: `StrengthForecast`, `ForecastCard` on the exercise screen. **Weekly report**: `WeeklyReport.build`, `CoachReportCard` in the recap.
+- **Reminders**: `Gym/TrainingReminders.swift` (keys `reminders.*`), rescheduled when the app opens or closes.
+- **Import**: `WorkoutImport` (Strong, Hevy, own CSV), `Share/ImportSheet.swift`, `GymStore.importWorkouts`.
+- **Links**: `AppLink` parses every `tally://` link (widgets, Home Screen menu in Info.plist, Shortcuts "Open URLs"). App Intents are not used: xtool doesn't generate their metadata.

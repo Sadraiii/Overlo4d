@@ -47,10 +47,11 @@ final class BackupStore {
         "defaultRestSeconds", "rest.autoStart", "recap.dismissedWeek", "changelog.seenVersion",
         "coach.goal", "coach.model",
         "training.weeklyGoal", "progression.enabled", "progression.step", "home.layout",
+        "reminders.enabled", "reminders.days", "reminders.minutes", "reminders.nudgeDays", "reminders.weeklyReport", "deload.start",
         "sleep.goalHours", "sleep.wakeMinutes", "sleep.reminders", "sleep.windDownMinutes", "sleep.morningCheckIn", "sleep.caffeineCutoff",
         "clock.mode", "clock.work", "clock.rest", "clock.rounds", "clock.countdown", "clock.minutes",
     ]
-    private static let sharedSettingsKeys = [Accent.storageKey, AppearanceMode.storageKey]
+    private static let sharedSettingsKeys = [Accent.storageKey, AppearanceMode.storageKey, SharedUnit.storageKey]
 
     private static var knownFiles: Set<String> { Set(documentFiles + sharedFiles + [settingsFile]) }
 

@@ -4,10 +4,16 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(GymStore.self) private var gym
+    @Environment(HealthManager.self) private var health
     @State private var exporting = false
+    @State private var loggingCardio = false
+    /// What was just swiped away, kept for a few seconds so it can be put back.
+    @State private var undo: HistoryItem?
+
+    private var isEmpty: Bool { gym.workouts.isEmpty && gym.healthWorkouts.isEmpty && gym.cardio.isEmpty }
 
     private var byMonth: [(month: Date, items: [HistoryItem])] {
-        let items = gym.workouts.map(HistoryItem.workout) + gym.healthWorkouts.map(HistoryItem.health)
+        let items = gym.workouts.map(HistoryItem.workout) + gym.healthWorkouts.map(HistoryItem.health) + gym.cardio.map(HistoryItem.cardio)
         let grouped = Dictionary(grouping: items) {
             Calendar.current.dateInterval(of: .month, for: $0.date)?.start ?? $0.date
         }
@@ -19,7 +25,7 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
-                if !gym.workouts.isEmpty || !gym.healthWorkouts.isEmpty {
+                if !isEmpty {
                     MonthCalendar()
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -34,6 +40,8 @@ struct HistoryView: View {
                                     NavigationLink(value: workout.id) { WorkoutCard(workout: workout) }
                                 case .health(let workout):
                                     NavigationLink(value: workout) { HealthWorkoutCard(workout: workout) }
+                                case .cardio(let session):
+                                    NavigationLink(value: CardioRoute(id: session.id)) { CardioCard(session: session) }
                                 }
                             }
                             .navigationLinkIndicatorVisibility(.hidden)
@@ -42,9 +50,7 @@ struct HistoryView: View {
                             .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                         }
                         .onDelete { offsets in
-                            for index in offsets {
-                                if case .workout(let workout) = group.items[index] { gym.deleteWorkout(workout) }
-                            }
+                            for index in offsets { remove(group.items[index]) }
                         }
                     } header: {
                         // Month heading on the page background, with the workout count.
@@ -69,7 +75,7 @@ struct HistoryView: View {
             .listStyle(.plain)
             .screenBackground()
             .overlay {
-                if gym.workouts.isEmpty && gym.healthWorkouts.isEmpty {
+                if isEmpty {
                     ContentUnavailableView(
                         "No workouts yet",
                         systemImage: "calendar",
@@ -79,11 +85,30 @@ struct HistoryView: View {
             }
             .navigationTitle("History")
             .toolbar {
+                Button("Log cardio", systemImage: "figure.run") { loggingCardio = true }
                 if !gym.workouts.isEmpty {
                     Button("Export", systemImage: "square.and.arrow.up") { exporting = true }
                 }
             }
             .sheet(isPresented: $exporting) { ExportSheet() }
+            .sheet(isPresented: $loggingCardio) { CardioLogSheet() }
+            .navigationDestination(for: CardioRoute.self) { CardioDetailView(sessionID: $0.id) }
+            .safeAreaInset(edge: .bottom) {
+                if let undo {
+                    UndoBar(text: undo.deletedText) {
+                        restore(undo)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .task(id: undo?.id) {
+                guard undo != nil else { return }
+                try? await Task.sleep(for: .seconds(6))
+                guard !Task.isCancelled else { return }
+                // Now the delete is final: take the copy out of Apple Health too.
+                if let item = undo { await finalize(item) }
+                withAnimation(.snappy) { undo = nil }
+            }
             .navigationDestination(for: UUID.self) { id in
                 if let workout = gym.workout(id) {
                     WorkoutDetailView(workout: workout)
@@ -95,15 +120,17 @@ struct HistoryView: View {
     }
 }
 
-/// A row in History: a Tally workout or a workout from Apple Health.
+/// A row in History: a workout, a workout from Apple Health or cardio logged by hand.
 enum HistoryItem: Identifiable {
     case workout(Workout)
     case health(HealthWorkout)
+    case cardio(CardioSession)
 
     var id: UUID {
         switch self {
         case .workout(let workout): workout.id
         case .health(let workout): workout.id
+        case .cardio(let session): session.id
         }
     }
 
@@ -111,7 +138,87 @@ enum HistoryItem: Identifiable {
         switch self {
         case .workout(let workout): workout.startedAt
         case .health(let workout): workout.start
+        case .cardio(let session): session.start
         }
+    }
+
+    /// "Push Day deleted", for the undo bar.
+    var deletedText: String {
+        switch self {
+        case .workout(let workout): "\(workout.name) deleted"
+        case .health(let workout): "\(workout.name) deleted"
+        case .cardio(let session): "\(session.activity.label) deleted"
+        }
+    }
+}
+
+/// Navigation value for a cardio session.
+struct CardioRoute: Hashable {
+    let id: UUID
+}
+
+/// "Deleted · Undo" above the tab bar after a swipe.
+struct UndoBar: View {
+    let text: String
+    let onUndo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "trash")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.bandInk.opacity(0.7))
+            Text(text)
+                .font(Typo.body(14.5, .semibold))
+                .foregroundStyle(Theme.bandInk)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Undo", action: onUndo)
+                .font(Typo.body(14.5, .bold))
+                .foregroundStyle(Theme.bandInk)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 34)
+                .background(Theme.bandInk.opacity(0.16), in: .capsule)
+                .buttonStyle(.plain)
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .frame(minHeight: 52)
+        .background(Theme.band, in: .rect(cornerRadius: 18))
+        .shadow(color: Theme.shadow, radius: 10, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Undo", onUndo)
+    }
+}
+
+extension HistoryView {
+    /// Deletes a swiped row and offers to undo it. Workouts from Apple Health belong to Health and stay.
+    func remove(_ item: HistoryItem) {
+        switch item {
+        case .workout(let workout): gym.deleteWorkout(workout)
+        case .cardio(let session): gym.deleteCardio(session)
+        case .health: return
+        }
+        // A second swipe makes the first delete final.
+        if let earlier = undo { Task { await finalize(earlier) } }
+        withAnimation(.snappy) { undo = item }
+    }
+
+    /// Once a delete can't be undone any more, its copy in Apple Health goes too.
+    func finalize(_ item: HistoryItem) async {
+        if case .cardio(let session) = item, let healthID = session.savedHealthID {
+            _ = await health.deleteWorkout(healthID)
+        }
+    }
+
+    func restore(_ item: HistoryItem) {
+        switch item {
+        case .workout(let workout): gym.restoreWorkout(workout)
+        case .cardio(let session): gym.saveCardio(session)
+        case .health: break
+        }
+        withAnimation(.snappy) { undo = nil }
     }
 }
 

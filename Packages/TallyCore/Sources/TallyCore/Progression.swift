@@ -33,6 +33,13 @@ public enum Progression {
         public let action: Action
         /// One short sentence saying why.
         public let reason: String
+
+        public init(weight: Double, reps: Int, action: Action, reason: String) {
+            self.weight = weight
+            self.reps = reps
+            self.action = action
+            self.reason = reason
+        }
     }
 
     /// The smallest sensible jump for the equipment: 2.5 kg on bars and stacks (5 kg on heavy
