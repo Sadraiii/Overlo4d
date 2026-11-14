@@ -46,14 +46,29 @@ public enum Progression {
         }
     }
 
+    /// The same idea in the lifter's unit, in kilograms: 5 lb on bars and stacks (10 lb on heavy
+    /// machines), 5 lb on dumbbells (2.5 lb while they are light).
+    public static func step(equipment: String?, weight: Double, unit: WeightUnit) -> Double {
+        guard unit == .lb else { return step(equipment: equipment, weight: weight) }
+        let pounds = unit.fromKg(weight)
+        let jump: Double = switch equipment {
+        case "dumbbell", "kettlebell": pounds < 20 ? 2.5 : 5
+        case "machine": pounds >= 220 ? 10 : 5
+        case "band", "bodyweight": 2.5
+        default: 5
+        }
+        return unit.toKg(jump)
+    }
+
     /// - Parameters:
     ///   - sessions: working sets of each past session, newest first.
     ///   - targetReps: the reps planned today, or nil to use last time's first set.
-    ///   - step: the jump to add when going heavier.
-    public static func suggest(sessions: [[PastSet]], targetReps: Int?, step: Double = 2.5) -> Suggestion? {
+    ///   - step: the jump to add when going heavier, in kg.
+    ///   - unit: the unit weights are named in.
+    public static func suggest(sessions: [[PastSet]], targetReps: Int?, step: Double = 2.5, unit: WeightUnit = .kg) -> Suggestion? {
         let history = sessions.map { $0.filter { $0.weight > 0 && $0.reps > 0 } }.filter { !$0.isEmpty }
         guard let last = history.first, let top = last.map(\.weight).max() else { return nil }
-        let atTop = last.filter { $0.weight == top }
+        let atTop = last.filter { abs($0.weight - top) < 0.01 }
         let target = max(targetReps ?? last.first?.reps ?? 0, 0)
         guard target > 0 else { return nil }
         let hitAll = atTop.allSatisfy { $0.reps >= target }
@@ -70,7 +85,7 @@ public enum Progression {
         if isStalled(history, target: target) {
             let lighter = max(step, ((top * 0.9) / step).rounded() * step)
             if lighter < top {
-                return Suggestion(weight: lighter, reps: target, action: .deload, reason: "Three sessions at \(format(top)) kg without progress. Drop 10% and build back up.")
+                return Suggestion(weight: lighter, reps: target, action: .deload, reason: "Three sessions at \(unit.text(top)) without progress. Drop 10% and build back up.")
             }
         }
 
@@ -89,10 +104,6 @@ public enum Progression {
         let reps = recent.map { session in session.filter { $0.weight == top }.reduce(0) { $0 + $1.reps } }
         let missed = recent.allSatisfy { session in session.filter { $0.weight == top }.contains { $0.reps < target } }
         return missed && reps[0] <= reps[2]
-    }
-
-    private static func format(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(value)
     }
 }
 
