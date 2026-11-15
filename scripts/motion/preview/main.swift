@@ -1,6 +1,6 @@
 // Draws every move with the app's MotionFrame, start, middle, end and the still, as a page of SVGs.
 import SwiftUI
-import TallyCore
+import Overlo4dCore
 
 let roles: [Muscle: MuscleRole] = [
     .quads: .primary, .glutes: .primary, .chest: .primary, .lats: .primary, .sideDelts: .primary,

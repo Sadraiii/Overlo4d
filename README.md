@@ -43,5 +43,5 @@ xtool dev
 Tests:
 
 ```sh
-cd Packages/TallyCore && swift test
+cd Packages/Overlo4dCore && swift test
 ```

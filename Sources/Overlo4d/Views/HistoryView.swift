@@ -1,0 +1,433 @@
+import Overlo4dCore
+import Overlo4dKit
+import SwiftUI
+
+struct HistoryView: View {
+    @Environment(GymStore.self) private var gym
+    @Environment(HealthManager.self) private var health
+    @State private var exporting = false
+    @State private var loggingCardio = false
+    /// What was just swiped away, kept for a few seconds so it can be put back.
+    @State private var undo: HistoryItem?
+
+    private var isEmpty: Bool { gym.workouts.isEmpty && gym.healthWorkouts.isEmpty && gym.cardio.isEmpty }
+
+    private var byMonth: [(month: Date, items: [HistoryItem])] {
+        let items = gym.workouts.map(HistoryItem.workout) + gym.healthWorkouts.map(HistoryItem.health) + gym.cardio.map(HistoryItem.cardio)
+        let grouped = Dictionary(grouping: items) {
+            Calendar.current.dateInterval(of: .month, for: $0.date)?.start ?? $0.date
+        }
+        return grouped.keys.sorted(by: >).map { month in
+            (month, (grouped[month] ?? []).sorted { $0.date > $1.date })
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if !isEmpty {
+                    MonthCalendar()
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+                ForEach(byMonth, id: \.month) { group in
+                    Section {
+                        ForEach(group.items) { item in
+                            Group {
+                                switch item {
+                                case .workout(let workout):
+                                    NavigationLink(value: workout.id) { WorkoutCard(workout: workout) }
+                                case .health(let workout):
+                                    NavigationLink(value: workout) { HealthWorkoutCard(workout: workout) }
+                                case .cardio(let session):
+                                    NavigationLink(value: CardioRoute(id: session.id)) { CardioCard(session: session) }
+                                }
+                            }
+                            .navigationLinkIndicatorVisibility(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                        }
+                        .onDelete { offsets in
+                            for index in offsets { remove(group.items[index]) }
+                        }
+                    } header: {
+                        // Month heading on the page background, with the workout count.
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(group.month.formatted(.dateTime.month(.wide).year()))
+                                .font(Typo.title(19))
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Text("\(group.items.count) \(group.items.count == 1 ? "workout" : "workouts")")
+                                .font(Typo.body(13, .medium))
+                                .foregroundStyle(Theme.ink3)
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.top, 14)
+                        .padding(.bottom, 4)
+                        .frame(maxWidth: .infinity)
+                        .background(Theme.paper)
+                        .listRowInsets(EdgeInsets())
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .screenBackground()
+            .overlay {
+                if isEmpty {
+                    ContentUnavailableView(
+                        "No workouts yet",
+                        systemImage: "calendar",
+                        description: Text("Finished workouts show up here.")
+                    )
+                }
+            }
+            .navigationTitle("History")
+            .toolbar {
+                Button("Log cardio", systemImage: "figure.run") { loggingCardio = true }
+                if !gym.workouts.isEmpty {
+                    Button("Export", systemImage: "square.and.arrow.up") { exporting = true }
+                }
+            }
+            .sheet(isPresented: $exporting) { ExportSheet() }
+            .sheet(isPresented: $loggingCardio) { CardioLogSheet() }
+            .navigationDestination(for: CardioRoute.self) { CardioDetailView(sessionID: $0.id) }
+            .safeAreaInset(edge: .bottom) {
+                if let undo {
+                    UndoBar(text: undo.deletedText) {
+                        restore(undo)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .task(id: undo?.id) {
+                guard undo != nil else { return }
+                try? await Task.sleep(for: .seconds(6))
+                guard !Task.isCancelled else { return }
+                // Now the delete is final: take the copy out of Apple Health too.
+                if let item = undo { await finalize(item) }
+                withAnimation(.snappy) { undo = nil }
+            }
+            .navigationDestination(for: UUID.self) { id in
+                if let workout = gym.workout(id) {
+                    WorkoutDetailView(workout: workout)
+                }
+            }
+            .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
+            .navigationDestination(for: HealthWorkout.self) { HealthWorkoutDetailView(workout: $0) }
+        }
+    }
+}
+
+/// A row in History: a workout, a workout from Apple Health or cardio logged by hand.
+enum HistoryItem: Identifiable {
+    case workout(Workout)
+    case health(HealthWorkout)
+    case cardio(CardioSession)
+
+    var id: UUID {
+        switch self {
+        case .workout(let workout): workout.id
+        case .health(let workout): workout.id
+        case .cardio(let session): session.id
+        }
+    }
+
+    var date: Date {
+        switch self {
+        case .workout(let workout): workout.startedAt
+        case .health(let workout): workout.start
+        case .cardio(let session): session.start
+        }
+    }
+
+    /// "Push Day deleted", for the undo bar.
+    var deletedText: String {
+        switch self {
+        case .workout(let workout): "\(workout.name) deleted"
+        case .health(let workout): "\(workout.name) deleted"
+        case .cardio(let session): "\(session.activity.label) deleted"
+        }
+    }
+}
+
+/// Navigation value for a cardio session.
+struct CardioRoute: Hashable {
+    let id: UUID
+}
+
+/// "Deleted · Undo" above the tab bar after a swipe.
+struct UndoBar: View {
+    let text: String
+    let onUndo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "trash")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.bandInk.opacity(0.7))
+            Text(text)
+                .font(Typo.body(14.5, .semibold))
+                .foregroundStyle(Theme.bandInk)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Undo", action: onUndo)
+                .font(Typo.body(14.5, .bold))
+                .foregroundStyle(Theme.bandInk)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 34)
+                .background(Theme.bandInk.opacity(0.16), in: .capsule)
+                .buttonStyle(.plain)
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .frame(minHeight: 52)
+        .background(Theme.band, in: .rect(cornerRadius: 18))
+        .shadow(color: Theme.shadow, radius: 10, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Undo", onUndo)
+    }
+}
+
+extension HistoryView {
+    /// Deletes a swiped row and offers to undo it. Workouts from Apple Health belong to Health and stay.
+    func remove(_ item: HistoryItem) {
+        switch item {
+        case .workout(let workout): gym.deleteWorkout(workout)
+        case .cardio(let session): gym.deleteCardio(session)
+        case .health: return
+        }
+        // A second swipe makes the first delete final.
+        if let earlier = undo { Task { await finalize(earlier) } }
+        withAnimation(.snappy) { undo = item }
+    }
+
+    /// Once a delete can't be undone any more, its copy in Apple Health goes too.
+    func finalize(_ item: HistoryItem) async {
+        if case .cardio(let session) = item, let healthID = session.savedHealthID {
+            _ = await health.deleteWorkout(healthID)
+        }
+    }
+
+    func restore(_ item: HistoryItem) {
+        switch item {
+        case .workout(let workout): gym.restoreWorkout(workout)
+        case .cardio(let session): gym.saveCardio(session)
+        case .health: break
+        }
+        withAnimation(.snappy) { undo = nil }
+    }
+}
+
+struct WorkoutDetailView: View {
+    @Environment(GymStore.self) private var gym
+    @Environment(\.dismiss) private var dismiss
+    let workout: Workout
+
+    @State private var editing: Workout?
+    @State private var confirmingDelete = false
+    @State private var savedPlan = false
+    @State private var sharing = false
+    @State private var coaching = false
+    @State private var workoutHealth: HealthManager.WorkoutHealth?
+
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 14) {
+                    Bib(date: workout.startedAt, size: .large)
+                    Text(workout.name).display(40).multilineTextAlignment(.center)
+                    Text(workout.startedAt.formatted(date: .complete, time: .shortened))
+                        .font(Typo.body(14))
+                        .foregroundStyle(Theme.ink2)
+                    HStack(spacing: 8) {
+                        Tile(value: Fmt.duration(workout.duration), label: "Duration")
+                        Tile(value: Fmt.volume(workout.volume), label: "Volume")
+                        Tile(value: "\(workout.completedSets.count)", label: "Sets")
+                    }
+                    WorkoutHealthTiles(workout: workout, stats: $workoutHealth)
+                    if !workout.notes.isEmpty {
+                        Text(workout.notes)
+                            .font(Typo.body(15))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(Theme.accentSoft, in: .rect(cornerRadius: 12))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+
+            if !WorkoutMuscles(workout, gym: gym).entries.isEmpty {
+                Section {
+                    WorkoutMusclesCard(workout: workout)
+                        .padding(.vertical, 6)
+                }
+                .cardRow()
+            }
+
+            ForEach(workout.exercises) { exercise in
+                let def = gym.exercise(exercise.exerciseID)
+                Section {
+                    HStack(spacing: 12) {
+                        ExerciseBadge(exercise: def, size: 34)
+                        if let def {
+                            NavigationLink(value: def) {
+                                Text(def.name).display(22).foregroundStyle(Theme.ink)
+                            }
+                        } else {
+                            Text("Deleted exercise").display(22)
+                        }
+                        if workout.exercises.supersetPosition(of: exercise.id) != .none {
+                            Label("Superset", systemImage: "link")
+                                .font(Typo.body(12, .semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                    if !exercise.notes.isEmpty {
+                        Text(exercise.notes).font(Typo.body(14)).foregroundStyle(Theme.ink2)
+                    }
+                    ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
+                        HStack(spacing: 12) {
+                            Text(set.type == .normal ? "\(exercise.sets.prefix(index + 1).filter { $0.type != .warmup }.count)" : set.type.badge)
+                                .font(Typo.display(18))
+                                .foregroundStyle(Theme.ink3)
+                                .frame(width: 26)
+                            Text(Fmt.set(set, kind: def?.kind ?? .weightReps))
+                                .font(Typo.display(22))
+                                .monospacedDigit()
+                            if let rpe = set.rpe {
+                                Text("@\(RPE.format(rpe))")
+                                    .font(Typo.body(12, .bold))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                            Spacer()
+                            if let kinds = gym.records[set.id] {
+                                Label(kinds.map(\.label).joined(separator: ", "), systemImage: "trophy.fill")
+                                    .font(Typo.body(12, .bold))
+                                    .foregroundStyle(Theme.hot)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                .cardRow()
+            }
+        }
+        .screenBackground()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            Button("Share", systemImage: "square.and.arrow.up") { sharing = true }
+            Menu {
+                Button("Coach feedback", systemImage: "sparkles") { coaching = true }
+                Button("Edit", systemImage: "pencil") { editing = workout }
+                Button("Save as plan", systemImage: "square.and.arrow.down") {
+                    gym.savePlan(gym.plan(from: workout))
+                    savedPlan = true
+                }
+                Button("Delete", systemImage: "trash", role: .destructive) { confirmingDelete = true }
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+        }
+        .sheet(item: $editing) { EditWorkoutView(workout: $0) }
+        .sheet(isPresented: $coaching) { WorkoutCoachSheet(workout: workout) }
+        .sheet(isPresented: $sharing) {
+            ShareSheet(model: .workout(workout, gym: gym, health: workoutHealth))
+        }
+        .confirmationDialog("Delete this workout?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                dismiss()
+                gym.deleteWorkout(workout)
+            }
+        }
+        .alert("Saved as plan", isPresented: $savedPlan) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("\(workout.name) is in Plans.")
+        }
+    }
+}
+
+/// Edit a finished workout: name, date and times, sets.
+struct EditWorkoutView: View {
+    @Environment(GymStore.self) private var gym
+    @Environment(\.dismiss) private var dismiss
+    @State var workout: Workout
+    @State private var showingPicker = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    TextField("Name", text: $workout.name)
+                        .font(Typo.title(20))
+                    WorkoutTimesRows(workout: $workout)
+                    TextField("Note", text: $workout.notes, axis: .vertical)
+                }
+                .font(Typo.body(15))
+                .cardRow()
+
+                ForEach($workout.exercises) { $exercise in
+                    ExerciseEditorSection(
+                        exercise: $exercise,
+                        isLive: false,
+                        supersetPosition: workout.exercises.supersetPosition(of: exercise.id),
+                        groupLabel: workout.exercises.groupLabel(of: exercise.id),
+                        supersetCandidates: workout.exercises.supersetCandidates(for: exercise.id)
+                            .map { (id: $0.id, name: gym.name(of: $0.exerciseID)) },
+                        onSuperset: { workout.exercises.linkSuperset(exercise.id, with: $0) },
+                        onLeaveSuperset: { workout.exercises.unlinkSuperset(exercise.id) },
+                        onRemove: {
+                            workout.exercises.removeAll { $0.id == exercise.id }
+                            workout.exercises.normalizeSupersets()
+                        },
+                        onMove: {
+                            workout.exercises.move(id: exercise.id, by: $0)
+                            workout.exercises.normalizeSupersets()
+                        }
+                    )
+                }
+
+                Section {
+                    AddExerciseButton { showingPicker = true }
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+            .screenBackground()
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("Edit workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", systemImage: "checkmark") {
+                        // Edited sets count as completed; drop empty ones.
+                        workout.exercises = workout.exercises.compactMap { exercise in
+                            var exercise = exercise
+                            exercise.sets = exercise.sets
+                                .filter(\.hasValues)
+                                .map { var set = $0; set.isDone = true; return set }
+                            return exercise.sets.isEmpty ? nil : exercise
+                        }
+                        gym.updateWorkout(workout)
+                        dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showingPicker) {
+                ExercisePicker { exercises in
+                    workout.exercises += exercises.map(gym.newWorkoutExercise)
+                }
+            }
+        }
+    }
+}

@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Tally",
+    name: "Overlo4d",
     platforms: [
         // iOS 26.1 for Liquid Glass and the tab bar accessory.
         .iOS("26.1"),
@@ -11,29 +11,29 @@ let package = Package(
     products: [
         // The main app.
         .library(
-            name: "Tally",
-            targets: ["Tally"]
+            name: "Overlo4d",
+            targets: ["Overlo4d"]
         ),
         // Home screen / lock screen widgets and the workout Live Activity.
         .library(
-            name: "TallyWidget",
-            targets: ["TallyWidget"]
+            name: "Overlo4dWidget",
+            targets: ["Overlo4dWidget"]
         ),
     ],
     dependencies: [
         // Plain-Swift logic with Linux unit tests.
-        .package(path: "Packages/TallyCore"),
+        .package(path: "Packages/Overlo4dCore"),
     ],
     targets: [
         // Theme, shared data and Live Activity attributes used by both the app and the widget.
-        .target(name: "TallyKit"),
+        .target(name: "Overlo4dKit"),
         .target(
-            name: "Tally",
-            dependencies: ["TallyKit", .product(name: "TallyCore", package: "TallyCore")]
+            name: "Overlo4d",
+            dependencies: ["Overlo4dKit", .product(name: "Overlo4dCore", package: "Overlo4dCore")]
         ),
         .target(
-            name: "TallyWidget",
-            dependencies: ["TallyKit"],
+            name: "Overlo4dWidget",
+            dependencies: ["Overlo4dKit"],
             linkerSettings: [
                 // xtool links extensions with `-e _NSExtensionMain`, so nothing references the
                 // WidgetBundle's `main` and the linker strips the widget code. Force it to stay.

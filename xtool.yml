@@ -1,10 +1,10 @@
 version: 1
 # Bundle and App Group IDs keep the app's earlier name so installed data carries over.
-# The app is shown as "Overlo4d"; targets, modules and the tally:// URL scheme keep the Tally name.
+# The widget's bundle ID is pinned for the same reason: a new one would drop widgets already on the Home Screen.
 bundleID: com.mahmud.plusultra
-product: Tally
-infoPath: Support/Tally-Info.plist
-entitlementsPath: Support/Tally.entitlements
+product: Overlo4d
+infoPath: Support/Overlo4d-Info.plist
+entitlementsPath: Support/Overlo4d.entitlements
 iconPath: Resources/AppIcon.png
 resources:
   - Resources/AppIcon60x60@2x.png
@@ -20,9 +20,10 @@ resources:
   - Resources/Fonts/SchibstedGrotesk-SemiBold.ttf
   - Resources/Fonts/SchibstedGrotesk-Bold.ttf
 extensions:
-  - product: TallyWidget
-    infoPath: Support/TallyWidget-Info.plist
-    entitlementsPath: Support/TallyWidget.entitlements
+  - product: Overlo4dWidget
+    bundleID: com.mahmud.plusultra.TallyWidget
+    infoPath: Support/Overlo4dWidget-Info.plist
+    entitlementsPath: Support/Overlo4dWidget.entitlements
     resources:
       - Resources/Seal.png
       - Resources/Fonts/BigShouldersDisplayThin-ExtraBold.ttf

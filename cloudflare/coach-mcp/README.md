@@ -24,7 +24,7 @@ is missing. Set it in **Settings → Build → Build configuration** and retry t
 Install [Node.js](https://nodejs.org) (LTS), then in PowerShell:
 
 ```powershell
-cd RepCounter\cloudflare\coach-mcp
+cd Overlo4d\cloudflare\coach-mcp
 npm install
 npx wrangler login
 npx wrangler deploy

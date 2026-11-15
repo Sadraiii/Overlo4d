@@ -5,7 +5,7 @@ thigh, shin and foot. Each part is drawn here once, lying along the x axis from 
 (0, 0) to its second, with +y toward the front of the body, in the motion scene's units (the figure
 is about 175 tall). The app and the mockups place each part on the skeleton frame by frame.
 
-    python3 scripts/motion_figure.py swift > Sources/Tally/Exercises/MotionShapes.swift
+    python3 scripts/motion_figure.py swift > Sources/Overlo4d/Exercises/MotionShapes.swift
     python3 scripts/motion_figure.py js > scripts/mockups/motion-shapes.js
 
 Shapes are point lists run through the same smooth curve as scripts/anatomy.py ("!x,y" is a sharp

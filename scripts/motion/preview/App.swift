@@ -1,7 +1,7 @@
 // The few app types the figure drawing needs, standing in for Anatomy.swift, which is full of views.
 // preview.sh appends the real Figure.parse from Anatomy.swift to this file.
 import SwiftUI
-import TallyKit
+import Overlo4dKit
 
 enum Muscle: String, Codable, CaseIterable, Identifiable, Sendable {
     case chest, frontDelts, sideDelts, rearDelts, biceps, triceps, forearms, abs, obliques

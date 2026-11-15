@@ -1,10 +1,10 @@
-"""Anatomy figure generator for Tally.
+"""Anatomy figure generator for Overlo4d.
 
 The body is drawn for the viewer's left half of a 200x400 figure and mirrored. Every shape is a
 list of points; the generator runs a smooth closed curve through them, so a muscle is edited by
 moving its points rather than hand-writing Bezier handles. A point written "!x,y" is a sharp corner.
 
-    python3 scripts/anatomy.py swift > Sources/Tally/Exercises/AnatomyShapes.swift
+    python3 scripts/anatomy.py swift > Sources/Overlo4d/Exercises/AnatomyShapes.swift
     python3 scripts/anatomy.py js > scripts/mockups/anatomy.js
 
 Each side has an outline (the silhouette, which clips everything else), muscle regions and a few

@@ -1,5 +1,5 @@
 @echo off
-rem Builds Overload and installs it on the connected iPhone through xtool in WSL.
+rem Builds Overlo4d and installs it on the connected iPhone through xtool in WSL.
 rem Before running: plug in the iPhone, unlock it, and open the Apple Devices app.
 setlocal
 
@@ -29,7 +29,7 @@ wsl -d %DISTRO% --cd "%~dp0." -- bash -lc "export USBMUXD_SOCKET_ADDRESS=%RELAY%
 if errorlevel 1 goto :fail
 
 echo.
-echo Installed. Open Overload on the iPhone.
+echo Installed. Open Overlo4d on the iPhone.
 pause
 exit /b 0
 

@@ -17,7 +17,7 @@ const sandbox = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'motion-data.js'), 'utf8') + '\nthis.MOTION = MOTION;', sandbox);
 const list = names => (names || '').split(',').map(n => n.trim().replace('.', '')).filter(Boolean);
 const exercises = [];
-for (const line of fs.readFileSync(path.join(__dirname, '../../Sources/Tally/Gym/ExerciseLibrary.swift'), 'utf8').split('\n')) {
+for (const line of fs.readFileSync(path.join(__dirname, '../../Sources/Overlo4d/Gym/ExerciseLibrary.swift'), 'utf8').split('\n')) {
   const found = line.match(/^\s*e\("([^"]+)",\s*[^,]+,\s*[^,]+,\s*\[([^\]]*)\](?:,\s*\[([^\]]*)\])?/);
   if (!found || !sandbox.MOTION.exercises[found[1]] || !found[1].toLowerCase().includes(filter)) continue;
   const [move, load] = sandbox.MOTION.exercises[found[1]];
