@@ -118,7 +118,7 @@ struct PlateCalculatorSheet: View {
     /// Competition plate colours. Pound plates borrow the colour of the nearest kilo plate.
     static func color(_ plate: Double, unit: WeightUnit = .kg) -> Color {
         let kilo = unit == .lb ? Self.kiloTwin(ofPounds: plate) : plate
-        switch kilo {
+        return switch kilo {
         case 25: Color(red: 0.84, green: 0.22, blue: 0.17)
         case 20: Color(red: 0.18, green: 0.44, blue: 0.82)
         case 15: Color(red: 0.91, green: 0.73, blue: 0.14)
