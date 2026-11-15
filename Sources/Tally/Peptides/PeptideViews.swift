@@ -16,7 +16,6 @@ struct PeptideHome: View {
     @State private var path: [PeptideRoute] = []
     @State private var adding = false
     @State private var logging: PeptideProfile?
-    @State private var settingPIN = false
     @State private var importing = false
     @State private var pendingImport: PeptideData?
     @State private var importFailed = false
@@ -76,7 +75,6 @@ struct PeptideHome: View {
         }
         .sheet(isPresented: $adding) { PeptideAddSheet(store: store) }
         .sheet(item: $logging) { profile in PeptideLogSheet(store: store, profile: profile) }
-        .sheet(isPresented: $settingPIN) { PeptidePINSheet(store: store) }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             guard case .success(let url) = result else { return }
             guard let imported = try? store.read(fileAt: url), !imported.isEmpty else {
@@ -104,7 +102,7 @@ struct PeptideHome: View {
         .confirmationDialog("Erase the tracker?", isPresented: $confirmingErase, titleVisibility: .visible) {
             Button("Erase everything", role: .destructive) { store.eraseEverything() }
         } message: {
-            Text("Removes every peptide and log entry, and the PIN. Export first if you want a copy.")
+            Text("Removes every peptide and log entry. Export first if you want a copy.")
         }
     }
 
@@ -125,12 +123,6 @@ struct PeptideHome: View {
         Menu {
             Button("Add peptide", systemImage: "plus") { adding = true }
             Button("History", systemImage: "clock") { path.append(.history) }
-            Section {
-                Button(store.hasPIN ? "Change PIN" : "Set a PIN", systemImage: "lock") { settingPIN = true }
-                if store.hasPIN {
-                    Button("Remove PIN", systemImage: "lock.open") { store.removePIN() }
-                }
-            }
             Section {
                 if let file = store.exportFile(), !store.data.isEmpty {
                     ShareLink(item: file, preview: SharePreview(file.name)) {

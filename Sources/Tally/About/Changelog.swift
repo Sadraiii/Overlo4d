@@ -54,7 +54,7 @@ enum Changelog {
             "The body figure is redrawn: a smooth outline with separate heads for the quads, hamstrings, calves, forearms and triceps, plus collarbones, kneecaps and spine.",
             "Worked muscles pulse on the exercise screen and when you pick a muscle on the workout card, the primary ones hardest. Still when Reduce Motion is on.",
             "The animated exercise figure is now a muscled body instead of a stick figure. It shows the primary, secondary and tertiary muscles in colour, glowing as the lift gets heavy, and moves the way the lift is done: bar over the midfoot in squats and deadlifts, a straight bar path in presses and rows, elbows tucked on the bench.",
-            "Peptides, in Settings › Private: a reconstitution calculator for U-100 syringes (concentration, amount per unit, units to draw, portions per vial) with a syringe gauge, a log with site rotation, vial countdown, an optional PIN and its own JSON export and import. It stays out of widgets, the coach and the iCloud backup.",
+            "Peptides, in Settings › Private: a reconstitution calculator for U-100 syringes (concentration, amount per unit, units to draw, portions per vial) with a syringe gauge, a log with site rotation, vial countdown and its own JSON export and import. It stays out of widgets, the coach and the iCloud backup.",
         ]),
         ChangelogEntry(version: "0.10", date: DateComponents(year: 2026, month: 11, day: 7), changes: [
             "Recovery: Home shows which muscles are still recovering and what's ready to train, on the body figure. Tap it for every muscle with the time it's ready again.",

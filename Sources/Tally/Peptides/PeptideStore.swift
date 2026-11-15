@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import Observation
 import TallyCore
@@ -10,11 +9,7 @@ import TallyCore
 @Observable
 final class PeptideStore {
     private(set) var data: PeptideData
-    /// A PIN is set. Kept here so views update when it changes.
-    private(set) var hasPIN: Bool
-
     private static let fileURL = URL.documentsDirectory.appending(path: "peptides.json")
-    private static let pinAccount = "peptides.pin"
 
     init() {
         var data = PeptideData()
@@ -26,7 +21,8 @@ final class PeptideStore {
             }
         }
         self.data = data
-        hasPIN = Keychain.read(Self.pinAccount) != nil
+        // An earlier build could set a PIN; clear what it left in the Keychain.
+        Keychain.delete("peptides.pin")
     }
 
     private func save() {
@@ -83,35 +79,9 @@ final class PeptideStore {
         }
     }
 
-    /// Removes every profile and entry, and the PIN.
+    /// Removes every profile and entry.
     func eraseEverything() {
         data = PeptideData()
         try? FileManager.default.removeItem(at: Self.fileURL)
-        removePIN()
-    }
-
-    // MARK: PIN
-
-    /// The Keychain holds "salt:hash", never the PIN itself.
-    func setPIN(_ pin: String) {
-        let salt = UUID().uuidString
-        Keychain.save("\(salt):\(Self.hash(pin, salt: salt))", account: Self.pinAccount)
-        hasPIN = true
-    }
-
-    func removePIN() {
-        Keychain.delete(Self.pinAccount)
-        hasPIN = false
-    }
-
-    func checkPIN(_ pin: String) -> Bool {
-        guard let stored = Keychain.read(Self.pinAccount) else { return true }
-        let parts = stored.split(separator: ":", maxSplits: 1).map(String.init)
-        guard parts.count == 2 else { return false }
-        return Self.hash(pin, salt: parts[0]) == parts[1]
-    }
-
-    private static func hash(_ pin: String, salt: String) -> String {
-        SHA256.hash(data: Data("\(salt)|\(pin)".utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }

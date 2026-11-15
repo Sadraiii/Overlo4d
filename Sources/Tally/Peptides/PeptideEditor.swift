@@ -202,7 +202,9 @@ struct PeptideResults: View {
     }
 }
 
-/// A U-100 syringe barrel with its marks, filled to where the plunger goes.
+/// A U-100 syringe lying on its side: needle on the left, the barrel with its unit marks, and the
+/// stopper where the plunger should sit. Everything is laid out from the view's own width, so
+/// it never draws past its card.
 struct SyringeGauge: View {
     let syringe: SyringeSize
     let halfUnits: Bool
@@ -210,36 +212,54 @@ struct SyringeGauge: View {
 
     var body: some View {
         Canvas { context, size in
-            let inset: CGFloat = 12
-            let barrel = CGRect(x: inset, y: 22, width: size.width - inset * 2, height: 36)
-            let perUnit = barrel.width / CGFloat(syringe.units)
+            let needle: CGFloat = 20
+            let hub: CGFloat = 10
+            let flange: CGFloat = 5
+            // The scale starts a little inside the barrel and stops before the flange.
+            let barrel = CGRect(x: needle + hub, y: 34, width: max(60, size.width - needle - hub - flange - 4), height: 34)
+            let zero = barrel.minX + 8
+            let full = barrel.maxX - 12
+            let perUnit = (full - zero) / CGFloat(syringe.units)
             let shown = min(max(units, 0), syringe.units)
-            let fill = CGFloat(shown) * perUnit
-            let shape = Path(roundedRect: barrel, cornerRadius: 7)
+            let stop = zero + CGFloat(shown) * perUnit
+            let middle = barrel.midY
+            let shape = Path(roundedRect: barrel, cornerRadius: 6)
 
+            // Needle and hub.
+            var steel = Path()
+            steel.move(to: CGPoint(x: 2, y: middle))
+            steel.addLine(to: CGPoint(x: needle, y: middle))
+            context.stroke(steel, with: .color(Theme.ink3), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+            context.fill(Path(roundedRect: CGRect(x: needle, y: middle - 6, width: hub + 2, height: 12), cornerRadius: 3),
+                         with: .color(Theme.line2))
+
+            // Barrel, liquid and flange.
             context.fill(shape, with: .color(Theme.fill))
-            if fill > 0 {
+            if shown > 0 {
                 var liquid = context
                 liquid.clip(to: shape)
-                liquid.fill(Path(CGRect(x: barrel.minX, y: barrel.minY, width: fill, height: barrel.height)),
-                            with: .color(Theme.accent.opacity(0.3)))
+                liquid.fill(Path(CGRect(x: barrel.minX, y: barrel.minY, width: stop - barrel.minX, height: barrel.height)),
+                            with: .color(Theme.accent.opacity(0.28)))
             }
-            context.stroke(shape, with: .color(Theme.line2), lineWidth: 1)
+            context.stroke(shape, with: .color(Theme.line2), lineWidth: 1.5)
+            context.fill(Path(roundedRect: CGRect(x: barrel.maxX - 1, y: barrel.minY - 6, width: flange, height: barrel.height + 12), cornerRadius: 2),
+                         with: .color(Theme.line2))
 
+            // Marks: every unit (and half unit where the syringe has them), longer at 5 and 10.
             let step = halfUnits ? 0.5 : 1.0
             let count = Int((syringe.units / step).rounded())
             let labelEvery = syringe == .u100 ? 10 : 5
             for index in 0...count {
                 let value = Double(index) * step
-                let x = barrel.minX + CGFloat(value) * perUnit
+                let x = zero + CGFloat(value) * perUnit
                 let whole = index % (halfUnits ? 2 : 1) == 0
                 let number = Int(value.rounded())
                 let labelled = whole && number % labelEvery == 0
                 let five = whole && number % 5 == 0
-                let length: CGFloat = labelled ? 17 : five ? 13 : whole ? 9 : 5
+                let length: CGFloat = labelled ? 15 : five ? 11 : whole ? 7 : 4
                 var tick = Path()
                 tick.move(to: CGPoint(x: x, y: barrel.maxY - length))
-                tick.addLine(to: CGPoint(x: x, y: barrel.maxY))
+                tick.addLine(to: CGPoint(x: x, y: barrel.maxY - 1))
                 context.stroke(tick, with: .color(labelled ? Theme.ink2 : Theme.ink3), lineWidth: labelled ? 1.5 : 1)
                 if labelled {
                     context.draw(Text("\(number)").font(Typo.body(10, .medium)).foregroundStyle(Theme.ink3),
@@ -247,20 +267,29 @@ struct SyringeGauge: View {
                 }
             }
 
+            // Stopper, and a label above it that stays inside the view.
             if shown > 0 {
-                let x = barrel.minX + fill
-                var plunger = Path()
-                plunger.move(to: CGPoint(x: x, y: barrel.minY - 5))
-                plunger.addLine(to: CGPoint(x: x, y: barrel.maxY + 3))
-                context.stroke(plunger, with: .color(Theme.accent), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                context.draw(Text(PeptideFormat.number(units, places: 1)).font(Typo.body(12, .bold)).foregroundStyle(Theme.accent),
-                             at: CGPoint(x: min(max(x, 16), size.width - 16), y: 8))
+                context.fill(Path(roundedRect: CGRect(x: stop - 2.5, y: barrel.minY + 2, width: 5, height: barrel.height - 4), cornerRadius: 2),
+                             with: .color(Theme.accent))
+                let label = context.resolve(Text(PeptideFormat.units(units)).font(Typo.body(12, .bold)).foregroundStyle(Theme.accentInk))
+                let text = label.measure(in: CGSize(width: 160, height: 30))
+                let bubble = CGSize(width: text.width + 16, height: 22)
+                let x = min(max(stop, bubble.width / 2 + 1), size.width - bubble.width / 2 - 1)
+                context.fill(Path(roundedRect: CGRect(x: x - bubble.width / 2, y: 2, width: bubble.width, height: bubble.height), cornerRadius: 11),
+                             with: .color(Theme.accent))
+                var pointer = Path()
+                pointer.move(to: CGPoint(x: stop, y: 2 + bubble.height))
+                pointer.addLine(to: CGPoint(x: stop, y: barrel.minY + 2))
+                context.stroke(pointer, with: .color(Theme.accent), lineWidth: 1.5)
+                context.draw(label, at: CGPoint(x: x, y: 2 + bubble.height / 2))
             }
         }
-        .frame(height: 82)
+        .frame(maxWidth: .infinity)
+        .frame(height: 92)
+        .clipped()
         .accessibilityElement()
         .accessibilityLabel("Syringe, \(syringe.rawValue) units")
-        .accessibilityValue(units > 0 ? "Plunger at \(PeptideFormat.units(units))" : "Empty")
+        .accessibilityValue(units > 0 ? "Stopper at \(PeptideFormat.units(units))" : "Empty")
     }
 }
 
