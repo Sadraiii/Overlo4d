@@ -4,7 +4,8 @@
 import Foundation
 
 func number(_ value: Double) -> String { String(format: "%.1f", value) }
-func point(_ p: MotionPoint) -> String { "[\(number(p.x)),\(number(p.y))]" }
+// Joints are written finer than the rest: the figure is drawn from them, and tenths would make it tremble.
+func point(_ p: MotionPoint) -> String { "[\(String(format: "%.2f", p.x)),\(String(format: "%.2f", p.y))]" }
 
 var moves: [String] = []
 for move in MotionMove.allCases {

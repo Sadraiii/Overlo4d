@@ -1,18 +1,35 @@
-// Draws one frame of the animated exercise figure the way MotionFigureView does in the app: jointed
-// body parts from motion-shapes.js placed on a skeleton from motion-data.js, muscles in their role
+// Draws one frame of the animated exercise figure the way MotionFigureView does in the app: the
+// pieces from motion-shapes.js bent along a skeleton from motion-data.js, muscles in their role
 // colours. Scene coordinates have y up and the floor at y = 0; the caller's <svg> gets a matching viewBox.
 const MF_NS = 'http://www.w3.org/2000/svg';
 const MF_JOINTS = ['hip', 'shoulder', 'head', 'elbow', 'hand', 'knee', 'ankle', 'toe', 'farElbow', 'farHand', 'farKnee', 'farAnkle', 'farToe', 'farShoulder', 'farHip'];
+// Bone lengths as drawn (MotionBody in Overlo4dCore), and how much of the body on each side of a joint bends with it.
+const MF_BODY = { torso: 50, head: 15.5, upperArm: 30, forearm: 30, thigh: 42, shin: 40, foot: 12 };
+const MF_BEND = { hip: 16, knee: 7, elbow: 6 };
 let motionCount = 0;
 
-// 0 at the start pose, 1 at the end pose, easing in and out, back and forth.
-const motionPhase = (seconds, duration) => 0.5 - 0.5 * Math.cos(2 * Math.PI * (seconds / duration % 1));
+// 0 at the start pose, 1 at the end pose and back: a short hold at each end, and in between the
+// smooth start and stop of a reaching movement (minimum jerk).
+const MF_HOLD = 0.06;
+function motionPhase(seconds, duration) {
+  const cycle = ((seconds / duration) % 1 + 1) % 1, half = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2;
+  const t = Math.min(Math.max((half - MF_HOLD) / (1 - 2 * MF_HOLD), 0), 1);
+  return t * t * t * (10 + t * (6 * t - 15));
+}
 
+// The joints at a phase: a smooth curve through the frames that were written out.
 function motionSkeleton(move, phase) {
-  const steps = move.frames.length - 1, at = Math.min(Math.max(phase, 0), 1) * steps;
-  const i = Math.min(Math.floor(at), steps - 1), t = at - i, a = move.frames[i], b = move.frames[i + 1];
+  const frames = move.frames, steps = frames.length - 1, at = Math.min(Math.max(phase, 0), 1) * steps;
+  const i = Math.min(Math.floor(at), steps - 1), t = at - i;
   const s = {};
-  MF_JOINTS.forEach((name, j) => { s[name] = [a[j][0] + (b[j][0] - a[j][0]) * t, a[j][1] + (b[j][1] - a[j][1]) * t]; });
+  MF_JOINTS.forEach((name, j) => {
+    s[name] = [0, 1].map(axis => {
+      const b = frames[i][j][axis], c = frames[i + 1][j][axis];
+      // Past either end the curve carries straight on.
+      const a = i > 0 ? frames[i - 1][j][axis] : 2 * b - c, d = i + 2 <= steps ? frames[i + 2][j][axis] : 2 * c - b;
+      return b + t * ((c - a) + t * ((2 * a - 5 * b + 4 * c - d) + t * (3 * (b - c) + d - a))) / 2;
+    });
+  });
   return s;
 }
 
@@ -22,10 +39,75 @@ function motionViewBox(move, pad = 14) {
   return [x0 - pad, -(y1 + pad), x1 - x0 + pad * 2, y1 - y0 + pad * 1.4];
 }
 
+// A run of bones through `joints` that bend into each other (MotionChain in Overlo4dCore). `lengths`
+// are the bones as drawn; `bends` says, for each joint between two bones, how far on each side of
+// it the body curves. Returns the place of a point drawn x along bone k and y across it: on a
+// straight bone that is just the bone's own frame; near a joint the point follows a curve that
+// leaves one bone and joins the next, so whatever is drawn across a joint bends instead of
+// breaking. On the inside of a bend the two sides meet in a crease and neither goes past it.
+// `flip` puts the front (+y) on the other side.
+function motionChain(joints, lengths, bends, flip) {
+  const bones = lengths.map((length, k) => {
+    const a = joints[k], b = joints[k + 1], dx = b[0] - a[0], dy = b[1] - a[1], size = Math.max(Math.hypot(dx, dy), .001);
+    return { a, length, ux: dx / size, uy: dy / size, stretch: size / length };
+  });
+  // The bend where bone j starts: its curve runs from the joint less `a` to the joint plus `c`,
+  // and the crease is the line across the middle of that curve.
+  const folds = bones.map((after, j) => {
+    if (j === 0) return null;
+    const before = bones[j - 1], r = bends[j - 1];
+    const ax = before.ux * before.stretch * r, ay = before.uy * before.stretch * r, cx = after.ux * after.stretch * r, cy = after.uy * after.stretch * r;
+    const size = Math.hypot(ax + cx, ay + cy);
+    return { r, ax, ay, cx, cy, creased: size > 1e-6, x: joints[j][0] + (cx - ax) / 8, y: joints[j][1] + (cy - ay) / 8, ex: (ax + cx) / size, ey: (ay + cy) / size };
+  });
+  // How far a point can lie from (x, y) in the direction (nx, ny) and still be on its own side of
+  // the crease at joint j: `side` is -1 for what comes before the joint, 1 for what comes after.
+  const reach = (j, x, y, nx, ny, far, side) => {
+    const fold = folds[j];
+    if (!fold.creased) return far;
+    const over = ((x + nx * far - fold.x) * fold.ex + (y + ny * far - fold.y) * fold.ey) * side;
+    const lean = (nx * fold.ex + ny * fold.ey) * side;
+    return over < 0 && lean < 0 ? Math.max(far - over / lean, 0) : far;
+  };
+  const straight = (k, x, y) => {
+    const bone = bones[k], sign = (flip ? -y : y) < 0 ? -1 : 1, nx = -bone.uy * sign, ny = bone.ux * sign;
+    const px = bone.a[0] + bone.ux * bone.stretch * x, py = bone.a[1] + bone.uy * bone.stretch * x;
+    let far = Math.abs(y);
+    if (k > 0) far = reach(k, px, py, nx, ny, far, 1);
+    if (k < bones.length - 1) far = reach(k + 1, px, py, nx, ny, far, -1);
+    return [px + nx * far, py + ny * far];
+  };
+  return (k, x, y) => {
+    let j = 0, past = 0;
+    if (k > 0 && x < folds[k].r) { j = k; past = x; }
+    else if (k < bones.length - 1 && x > bones[k].length - folds[k + 1].r) { j = k + 1; past = x - bones[k].length; }
+    if (!j) return straight(k, x, y);
+    const { r, ax, ay, cx, cy } = folds[j], onBefore = bones[j - 1].length + past;
+    if (past <= -r) return straight(j - 1, onBefore, y);
+    if (past >= r) return straight(j, past, y);
+    // The curve leaves the first bone and arrives on the second straight, turning most at the joint:
+    // joint - (1 - t)^3 a + t^3 c. t is chosen so that along a straight limb nothing moves at all,
+    // which means solving 2u^3 + 1.5u = past / r for u = t - 1/2.
+    const q = past / r, root = Math.sqrt(q * q / 16 + 1 / 64), t = .5 + Math.cbrt(q / 4 + root) + Math.cbrt(q / 4 - root), m = 1 - t;
+    let tx = m * m * ax + t * t * cx, ty = m * m * ay + t * t * cy;
+    const size = Math.hypot(tx, ty);
+    if (size < 1e-6) return straight(j - 1, onBefore, y);
+    tx /= size; ty /= size;
+    const px = joints[j][0] - m * m * m * ax + t * t * t * cx, py = joints[j][1] - m * m * m * ay + t * t * t * cy;
+    const sign = (flip ? -y : y) < 0 ? -1 : 1, nx = -ty * sign, ny = tx * sign;
+    let far = Math.abs(y);
+    // Nothing reaches past the centre of the turn, where the body would fold back through itself.
+    const turn = 2 * m * t * (ax * cy - ay * cx) / (3 * size * size * size) * sign;
+    if (turn * far > 1) far = 1 / turn;
+    far = reach(j, px, py, nx, ny, far, t < .5 ? -1 : 1);
+    return [px + nx * far, py + ny * far];
+  };
+}
+
 // opts: load ('barbell' …), glow (0…1, how hard the worked muscles are working right now), effort (muscle => 0…1).
 function drawMotion(svg, move, phase, fill, opts = {}) {
   if (!svg.querySelector('defs')) svg.insertAdjacentHTML('afterbegin', `<defs>
-    <radialGradient id="mfShade" cx=".4" cy=".3" r=".8">
+    <radialGradient id="mfShade">
       <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/>
       <stop offset="1" stop-color="#000" stop-opacity=".16"/></radialGradient></defs>`);
   const s = motionSkeleton(move, phase);
@@ -65,55 +147,83 @@ function drawMotion(svg, move, phase, fill, opts = {}) {
   }
 
   const shapes = MOTION_SHAPES[move.view] || MOTION_SHAPES.side;
-  // One body part from joint a to joint b. `flip` puts the front of the part on its other side.
-  const part = (parent, name, a, b, flip) => {
+  // One piece, drawn along bone k of a chain. A far piece is faded toward the card, so the near side reads clearly.
+  const piece = (name, chain, k, far) => {
     const shape = shapes[name];
-    const dx = b[0] - a[0], dy = b[1] - a[1], length = Math.max(Math.hypot(dx, dy), .001);
-    const ux = dx / length, uy = dy / length, stretch = length / shape.length;
-    const nx = flip ? uy : -uy, ny = flip ? -ux : ux;
-    const g = el(parent, 'g', { transform: `matrix(${ux * stretch} ${uy * stretch} ${nx} ${ny} ${a[0]} ${a[1]})` });
-    const clip = 'mfClip' + motionCount++;
-    g.insertAdjacentHTML('beforeend', `<clipPath id="${clip}"><path d="${shape.outline}"/></clipPath>`);
-    el(g, 'path', { d: shape.outline, fill: 'var(--body)' });
-    const inner = el(g, 'g', { 'clip-path': `url(#${clip})` });
-    shape.regions.forEach(([m, d, detail]) => {
-      const color = m ? fill(m) : 'var(--tissue)';
-      const k = m && opts.effort ? opts.effort(m) * (opts.glow || 0) : 0;
-      if (k > 0 && !detail) el(inner, 'path', { d, fill: 'none', stroke: color, 'stroke-width': 3.4, 'stroke-opacity': .3 * k, 'stroke-linejoin': 'round' });
-      el(inner, 'path', { d, fill: color });
-      if (m && !detail) el(inner, 'path', { d, fill: 'url(#mfShade)' });
-      if (k > 0) el(inner, 'path', { d, fill: '#fff', 'fill-opacity': .12 * k });
-      el(inner, 'path', { d, fill: 'none', stroke: 'var(--body)', 'stroke-width': detail ? .35 : .7, 'stroke-linejoin': 'round' });
+    const path = (pts, closed) => {
+      let d = '';
+      for (let i = 0; i < pts.length; i += 2) {
+        const p = chain(k, pts[i], pts[i + 1]);
+        d += (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2);
+      }
+      return closed ? d + 'Z' : d;
+    };
+    // Where the light falls on each muscle: a point of its own, so it stays put as the piece bends.
+    shape.lights = shape.lights || shape.regions.map(([, pts]) => {
+      let ax = Infinity, ay = Infinity, bx = -Infinity, by = -Infinity;
+      for (let i = 0; i < pts.length; i += 2) { ax = Math.min(ax, pts[i]); bx = Math.max(bx, pts[i]); ay = Math.min(ay, pts[i + 1]); by = Math.max(by, pts[i + 1]); }
+      return [ax + (bx - ax) * .4, ay + (by - ay) * .3, Math.max(bx - ax, by - ay) * .8];
     });
-    shape.lines.forEach(d => el(inner, 'path', { d, fill: 'none', stroke: 'var(--muscle)', 'stroke-width': .6, 'stroke-linecap': 'round' }));
-    el(inner, 'path', { d: shape.outline, fill: 'none', stroke: 'var(--body)', 'stroke-width': 1.5, 'stroke-linejoin': 'round' });
+    const g = el(root, 'g', {}), outline = path(shape.outline, true), clip = 'mfClip' + motionCount++;
+    g.insertAdjacentHTML('beforeend', `<clipPath id="${clip}"><path d="${outline}"/></clipPath>`);
+    // Skin a little beyond the piece, so that where it lies over another piece their muscles don't touch.
+    el(g, 'path', { d: outline, fill: 'var(--body)', stroke: 'var(--body)', 'stroke-width': 1.4, 'stroke-linejoin': 'round' });
+    // Everything else is clipped to the piece, so muscles can run to its edge.
+    const inner = el(g, 'g', { 'clip-path': `url(#${clip})`, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', fill: 'none' });
+    shape.regions.forEach(([m, pts, detail], index) => {
+      const d = path(pts, true), color = m ? fill(m) : 'var(--tissue)';
+      const tension = m && opts.effort ? opts.effort(m) * (opts.glow || 0) : 0;
+      // A soft glow in the muscle's own colour: wider rings are fainter.
+      if (tension > 0 && !detail) [4.4, 3, 1.6].forEach(width => el(inner, 'path', { d, stroke: color, 'stroke-width': width, 'stroke-opacity': .13 * tension }));
+      el(inner, 'path', { d, fill: color });
+      if (m && !detail) {
+        // Light from one side, so each muscle belly reads as rounded.
+        const [lx, ly, radius] = shape.lights[index], c = chain(k, lx, ly), shade = 'mfShade' + motionCount++;
+        inner.insertAdjacentHTML('beforeend', `<radialGradient id="${shade}" href="#mfShade" gradientUnits="userSpaceOnUse" cx="${c[0].toFixed(2)}" cy="${c[1].toFixed(2)}" r="${radius.toFixed(2)}"/>`);
+        el(inner, 'path', { d, fill: `url(#${shade})` });
+      }
+      if (tension > 0) el(inner, 'path', { d, fill: '#fff', 'fill-opacity': .12 * tension });
+      el(inner, 'path', { d, stroke: 'var(--body)', 'stroke-width': detail ? .35 : .7 });
+    });
+    shape.lines.forEach(pts => el(inner, 'path', { d: path(pts, false), stroke: 'var(--muscle)', 'stroke-width': .6 }));
+    // A rim of skin around the piece (half of this width falls inside the clip).
+    el(inner, 'path', { d: outline, stroke: 'var(--body)', 'stroke-width': 1.5 });
+    if (far) el(g, 'path', { d: outline, fill: 'var(--card)', 'fill-opacity': .38, stroke: 'var(--card)', 'stroke-opacity': .38, 'stroke-width': 1.4, 'stroke-linejoin': 'round' });
   };
-  const up = move.faceUp;
+  const rigid = (name, a, b, flip, far) => piece(name, motionChain([a, b], [MF_BODY[name]], [], flip), 0, far);
   const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   if (move.view === 'front') {
     // Both sides face the viewer; the far side is the near side mirrored.
     const neck = mid(s.shoulder, s.farShoulder), pelvis = mid(s.hip, s.farHip);
-    [[s.hip, 8.4], [s.farHip, 8.4], [s.knee, 5.4], [s.farKnee, 5.4], [s.shoulder, 7.6], [s.farShoulder, 7.6], [s.elbow, 4.4], [s.farElbow, 4.4]]
-      .forEach(([p, r]) => dot(root, p, r, 'var(--body)'));
+    // Discs under the hips and shoulders close the gaps where the limbs turn against the torso.
+    [[s.hip, 8.4], [s.farHip, 8.4], [s.shoulder, 7.6], [s.farShoulder, 7.6]].forEach(([p, r]) => dot(root, p, r, 'var(--body)'));
     [[s.hip, s.knee, s.ankle, false], [s.farHip, s.farKnee, s.farAnkle, true]].forEach(([hip, knee, ankle, flip]) => {
-      part(root, 'shin', knee, ankle, flip); part(root, 'thigh', hip, knee, flip);
+      const leg = motionChain([hip, knee, ankle], [MF_BODY.thigh, MF_BODY.shin], [MF_BEND.knee], flip);
+      piece('shin', leg, 1); piece('thigh', leg, 0);
     });
-    part(root, 'torso', neck, pelvis, false);
-    part(root, 'head', s.head, neck, false);
+    rigid('torso', neck, pelvis, false);
+    rigid('head', s.head, neck, false);
     [[s.shoulder, s.elbow, s.hand, false], [s.farShoulder, s.farElbow, s.farHand, true]].forEach(([shoulder, elbow, hand, flip]) => {
-      part(root, 'forearm', elbow, hand, flip); part(root, 'upperArm', shoulder, elbow, flip);
+      const arm = motionChain([shoulder, elbow, hand], [MF_BODY.upperArm, MF_BODY.forearm], [MF_BEND.elbow], flip);
+      piece('forearm', arm, 1); piece('upperArm', arm, 0);
     });
   } else {
-    const arm = (parent, shoulder, elbow, hand) => { part(parent, 'forearm', elbow, hand, up); part(parent, 'upperArm', shoulder, elbow, up); };
-    const leg = (parent, hip, knee, ankle, toe) => { part(parent, 'foot', ankle, toe, up); part(parent, 'shin', knee, ankle, up); part(parent, 'thigh', hip, knee, up); };
-    // The far arm and leg first, held back so the near side reads clearly.
-    const far = el(root, 'g', { opacity: .55 });
-    arm(far, s.farShoulder, s.farElbow, s.farHand);
-    leg(far, s.farHip, s.farKnee, s.farAnkle, s.farToe);
-    part(root, 'head', s.head, s.shoulder, up);
-    part(root, 'torso', s.shoulder, s.hip, up);
-    leg(root, s.hip, s.knee, s.ankle, s.toe);
-    arm(root, s.shoulder, s.elbow, s.hand);
+    // Lying face up, the front of the body is on the other side of every piece.
+    const up = move.faceUp;
+    const arm = (shoulder, elbow, hand, far) => {
+      const chain = motionChain([shoulder, elbow, hand], [MF_BODY.upperArm, MF_BODY.forearm], [MF_BEND.elbow], up);
+      piece('forearm', chain, 1, far); piece('upperArm', chain, 0, far);
+    };
+    // The trunk and a leg are one run of bones, so the hip bends like the knee does.
+    const trunk = (hip, knee, ankle) => motionChain([s.shoulder, hip, knee, ankle], [MF_BODY.torso, MF_BODY.thigh, MF_BODY.shin], [MF_BEND.hip, MF_BEND.knee], up);
+    const leg = (chain, ankle, toe, far) => { rigid('foot', ankle, toe, up, far); piece('shin', chain, 2, far); piece('thigh', chain, 1, far); };
+    const near = trunk(s.hip, s.knee, s.ankle);
+    arm(s.farShoulder, s.farElbow, s.farHand, true);
+    leg(trunk(s.farHip, s.farKnee, s.farAnkle), s.farAnkle, s.farToe, true);
+    rigid('head', s.head, s.shoulder, up);
+    piece('torso', near, 0);
+    leg(near, s.ankle, s.toe);
+    arm(s.shoulder, s.elbow, s.hand);
   }
 
   const weight = 'var(--ink2)';

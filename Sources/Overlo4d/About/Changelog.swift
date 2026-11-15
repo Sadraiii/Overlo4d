@@ -32,6 +32,7 @@ enum Changelog {
             "Import from Strong, Hevy or an Overlo4d spreadsheet in Settings › Your data. You see what will be added first, workouts already in your log are skipped, and unknown exercises become your own.",
             "Siri and Shortcuts: links in Settings start a workout, a plan by name, the cardio log, the rep counter and more from the Shortcuts app, the Action Button or by voice.",
             "Hold the app icon on the Home Screen for Start workout, Log cardio and Rep counter.",
+            "The exercise figure moves more naturally. Knees, hips and elbows bend in one smooth line with no seams, and each rep starts and stops gently with a short pause at both ends.",
         ]),
         ChangelogEntry(version: "0.11", date: DateComponents(year: 2026, month: 11, day: 12), changes: [
             "Progression: each exercise shows what to aim for today from your last sessions. More weight once every set hit its reps, the same weight while reps are missing, one more go after a max-effort set, and 10% lighter after three stuck sessions. Tap Use to fill the sets.",

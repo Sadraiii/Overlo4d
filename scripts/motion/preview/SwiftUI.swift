@@ -25,8 +25,10 @@ public struct Path: Sendable, Equatable {
         d = "M\(r.minX + c),\(r.minY) H\(r.maxX - c) A\(c),\(c) 0 0,1 \(r.maxX),\(r.minY + c) V\(r.maxY - c) A\(c),\(c) 0 0,1 \(r.maxX - c),\(r.maxY) H\(r.minX + c) A\(c),\(c) 0 0,1 \(r.minX),\(r.maxY - c) V\(r.minY + c) A\(c),\(c) 0 0,1 \(r.minX + c),\(r.minY) Z"
         see(r.origin); see(CGPoint(x: r.maxX, y: r.maxY))
     }
-    public mutating func move(to p: CGPoint) { d += "M\(p.x),\(p.y) "; see(p) }
-    public mutating func addLine(to p: CGPoint) { d += "L\(p.x),\(p.y) "; see(p) }
+    public mutating func move(to p: CGPoint) { d += "M\(n(p.x)),\(n(p.y)) "; see(p) }
+    public mutating func addLine(to p: CGPoint) { d += "L\(n(p.x)),\(n(p.y)) "; see(p) }
+    /// Two decimals are plenty on screen and keep the page small.
+    private func n(_ v: CGFloat) -> String { String(format: "%.2f", Double(v)) }
     public mutating func addCurve(to p: CGPoint, control1: CGPoint, control2: CGPoint) {
         d += "C\(control1.x),\(control1.y) \(control2.x),\(control2.y) \(p.x),\(p.y) "; see(p); see(control1); see(control2)
     }
@@ -47,10 +49,6 @@ public struct Gradient: Sendable {
     public init(stops: [Stop]) { self.stops = stops }
 }
 public struct FillStyle { public init() {} }
-public struct CGAffineTransform: Sendable {
-    var text: String
-    public init(a: CGFloat, b: CGFloat, c: CGFloat, d: CGFloat, tx: CGFloat, ty: CGFloat) { text = "matrix(\(a) \(b) \(c) \(d) \(tx) \(ty))" }
-}
 public final class Recorder: @unchecked Sendable {
     public var out = ""
     nonisolated(unsafe) static var count = 0
@@ -101,7 +99,6 @@ public struct GraphicsContext {
         rec.out += "<clipPath id=\"\(id)\"><path d=\"\(path.d)\"\(transform)/></clipPath>\n"
         clips.append(id)
     }
-    public mutating func concatenate(_ m: CGAffineTransform) { transforms.append(m.text) }
     public func drawLayer(content: (inout GraphicsContext) throws -> Void) rethrows {
         var inner = self
         inner.opacity = 1

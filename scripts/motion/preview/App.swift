@@ -1,5 +1,4 @@
 // The few app types the figure drawing needs, standing in for Anatomy.swift, which is full of views.
-// preview.sh appends the real Figure.parse from Anatomy.swift to this file.
 import SwiftUI
 import Overlo4dKit
 
@@ -25,5 +24,3 @@ enum AnatomyFigure {
     static let untrained = Theme.line2.mix(with: Theme.ink, by: 0.07)
     static let tissue = Theme.line.mix(with: Theme.line2, by: 0.55)
 }
-
-enum Figure {

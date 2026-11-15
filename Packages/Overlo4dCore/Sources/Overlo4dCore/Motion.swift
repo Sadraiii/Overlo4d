@@ -148,6 +148,144 @@ public enum MotionBody {
     /// Half the shoulder and hip width in the front view.
     public static let shoulderHalf = 20.0
     public static let hipHalf = 8.5
+    /// Head centre to shoulder.
+    public static let head = neck + headRadius
+    /// How far on each side of a joint the body curves when the joint bends (see `MotionChain`).
+    public static let hipBend = 16.0
+    public static let kneeBend = 7.0
+    public static let elbowBend = 6.0
+}
+
+/// A run of bones that bend into each other where they meet, for drawing a body without seams at
+/// its joints. A point is given as `x` along a bone, measured on the bone as it was drawn, and `y`
+/// across it. On the straight part of a bone that is just the bone's own frame. Near a joint the
+/// point follows a curve that leaves one bone and arrives on the next, so a shape drawn across the
+/// joint bends with it instead of breaking, and two shapes that share an edge there keep sharing it.
+/// On the inside of a bend the two sides meet in a crease, a line across the middle of the bend,
+/// and neither goes past it: they press together the way a thigh and a calf do.
+public struct MotionChain: Sendable {
+    private struct Bone: Sendable {
+        var x, y: Double
+        var ux, uy: Double
+        /// How much longer the bone is now than it was drawn.
+        var stretch: Double
+        var length: Double
+    }
+
+    /// The bend where a bone starts. Its curve runs from the joint less (ax, ay) to the joint plus
+    /// (cx, cy); the crease goes through (x, y), at a right angle to (ex, ey).
+    private struct Fold: Sendable {
+        var jointX = 0.0, jointY = 0.0
+        var ax = 0.0, ay = 0.0, cx = 0.0, cy = 0.0
+        var x = 0.0, y = 0.0, ex = 0.0, ey = 0.0
+        var radius = 0.0
+        var creased = false
+    }
+
+    private let bones: [Bone]
+    /// folds[k] is the bend at the joint where bone k starts; the first is unused.
+    private let folds: [Fold]
+    private let flipped: Bool
+
+    /// - Parameters:
+    ///   - joints: Where each bone starts, then where the last one ends.
+    ///   - lengths: Each bone's length as drawn; a bone that is longer or shorter now is stretched to fit.
+    ///   - bends: For each joint between two bones, how far on each side of it the body curves.
+    ///   - flipped: Puts the front of the body (+y) on the other side of every bone.
+    public init(joints: [MotionPoint], lengths: [Double], bends: [Double] = [], flipped: Bool = false) {
+        var bones: [Bone] = []
+        for (k, length) in lengths.enumerated() where k + 1 < joints.count {
+            let a = joints[k], b = joints[k + 1]
+            let size = max(a.distance(to: b), 0.001)
+            bones.append(Bone(x: a.x, y: a.y, ux: (b.x - a.x) / size, uy: (b.y - a.y) / size, stretch: size / max(length, 0.001), length: length))
+        }
+        var folds = [Fold()]
+        for k in bones.indices.dropFirst() {
+            let before = bones[k - 1], after = bones[k]
+            let r = k - 1 < bends.count ? max(bends[k - 1], 0) : 0
+            var fold = Fold(jointX: after.x, jointY: after.y, radius: r)
+            fold.ax = before.ux * before.stretch * r
+            fold.ay = before.uy * before.stretch * r
+            fold.cx = after.ux * after.stretch * r
+            fold.cy = after.uy * after.stretch * r
+            let size = hypot(fold.ax + fold.cx, fold.ay + fold.cy)
+            if size > 1e-6 {
+                fold.creased = true
+                fold.x = after.x + (fold.cx - fold.ax) / 8
+                fold.y = after.y + (fold.cy - fold.ay) / 8
+                fold.ex = (fold.ax + fold.cx) / size
+                fold.ey = (fold.ay + fold.cy) / size
+            }
+            folds.append(fold)
+        }
+        self.bones = bones
+        self.folds = folds
+        self.flipped = flipped
+    }
+
+    /// Where a point drawn `x` along a bone and `y` across it is now. `x` can run past either end of
+    /// the bone, onto its neighbour.
+    public func place(bone: Int, x: Double, y: Double) -> MotionPoint {
+        guard bones.indices.contains(bone) else { return MotionPoint(x, y) }
+        // The joint this point is close enough to bend around, and how far past it the point is.
+        var joint = 0, past = 0.0
+        if bone > 0 && x < folds[bone].radius {
+            joint = bone
+            past = x
+        } else if bone + 1 < bones.count && x > bones[bone].length - folds[bone + 1].radius {
+            joint = bone + 1
+            past = x - bones[bone].length
+        }
+        guard joint > 0 else { return straight(bone, x, y) }
+        let fold = folds[joint]
+        let onBefore = bones[joint - 1].length + past
+        if past <= -fold.radius { return straight(joint - 1, onBefore, y) }
+        if past >= fold.radius { return straight(joint, past, y) }
+
+        // The curve leaves the first bone and arrives on the second straight, turning most at the
+        // joint: joint − (1 − t)³ a + t³ c. t is chosen so that along a straight limb nothing
+        // moves at all, which means solving 2u³ + 1.5u = past / radius for u = t − ½.
+        let q = past / fold.radius, root = (q * q / 16 + 1.0 / 64).squareRoot()
+        let t = 0.5 + cbrt(q / 4 + root) + cbrt(q / 4 - root)
+        let m = 1 - t
+        var tx = m * m * fold.ax + t * t * fold.cx, ty = m * m * fold.ay + t * t * fold.cy
+        let size = hypot(tx, ty)
+        guard size > 1e-6 else { return straight(joint - 1, onBefore, y) }
+        tx /= size
+        ty /= size
+        let px = fold.jointX - m * m * m * fold.ax + t * t * t * fold.cx
+        let py = fold.jointY - m * m * m * fold.ay + t * t * t * fold.cy
+        let sign: Double = (flipped ? -y : y) < 0 ? -1 : 1
+        let nx = -ty * sign, ny = tx * sign
+        var far = abs(y)
+        // Nothing reaches past the centre of the turn, where the body would fold back through itself.
+        let turn = 2 * m * t * (fold.ax * fold.cy - fold.ay * fold.cx) / (3 * size * size * size) * sign
+        if turn * far > 1 { far = 1 / turn }
+        far = reach(joint, px, py, nx, ny, far, side: t < 0.5 ? -1 : 1)
+        return MotionPoint(px + nx * far, py + ny * far)
+    }
+
+    /// A point on the straight part of bone `k`, kept on its own side of the creases at both ends.
+    private func straight(_ k: Int, _ x: Double, _ y: Double) -> MotionPoint {
+        let bone = bones[k]
+        let sign: Double = (flipped ? -y : y) < 0 ? -1 : 1
+        let nx = -bone.uy * sign, ny = bone.ux * sign
+        let px = bone.x + bone.ux * bone.stretch * x, py = bone.y + bone.uy * bone.stretch * x
+        var far = abs(y)
+        if k > 0 { far = reach(k, px, py, nx, ny, far, side: 1) }
+        if k + 1 < bones.count { far = reach(k + 1, px, py, nx, ny, far, side: -1) }
+        return MotionPoint(px + nx * far, py + ny * far)
+    }
+
+    /// How far a point can lie from (x, y) in the direction (nx, ny) and still be on its own side
+    /// of the crease at a joint. `side` is -1 for what comes before the joint and 1 for what comes after.
+    private func reach(_ joint: Int, _ x: Double, _ y: Double, _ nx: Double, _ ny: Double, _ far: Double, side: Double) -> Double {
+        let fold = folds[joint]
+        guard fold.creased else { return far }
+        let over = ((x + nx * far - fold.x) * fold.ex + (y + ny * far - fold.y) * fold.ey) * side
+        let lean = (nx * fold.ex + ny * fold.ey) * side
+        return over < 0 && lean < 0 ? max(far - over / lean, 0) : far
+    }
 }
 
 /// One movement: two poses the figure moves between, how it is fixed and what is around it.
@@ -188,10 +326,18 @@ public struct MotionPattern: Equatable, Sendable {
         self.straightHands = straightHands
     }
 
-    /// 0 at the start pose, 1 at the end pose, easing in and out, back and forth.
+    /// The share of each half of a repetition spent still, at its start and again at its end.
+    public static let hold = 0.06
+
+    /// 0 at the start pose, 1 at the end pose and back again, once per `duration`. The figure rests
+    /// a moment at each end, and in between starts and stops the way a person moves a weight:
+    /// gently away, fastest in the middle, gently in (the minimum-jerk curve 10t³ − 15t⁴ + 6t⁵).
     public static func phase(at seconds: Double, duration: Double) -> Double {
-        let cycle = (seconds / duration).truncatingRemainder(dividingBy: 1)
-        return 0.5 - 0.5 * cos(2 * .pi * cycle)
+        var cycle = (seconds / duration).truncatingRemainder(dividingBy: 1)
+        if cycle < 0 { cycle += 1 }
+        let half = cycle < 0.5 ? cycle * 2 : (1 - cycle) * 2
+        let t = min(max((half - hold) / (1 - 2 * hold), 0), 1)
+        return t * t * t * (10 + t * (6 * t - 15))
     }
 
     public func pose(at phase: Double) -> MotionPose { start.blended(to: end, phase) }

@@ -1,4 +1,5 @@
-// Draws every move with the app's MotionFrame, start, middle, end and the still, as a page of SVGs.
+// Draws moves with the app's MotionFrame, start, middle, end and the still, as a page of SVGs: every
+// move, or those named in the first argument ("squat,curl").
 import SwiftUI
 import Overlo4dCore
 
@@ -24,7 +25,8 @@ for (_, entry) in MotionLibrary.exercises.sorted(by: { $0.key < $1.key }) where 
     loads[entry.0] = entry.1
 }
 var html = "<html><body style=\"margin:0;padding:12px;background:#F3F4F1;font:600 13px sans-serif\">"
-for move in MotionMove.allCases {
+let only = CommandLine.arguments.dropFirst().first.map { Set($0.split(separator: ",").map(String.init)) } ?? []
+for move in MotionMove.allCases where only.isEmpty || only.contains(move.rawValue) {
     let load = loads[move] ?? .none
     html += "<div style=\"margin:10px 0 4px\">\(move.rawValue)</div><div style=\"display:flex;gap:8px;align-items:flex-start\">"
     for phase in [0.0, 0.5, 1.0] { html += svg(move, load, phases: [phase], size: CGSize(width: 250, height: 210)) }

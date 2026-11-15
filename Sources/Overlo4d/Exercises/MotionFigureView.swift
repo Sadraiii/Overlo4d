@@ -2,9 +2,10 @@ import SwiftUI
 import Overlo4dCore
 import Overlo4dKit
 
-/// The app's own exercise animation: a jointed anatomical figure moving between the exercise's start
-/// and end position, with the worked muscles in their role colours, glowing as the lift gets heavy.
-/// Drawn in the theme colours, so it works offline, in light and dark mode, for every built-in exercise.
+/// The app's own exercise animation: an anatomical figure moving between the exercise's start and
+/// end position, with the worked muscles in their role colours, glowing as the lift gets heavy. Its
+/// limbs bend at the joints rather than hinge, so the body has no seams. Drawn in the theme colours,
+/// so it works offline, in light and dark mode, for every built-in exercise.
 struct MotionFigureView: View {
     let move: MotionMove
     var load: MotionLoad = .none
@@ -19,7 +20,7 @@ struct MotionFigureView: View {
     var body: some View {
         let pattern = move.pattern
         if animated && !reduceMotion {
-            TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 60)) { context in
                 let phase = MotionPattern.phase(at: context.date.timeIntervalSinceReferenceDate, duration: pattern.duration)
                 canvas(pattern, phases: [phase])
             }
@@ -48,36 +49,51 @@ struct MotionFigureView: View {
     }
 }
 
-/// A jointed piece of the figure.
+/// A piece of the figure.
 enum MotionBodyPart: Hashable, Sendable {
     case torso, head, upperArm, forearm, thigh, shin, foot
 }
 
-/// The drawing of one body part: an outline, and the muscles clipped to it.
-struct MotionPartShape: @unchecked Sendable {
-    struct Region {
+/// The drawing of one piece: an outline, and the muscles clipped to it. Every shape is a run of
+/// points along the piece (see MotionShapes.swift), which `MotionChain` places on the skeleton.
+struct MotionPartShape: Sendable {
+    struct Region: Sendable {
         /// Nil for parts that aren't tracked (neck, kneecaps), drawn in a neutral tone.
         let muscle: Muscle?
-        let path: Path
+        let points: [MotionPoint]
         /// A muscle head drawn over its own muscle; only its outline adds anything.
         let detail: Bool
-        let bounds: CGRect
+        /// Where the light falls on the muscle, and how far its shading spreads from there.
+        let light: MotionPoint
+        let spread: Double
     }
 
-    /// The distance between the part's two joints as drawn.
-    let length: Double
-    let outline: Path
+    let outline: [MotionPoint]
     let regions: [Region]
-    let lines: [Path]
+    let lines: [[MotionPoint]]
 
-    init(length: Double, outline: String, regions: [(Muscle?, String, Bool)], lines: [String]) {
-        self.length = length
-        self.outline = Figure.parse(outline)
+    init(outline: String, regions: [(Muscle?, String, Bool)], lines: [String]) {
+        self.outline = Self.points(outline)
         self.regions = regions.map { region in
-            let path = Figure.parse(region.1)
-            return Region(muscle: region.0, path: path, detail: region.2, bounds: path.boundingRect)
+            let points = Self.points(region.1)
+            let xs = points.map(\.x), ys = points.map(\.y)
+            let minX = xs.min() ?? 0, maxX = xs.max() ?? 0, minY = ys.min() ?? 0, maxY = ys.max() ?? 0
+            return Region(
+                muscle: region.0, points: points, detail: region.2,
+                light: MotionPoint(minX + (maxX - minX) * 0.4, minY + (maxY - minY) * 0.3),
+                spread: max(maxX - minX, maxY - minY) * 0.8
+            )
         }
-        self.lines = lines.map { Figure.parse($0) }
+        self.lines = lines.map { Self.points($0) }
+    }
+
+    /// "x,y x,y …" as points.
+    private static func points(_ text: String) -> [MotionPoint] {
+        text.split(separator: " ").compactMap { pair in
+            let parts = pair.split(separator: ",")
+            guard parts.count == 2, let x = Double(parts[0]), let y = Double(parts[1]) else { return nil }
+            return MotionPoint(x, y)
+        }
     }
 }
 
@@ -201,32 +217,39 @@ struct MotionFrame {
 
         let side = pattern.view == .side
         if side {
-            // Lying face up, the front of the body is on the other side of every part.
+            // Lying face up, the front of the body is on the other side of every piece.
             let flip = pattern.faceUp
-            // The far arm and leg first, held back so the near side reads clearly.
-            var far = context
-            far.opacity = 0.55
-            far.drawLayer { layer in
-                arm(s.farShoulder, s.farElbow, s.farHand, flip: flip, glow: glow, in: layer)
-                leg(s.farHip, s.farKnee, s.farAnkle, s.farToe, flip: flip, glow: glow, in: layer)
+            // The trunk and a leg are one run of bones, so the hip bends the way the knee does.
+            func trunk(_ hip: MotionPoint, _ knee: MotionPoint, _ ankle: MotionPoint) -> MotionChain {
+                MotionChain(
+                    joints: [s.shoulder, hip, knee, ankle], lengths: [MotionBody.torso, MotionBody.thigh, MotionBody.shin],
+                    bends: [MotionBody.hipBend, MotionBody.kneeBend], flipped: flip
+                )
             }
-            part(.head, s.head, s.shoulder, flip: flip, glow: glow, in: context)
-            part(.torso, s.shoulder, s.hip, flip: flip, glow: glow, in: context)
-            leg(s.hip, s.knee, s.ankle, s.toe, flip: flip, glow: glow, in: context)
+            let near = trunk(s.hip, s.knee, s.ankle)
+            // The far arm and leg first, faded so the near side reads clearly.
+            arm(s.farShoulder, s.farElbow, s.farHand, flip: flip, far: true, glow: glow, in: context)
+            leg(trunk(s.farHip, s.farKnee, s.farAnkle), thigh: 1, s.farAnkle, s.farToe, flip: flip, far: true, glow: glow, in: context)
+            rigid(.head, s.head, s.shoulder, flip: flip, glow: glow, in: context)
+            piece(.torso, near, bone: 0, glow: glow, in: context)
+            leg(near, thigh: 1, s.ankle, s.toe, flip: flip, glow: glow, in: context)
             arm(s.shoulder, s.elbow, s.hand, flip: flip, glow: glow, in: context)
         } else {
             // Both sides face the viewer; the far side is the near side mirrored.
             let neck = MotionPoint((s.shoulder.x + s.farShoulder.x) / 2, (s.shoulder.y + s.farShoulder.y) / 2)
             let pelvis = MotionPoint((s.hip.x + s.farHip.x) / 2, (s.hip.y + s.farHip.y) / 2)
-            // Discs under the hips, knees, shoulders and elbows close the gaps where two parts meet.
+            // Discs under the hips and shoulders close the gaps where the limbs turn against the torso.
             for joint in [s.hip, s.farHip] { dot(joint, radius: 8.4, skin, in: context) }
-            for joint in [s.knee, s.farKnee] { dot(joint, radius: 5.4, skin, in: context) }
             for joint in [s.shoulder, s.farShoulder] { dot(joint, radius: 7.6, skin, in: context) }
-            for joint in [s.elbow, s.farElbow] { dot(joint, radius: 4.4, skin, in: context) }
-            leg(s.hip, s.knee, s.ankle, nil, flip: false, glow: glow, in: context)
-            leg(s.farHip, s.farKnee, s.farAnkle, nil, flip: true, glow: glow, in: context)
-            part(.torso, neck, pelvis, flip: false, glow: glow, in: context)
-            part(.head, s.head, neck, flip: false, glow: glow, in: context)
+            for (hip, knee, ankle, flip) in [(s.hip, s.knee, s.ankle, false), (s.farHip, s.farKnee, s.farAnkle, true)] {
+                let chain = MotionChain(
+                    joints: [hip, knee, ankle], lengths: [MotionBody.thigh, MotionBody.shin],
+                    bends: [MotionBody.kneeBend], flipped: flip
+                )
+                leg(chain, thigh: 0, ankle, nil, flip: flip, glow: glow, in: context)
+            }
+            rigid(.torso, neck, pelvis, flip: false, glow: glow, in: context)
+            rigid(.head, s.head, neck, flip: false, glow: glow, in: context)
             arm(s.shoulder, s.elbow, s.hand, flip: false, glow: glow, in: context)
             arm(s.farShoulder, s.farElbow, s.farHand, flip: true, glow: glow, in: context)
         }
@@ -262,37 +285,63 @@ struct MotionFrame {
         }
     }
 
-    private func arm(_ shoulder: MotionPoint, _ elbow: MotionPoint, _ hand: MotionPoint, flip: Bool, glow: Double, in context: GraphicsContext) {
-        part(.forearm, elbow, hand, flip: flip, glow: glow, in: context)
-        part(.upperArm, shoulder, elbow, flip: flip, glow: glow, in: context)
+    /// The forearm, then the upper arm over it; the two bend into each other at the elbow.
+    private func arm(_ shoulder: MotionPoint, _ elbow: MotionPoint, _ hand: MotionPoint, flip: Bool, far: Bool = false, glow: Double, in context: GraphicsContext) {
+        let chain = MotionChain(
+            joints: [shoulder, elbow, hand], lengths: [MotionBody.upperArm, MotionBody.forearm],
+            bends: [MotionBody.elbowBend], flipped: flip
+        )
+        piece(.forearm, chain, bone: 1, far: far, glow: glow, in: context)
+        piece(.upperArm, chain, bone: 0, far: far, glow: glow, in: context)
     }
 
-    /// - Parameter toe: Nil in the front view, where the foot is drawn with the shin.
-    private func leg(_ hip: MotionPoint, _ knee: MotionPoint, _ ankle: MotionPoint, _ toe: MotionPoint?, flip: Bool, glow: Double, in context: GraphicsContext) {
-        if let toe { part(.foot, ankle, toe, flip: flip, glow: glow, in: context) }
-        part(.shin, knee, ankle, flip: flip, glow: glow, in: context)
-        part(.thigh, hip, knee, flip: flip, glow: glow, in: context)
+    /// The foot, the shin and the thigh over them.
+    /// - Parameters:
+    ///   - thigh: Which bone of the chain the thigh is; the shin is the next.
+    ///   - toe: Nil in the front view, where the foot is drawn with the shin.
+    private func leg(_ chain: MotionChain, thigh: Int, _ ankle: MotionPoint, _ toe: MotionPoint?, flip: Bool, far: Bool = false, glow: Double, in context: GraphicsContext) {
+        if let toe { rigid(.foot, ankle, toe, flip: flip, far: far, glow: glow, in: context) }
+        piece(.shin, chain, bone: thigh + 1, far: far, glow: glow, in: context)
+        piece(.thigh, chain, bone: thigh, far: far, glow: glow, in: context)
     }
 
-    /// One body part from joint `a` to joint `b`, stretched along its length to reach. `flip` puts
-    /// the front of the part on its other side.
-    private func part(_ name: MotionBodyPart, _ a: MotionPoint, _ b: MotionPoint, flip: Bool, glow: Double, in context: GraphicsContext) {
+    /// A piece that doesn't bend, from joint `a` to joint `b`.
+    private func rigid(_ name: MotionBodyPart, _ a: MotionPoint, _ b: MotionPoint, flip: Bool, far: Bool = false, glow: Double, in context: GraphicsContext) {
+        let length: Double
+        switch name {
+        case .head: length = MotionBody.head
+        case .foot: length = MotionBody.foot
+        default: length = MotionBody.torso
+        }
+        piece(name, MotionChain(joints: [a, b], lengths: [length], flipped: flip), bone: 0, far: far, glow: glow, in: context)
+    }
+
+    /// One piece, drawn along a bone of a chain. `far` fades it toward the card.
+    private func piece(_ name: MotionBodyPart, _ chain: MotionChain, bone: Int, far: Bool = false, glow: Double, in context: GraphicsContext) {
         let shapes = pattern.view == .side ? MotionShapes.side : MotionShapes.front
         guard let shape = shapes[name] else { return }
-        let dx = b.x - a.x, dy = b.y - a.y
-        let length = max(hypot(dx, dy), 0.001)
-        let ux = dx / length, uy = dy / length
-        let along = scale * length / shape.length
-        let nx = flip ? uy : -uy, ny = flip ? -ux : ux
-        let start = point(a)
+        func place(_ p: MotionPoint) -> CGPoint {
+            point(chain.place(bone: bone, x: p.x, y: p.y))
+        }
+        func path(_ points: [MotionPoint], closed: Bool = true) -> Path {
+            var path = Path()
+            for (index, p) in points.enumerated() {
+                if index == 0 { path.move(to: place(p)) } else { path.addLine(to: place(p)) }
+            }
+            if closed { path.closeSubpath() }
+            return path
+        }
+        func line(_ width: Double) -> StrokeStyle {
+            StrokeStyle(lineWidth: width * scale, lineCap: .round, lineJoin: .round)
+        }
 
+        let outline = path(shape.outline)
+        // Skin a little beyond the piece, so that where it lies over another piece their muscles don't touch.
+        context.stroke(outline, with: .color(skin), style: line(1.4))
+        context.fill(outline, with: .color(skin))
+        // Everything else is clipped to the piece, so muscles can run to its edge.
         var layer = context
-        // The part's own x axis runs from a to b and its y axis across it. The scene's y runs up and
-        // the view's down, hence the minus signs.
-        layer.concatenate(CGAffineTransform(a: ux * along, b: -uy * along, c: nx * scale, d: -ny * scale, tx: start.x, ty: start.y))
-        layer.fill(shape.outline, with: .color(skin))
-        // Everything else is clipped to the part, so muscles can run to its edge.
-        layer.clip(to: shape.outline)
+        layer.clip(to: outline)
         for region in shape.regions {
             var role: MuscleRole?
             if let muscle = region.muscle { role = roles[muscle] }
@@ -303,25 +352,33 @@ struct MotionFrame {
                 fill = role?.color ?? untrained
             }
             let tension = glow * Self.effort(role)
+            let muscle = path(region.points)
             if tension > 0 && !region.detail {
-                // A soft halo in the muscle's own colour.
-                layer.stroke(region.path, with: .color(fill.opacity(0.3 * tension)), style: StrokeStyle(lineWidth: 3.4, lineJoin: .round))
+                // A soft glow in the muscle's own colour: wider rings are fainter.
+                for width in [4.4, 3, 1.6] {
+                    layer.stroke(muscle, with: .color(fill.opacity(0.13 * tension)), style: line(width))
+                }
             }
-            layer.fill(region.path, with: .color(fill))
+            layer.fill(muscle, with: .color(fill))
             if region.muscle != nil && !region.detail {
                 // Light from one side, so each muscle belly reads as rounded.
-                layer.fill(region.path, with: Self.shading(region.bounds))
+                layer.fill(muscle, with: .radialGradient(Self.shade, center: place(region.light), startRadius: 0, endRadius: region.spread * scale))
             }
             if tension > 0 {
-                layer.fill(region.path, with: .color(.white.opacity(0.12 * tension)))
+                layer.fill(muscle, with: .color(.white.opacity(0.12 * tension)))
             }
-            layer.stroke(region.path, with: .color(skin), style: StrokeStyle(lineWidth: region.detail ? 0.35 : 0.7, lineJoin: .round))
+            layer.stroke(muscle, with: .color(skin), style: line(region.detail ? 0.35 : 0.7))
         }
-        for line in shape.lines {
-            layer.stroke(line, with: .color(untrained), style: StrokeStyle(lineWidth: 0.6, lineCap: .round))
+        for points in shape.lines {
+            layer.stroke(path(points, closed: false), with: .color(untrained), style: line(0.6))
         }
-        // A rim of skin around the part (half of this width falls inside the clip).
-        layer.stroke(shape.outline, with: .color(skin), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+        // A rim of skin around the piece (half of this width falls inside the clip).
+        layer.stroke(outline, with: .color(skin), style: line(1.5))
+        if far {
+            let fade = Theme.card.opacity(0.38)
+            context.fill(outline, with: .color(fade))
+            context.stroke(outline, with: .color(fade), style: line(1.4))
+        }
     }
 
     private static func effort(_ role: MuscleRole?) -> Double {
@@ -338,13 +395,4 @@ struct MotionFrame {
         .init(color: .white.opacity(0), location: 0.55),
         .init(color: .black.opacity(0.16), location: 1),
     ])
-
-    private static func shading(_ rect: CGRect) -> GraphicsContext.Shading {
-        .radialGradient(
-            shade,
-            center: CGPoint(x: rect.minX + rect.width * 0.4, y: rect.minY + rect.height * 0.3),
-            startRadius: 0,
-            endRadius: max(rect.width, rect.height) * 0.8
-        )
-    }
 }

@@ -11,7 +11,9 @@ const { chromium } = require('playwright');
 const out = path.resolve(process.argv[2] || 'exercise-gifs');
 const mode = process.argv[3] || 'light';
 const filter = (process.argv[4] || '').toLowerCase();
-const FPS = 20, DENSITY = 1.5, W = 440, H = 470, COLUMNS = 6, PER_PAGE = 12;
+// A GIF frame lasts a whole number of hundredths of a second, and browsers slow anything under 2 to
+// a tenth of a second, so 3 hundredths (33 frames a second) is the smoothest that plays everywhere.
+const FPS = 100 / 3, DENSITY = 1.5, W = 440, H = 470, COLUMNS = 6, PER_PAGE = 12;
 
 const sandbox = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'motion-data.js'), 'utf8') + '\nthis.MOTION = MOTION;', sandbox);
@@ -39,17 +41,22 @@ for (const line of fs.readFileSync(path.join(__dirname, '../../Sources/Overlo4d/
       const cards = group.slice(start, start + PER_PAGE);
       const frames = fs.mkdtempSync(path.join(os.tmpdir(), 'exercise-gifs-'));
       await page.evaluate(c => window.setup(c), cards);
+      // The last frame stops one step short of the first, so the loop has no seam.
       const count = Math.round(FPS * duration);
       for (let i = 0; i < count; i++) {
         await page.evaluate(t => window.frame(t), i * duration / count);
         await page.screenshot({ path: path.join(frames, `f${String(i).padStart(3, '0')}.png`), fullPage: true });
       }
-      cards.forEach((card, index) => {
-        const x = (index % COLUMNS) * W * DENSITY, y = Math.floor(index / COLUMNS) * H * DENSITY;
-        execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(count / duration), '-i', path.join(frames, 'f%03d.png'), '-vf',
-          `crop=${W * DENSITY}:${H * DENSITY}:${x}:${y},split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
-          path.join(out, `${card.id}.gif`)]);
+      // Every card is cut from the same frames in one pass, each with its own palette of 128 colours
+      // made from the whole loop, so a colour never changes from one frame to the next.
+      const graph = [`[0:v]split=${cards.length}${cards.map((_, i) => `[c${i}]`).join('')}`];
+      cards.forEach((card, i) => {
+        const x = (i % COLUMNS) * W * DENSITY, y = Math.floor(i / COLUMNS) * H * DENSITY;
+        graph.push(`[c${i}]crop=${W * DENSITY}:${H * DENSITY}:${x}:${y},split[a${i}][b${i}]`,
+          `[a${i}]palettegen=max_colors=128:stats_mode=full[p${i}]`, `[b${i}][p${i}]paletteuse=dither=none:diff_mode=rectangle[o${i}]`);
       });
+      execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '100/3', '-i', path.join(frames, 'f%03d.png'), '-filter_complex', graph.join(';'),
+        ...cards.flatMap((card, i) => ['-map', `[o${i}]`, path.join(out, `${card.id}.gif`)])]);
       fs.rmSync(frames, { recursive: true });
     }
   }
