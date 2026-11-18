@@ -18,30 +18,36 @@ struct WorkoutLiveActivity: Widget {
                 .widgetURL(phase.link)
         } dynamicIsland: { context in
             let phase = context.state.phase(isStale: context.isStale)
+            // Expanded: the set ring on the left, what's happening in the middle, the time that
+            // matters on the right in big numbers, and the next set (or the draining rest) below.
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label {
+                    SetsRing(done: context.state.setsDone, total: context.state.setsTotal, size: 50)
+                        .padding(.leading, 6)
+                        .padding(.top, 4)
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    VStack(alignment: .leading, spacing: 1) {
                         Text(context.attributes.workoutName)
-                            .font(Typo.title(15))
-                            .lineLimit(1)
-                    } icon: {
-                        Image(systemName: phase.symbol)
-                            .foregroundStyle(phase.tint)
+                            .font(Typo.body(12, .semibold))
+                            .foregroundStyle(.secondary)
+                        Text(phase.headline(for: context.state))
+                            .font(Typo.title(17))
+                            .foregroundStyle(phase.isAlert ? phase.tint : .primary)
                     }
-                    .padding(.leading, 4)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.attributes.startedAt, style: .timer)
-                        .font(Typo.display(20))
-                        .monospacedDigit()
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 80, alignment: .trailing)
-                        .padding(.trailing, 4)
+                    BigTime(phase: phase, startedAt: context.attributes.startedAt)
+                        .padding(.trailing, 6)
+                        .padding(.top, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     ActivityDetail(state: context.state, phase: phase)
-                        .padding(.top, 4)
-                        .padding(.horizontal, 4)
+                        .padding(.top, 6)
+                        .padding(.horizontal, 6)
                 }
             } compactLeading: {
                 CompactIndicator(phase: phase)
@@ -80,6 +86,83 @@ extension WorkoutActivityPhase {
         case .restPaused: Theme.ink3
         case .restOver, .finished: Theme.good
         }
+    }
+
+    /// States that call for the next set, drawn in their colour.
+    var isAlert: Bool {
+        switch self {
+        case .restOver, .finished: true
+        default: false
+        }
+    }
+
+    /// The bold line in the middle of the expanded island.
+    func headline(for state: WorkoutActivityAttributes.ContentState) -> String {
+        switch self {
+        case .restOver: "Rest over"
+        case .finished: "Workout saved"
+        case .restPaused: "Rest paused"
+        case .training, .resting: state.exerciseName ?? "All sets done"
+        }
+    }
+}
+
+/// Sets done as a ring that fills up, with the count inside; green once every set is ticked.
+struct SetsRing: View {
+    let done: Int
+    let total: Int
+    var size: CGFloat = 50
+
+    var body: some View {
+        let progress = total > 0 ? min(1, Double(done) / Double(total)) : 0
+        let complete = total > 0 && done >= total
+        ZStack {
+            Circle().stroke(Theme.accent.opacity(0.22), lineWidth: size * 0.11)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(complete ? Theme.good : Theme.accent, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: -2) {
+                Text("\(done)")
+                    .font(Typo.display(size * 0.42))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                Text("of \(total)")
+                    .font(Typo.body(size * 0.17, .semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(done) of \(total) sets done")
+    }
+}
+
+/// The big number on the right of the expanded island: the rest countdown, or the workout time.
+struct BigTime: View {
+    let phase: WorkoutActivityPhase
+    let startedAt: Date
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .resting(let rest):
+                Text(timerInterval: countdown(rest), countsDown: true)
+                    .foregroundStyle(Theme.accent)
+            case .restPaused(let remaining):
+                Text(clock(remaining))
+                    .foregroundStyle(Theme.ink3)
+            case .restOver:
+                Text("Go")
+                    .foregroundStyle(Theme.good)
+            case .training, .finished:
+                Text(startedAt, style: .timer)
+            }
+        }
+        .font(Typo.display(36))
+        .monospacedDigit()
+        .multilineTextAlignment(.trailing)
+        .frame(width: 96, alignment: .trailing)
     }
 }
 
@@ -195,35 +278,36 @@ struct LockScreenActivityView: View {
     }
 
     private var training: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(alignment: .center, spacing: 14) {
+            SetsRing(done: context.state.setsDone, total: context.state.setsTotal, size: 58)
+
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Circle().fill(Theme.good).frame(width: 7, height: 7)
-                    WidgetLabel(text: "In progress")
+                    WidgetLabel(text: context.attributes.workoutName)
                 }
-                Text(context.attributes.workoutName)
-                    .font(Typo.title(20))
+                Text(context.state.exerciseName ?? "All sets done")
+                    .font(Typo.title(19))
                     .lineLimit(1)
                     .foregroundStyle(Theme.ink)
-                NextUp(state: context.state)
-                ProgressView(value: Double(context.state.setsDone), total: Double(max(context.state.setsTotal, 1)))
-                    .tint(Theme.accent)
-                SetCount(state: context.state)
+                if let line = context.state.setLine {
+                    Text(line)
+                        .font(Typo.body(13, .semibold))
+                        .foregroundStyle(Theme.ink2)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: 0)
 
-            VStack(alignment: .trailing, spacing: 2) {
-                WidgetLabel(text: "Time")
-                Text(context.attributes.startedAt, style: .timer)
-                    .font(Typo.display(40))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.ink)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 130, alignment: .trailing)
-            }
+            Text(context.attributes.startedAt, style: .timer)
+                .font(Typo.display(42))
+                .monospacedDigit()
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 112, alignment: .trailing)
         }
-        .padding(16)
+        .padding(14)
     }
 }
 
@@ -380,7 +464,15 @@ struct FinishedBanner: View {
     }
 }
 
-/// "Next: Bench Press · Set 3 of 4", or "All sets done".
+extension WorkoutActivityAttributes.ContentState {
+    /// "Set 3 of 4 · 80 kg × 8", or just the set when it has no values yet.
+    var setLine: String? {
+        guard let nextSet else { return nil }
+        return nextTarget.map { "\(nextSet) · \($0)" } ?? nextSet
+    }
+}
+
+/// "Next: Bench Press" over "Set 3 of 4 · 80 kg × 8", or "All sets done".
 struct NextUp: View {
     let state: WorkoutActivityAttributes.ContentState
     var alignment: HorizontalAlignment = .leading
@@ -390,8 +482,8 @@ struct NextUp: View {
             Text(state.exerciseName.map { "Next: \($0)" } ?? "All sets done")
                 .font(Typo.body(13, .semibold))
                 .foregroundStyle(Theme.ink2)
-            if let set = state.nextSet {
-                Text(set)
+            if let line = state.setLine {
+                Text(line)
                     .font(Typo.body(12))
                     .foregroundStyle(Theme.ink3)
             }
@@ -415,7 +507,8 @@ struct RestBar: View {
     }
 }
 
-/// Expanded Dynamic Island: rest countdown, paused rest, rest over, or the next exercise with set progress.
+/// Bottom of the expanded Dynamic Island. The headline and big time above already say what is
+/// happening, so this adds what comes next: the set and its weight, and the rest draining away.
 struct ActivityDetail: View {
     let state: WorkoutActivityAttributes.ContentState
     let phase: WorkoutActivityPhase
@@ -423,67 +516,32 @@ struct ActivityDetail: View {
     var body: some View {
         switch phase {
         case .resting(let rest):
-            VStack(spacing: 6) {
-                HStack(alignment: .center) {
-                    NextUp(state: state)
-                    Spacer()
-                    Text(timerInterval: countdown(rest), countsDown: true)
-                        .font(Typo.display(34))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.accent)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 100, alignment: .trailing)
-                }
+            VStack(alignment: .leading, spacing: 8) {
+                NextUp(state: state)
                 RestBar(rest: rest)
             }
-        case .restPaused(let remaining):
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Rest paused")
-                        .font(Typo.body(14, .semibold))
-                        .foregroundStyle(.secondary)
-                    NextUp(state: state)
-                }
-                Spacer()
-                Text(clock(remaining))
-                    .font(Typo.display(34))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.ink3)
-            }
-        case .restOver:
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Rest over")
-                        .font(Typo.body(14, .semibold))
-                        .foregroundStyle(Theme.good)
-                    NextUp(state: state)
-                }
-                Spacer()
-                Text("Go")
-                    .font(Typo.title(24))
-                    .foregroundStyle(Theme.good)
-            }
+        case .restPaused, .restOver:
+            NextUp(state: state)
+                .frame(maxWidth: .infinity, alignment: .leading)
         case .finished(let summary):
             Text(summary)
                 .font(Typo.body(14, .semibold))
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         case .training:
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(state.exerciseName.map { "Next: \($0)" } ?? "All sets done")
-                        .font(Typo.body(14))
-                        .lineLimit(1)
-                    Spacer()
-                    Text("\(state.setsDone)/\(state.setsTotal) sets")
-                        .font(Typo.body(12, .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
+            HStack {
+                if let line = state.setLine {
+                    Text(line)
+                        .font(Typo.body(13, .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Theme.accent.opacity(0.2), in: .capsule)
                 }
-                ProgressView(value: Double(state.setsDone), total: Double(max(state.setsTotal, 1)))
-                    .tint(Theme.accent)
+                Spacer(minLength: 0)
             }
+            .lineLimit(1)
         }
     }
 }

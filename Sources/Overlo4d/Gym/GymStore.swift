@@ -68,7 +68,7 @@ final class GymStore {
         recomputeRecords()
         writeSnapshot()
         if let activeWorkout {
-            LiveActivityManager.shared.resume(for: activeWorkout, names: name(of:))
+            LiveActivityManager.shared.resume(for: activeWorkout, exercises: exercise(_:))
         } else {
             LiveActivityManager.shared.endLeftovers()
         }
@@ -207,7 +207,7 @@ final class GymStore {
         activeWorkout = workout
         isPresentingWorkout = true
         save()
-        LiveActivityManager.shared.start(for: workout, names: name(of:))
+        LiveActivityManager.shared.start(for: workout, exercises: exercise(_:))
     }
 
     /// Keeps the running workout and its Live Activity up to date. `rest` is a running rest
@@ -225,15 +225,15 @@ final class GymStore {
         }
         if previous.startedAt != workout.startedAt {
             // The lock screen timer counts from the start, which a Live Activity can't change.
-            LiveActivityManager.shared.start(for: workout, names: name(of:))
+            LiveActivityManager.shared.start(for: workout, exercises: exercise(_:))
         }
-        LiveActivityManager.shared.update(for: workout, rest: rest, restPaused: restPaused, names: name(of:))
+        LiveActivityManager.shared.update(for: workout, rest: rest, restPaused: restPaused, exercises: exercise(_:))
     }
 
     /// Starts or ends the running workout's Live Activity after the setting was switched.
     func liveActivitySettingChanged() {
         if let activeWorkout, LiveActivityManager.isEnabled {
-            LiveActivityManager.shared.start(for: activeWorkout, names: name(of:))
+            LiveActivityManager.shared.start(for: activeWorkout, exercises: exercise(_:))
         } else {
             LiveActivityManager.shared.end()
         }
@@ -264,7 +264,7 @@ final class GymStore {
         recomputeRecords()
         save()
         writeSnapshot()
-        LiveActivityManager.shared.finish(workout, names: name(of:))
+        LiveActivityManager.shared.finish(workout, exercises: exercise(_:))
         return true
     }
 

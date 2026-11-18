@@ -8,6 +8,8 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
         public var exerciseName: String?
         /// "Set 3 of 4" for the next exercise.
         public var nextSet: String?
+        /// What that set asks for, e.g. "80 kg × 8". Nil until it has values.
+        public var nextTarget: String?
         public var setsDone: Int
         public var setsTotal: Int
         /// When the current rest started, for the draining bar. Nil in activities from before 0.8.
@@ -23,6 +25,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
         public init(
             exerciseName: String?,
             nextSet: String? = nil,
+            nextTarget: String? = nil,
             setsDone: Int,
             setsTotal: Int,
             restStartedAt: Date? = nil,
@@ -32,6 +35,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
         ) {
             self.exerciseName = exerciseName
             self.nextSet = nextSet
+            self.nextTarget = nextTarget
             self.setsDone = setsDone
             self.setsTotal = setsTotal
             self.restStartedAt = restStartedAt

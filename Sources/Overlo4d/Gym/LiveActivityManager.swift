@@ -16,7 +16,7 @@ final class LiveActivityManager {
     private var activity: Activity<WorkoutActivityAttributes>?
     private var lastState: WorkoutActivityAttributes.ContentState?
 
-    func start(for workout: Workout, names: (UUID) -> String) {
+    func start(for workout: Workout, exercises: (UUID) -> ExerciseDef?) {
         activity = nil
         lastState = nil
         guard Self.isEnabled, ActivityAuthorizationInfo().areActivitiesEnabled else {
@@ -24,7 +24,7 @@ final class LiveActivityManager {
             return
         }
         let attributes = WorkoutActivityAttributes(workoutName: workout.name, startedAt: workout.startedAt)
-        let state = Self.state(for: workout, rest: nil, restPaused: nil, names: names)
+        let state = Self.state(for: workout, rest: nil, restPaused: nil, exercises: exercises)
         activity = try? Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil))
         lastState = state
         // End any leftovers from earlier workouts, but not the one just started.
@@ -34,7 +34,7 @@ final class LiveActivityManager {
 
     /// After a relaunch: re-attaches to this workout's Live Activity if it is still up, or starts one.
     /// Activities from other workouts are ended so nothing stale stays on the Lock Screen.
-    func resume(for workout: Workout, names: (UUID) -> String) {
+    func resume(for workout: Workout, exercises: (UUID) -> ExerciseDef?) {
         let running = Activity<WorkoutActivityAttributes>.activities.first { activity in
             (activity.activityState == .active || activity.activityState == .stale)
                 && activity.content.state.finishedSummary == nil
@@ -42,7 +42,7 @@ final class LiveActivityManager {
                 && abs(activity.attributes.startedAt.timeIntervalSince(workout.startedAt)) < 1
         }
         guard Self.isEnabled, let running else {
-            start(for: workout, names: names)
+            start(for: workout, exercises: exercises)
             return
         }
         activity = running
@@ -53,9 +53,9 @@ final class LiveActivityManager {
 
     /// `rest` is the running rest countdown, from when it started to when it ends;
     /// `restPaused` the seconds left on a paused one.
-    func update(for workout: Workout, rest: ClosedRange<Date>?, restPaused: TimeInterval?, names: (UUID) -> String) {
+    func update(for workout: Workout, rest: ClosedRange<Date>?, restPaused: TimeInterval?, exercises: (UUID) -> ExerciseDef?) {
         guard let activity else { return }
-        let state = Self.state(for: workout, rest: rest, restPaused: restPaused, names: names)
+        let state = Self.state(for: workout, rest: rest, restPaused: restPaused, exercises: exercises)
         // Only real changes are sent, as Apple asks; the countdowns run on the device by themselves.
         guard state != lastState else { return }
         lastState = state
@@ -64,8 +64,8 @@ final class LiveActivityManager {
     }
 
     /// Ends the activity with a summary of the saved workout, left on the Lock Screen for a while.
-    func finish(_ workout: Workout, names: (UUID) -> String) {
-        var state = Self.state(for: workout, rest: nil, restPaused: nil, names: names)
+    func finish(_ workout: Workout, exercises: (UUID) -> ExerciseDef?) {
+        var state = Self.state(for: workout, rest: nil, restPaused: nil, exercises: exercises)
         state.finishedSummary = Self.summary(of: workout)
         let id = activity?.id
         activity = nil
@@ -130,16 +130,20 @@ final class LiveActivityManager {
         for workout: Workout,
         rest: ClosedRange<Date>?,
         restPaused: TimeInterval?,
-        names: (UUID) -> String
+        exercises: (UUID) -> ExerciseDef?
     ) -> WorkoutActivityAttributes.ContentState {
         let next = workout.exercises.first { $0.sets.contains { !$0.isDone } }
-        let nextSet = next.flatMap { exercise in
-            exercise.sets.firstIndex { !$0.isDone }.map { "Set \($0 + 1) of \(exercise.sets.count)" }
-        }
+        let nextIndex = next?.sets.firstIndex { !$0.isDone }
+        let nextSet = next.flatMap { exercise in nextIndex.map { "Set \($0 + 1) of \(exercise.sets.count)" } }
+        let def = next.flatMap { exercises($0.exerciseID) }
+        // What the next set asks for, once it has values (typed, or filled from last time).
+        let target = next.flatMap { exercise in nextIndex.map { exercise.sets[$0] } }
+            .flatMap { $0.hasValues ? Fmt.set($0, kind: def?.kind ?? .weightReps) : nil }
         let rest = rest.flatMap { $0.upperBound > .now ? $0 : nil }
         return WorkoutActivityAttributes.ContentState(
-            exerciseName: next.map { names($0.exerciseID) },
+            exerciseName: next.map { _ in def?.name ?? "Deleted Exercise" },
             nextSet: nextSet,
+            nextTarget: target,
             setsDone: workout.completedSets.count,
             setsTotal: workout.allSets.count,
             restStartedAt: rest?.lowerBound,
