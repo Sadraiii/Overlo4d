@@ -18,36 +18,32 @@ struct WorkoutLiveActivity: Widget {
                 .widgetURL(phase.link)
         } dynamicIsland: { context in
             let phase = context.state.phase(isStale: context.isStale)
-            // Expanded: the set ring on the left, what's happening in the middle, the time that
-            // matters on the right in big numbers, and the next set (or the draining rest) below.
+            // Expanded: the workout and what's happening beside the camera, then one row below it with
+            // the set ring, the exercise and its weight, and the time that matters in big numbers.
+            // The big content sits in the bottom region, where it has the full width and never meets the camera.
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    SetsRing(done: context.state.setsDone, total: context.state.setsTotal, size: 50)
-                        .padding(.leading, 6)
-                        .padding(.top, 4)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 1) {
+                    Label {
                         Text(context.attributes.workoutName)
-                            .font(Typo.body(12, .semibold))
-                            .foregroundStyle(.secondary)
-                        Text(phase.headline(for: context.state))
-                            .font(Typo.title(17))
-                            .foregroundStyle(phase.isAlert ? phase.tint : .primary)
+                    } icon: {
+                        Image(systemName: "dumbbell.fill")
+                            .foregroundStyle(Theme.accent)
                     }
+                    .font(Typo.body(13, .semibold))
                     .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
+                    .padding(.leading, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    BigTime(phase: phase, startedAt: context.attributes.startedAt)
+                    Text(phase.label)
+                        .font(Typo.body(13, .semibold))
+                        .foregroundStyle(phase.tint)
+                        .lineLimit(1)
                         .padding(.trailing, 6)
-                        .padding(.top, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    ActivityDetail(state: context.state, phase: phase)
-                        .padding(.top, 6)
+                    ExpandedIsland(state: context.state, phase: phase, startedAt: context.attributes.startedAt)
                         .padding(.horizontal, 6)
+                        .padding(.top, 6)
                 }
             } compactLeading: {
                 CompactIndicator(phase: phase)
@@ -72,7 +68,7 @@ extension WorkoutActivityPhase {
 
     var symbol: String {
         switch self {
-        case .training: "figure.strengthtraining.traditional"
+        case .training: "dumbbell.fill"
         case .resting: "timer"
         case .restPaused: "pause.fill"
         case .restOver: "bell.fill"
@@ -88,21 +84,14 @@ extension WorkoutActivityPhase {
         }
     }
 
-    /// States that call for the next set, drawn in their colour.
-    var isAlert: Bool {
+    /// The state, top right of the expanded island.
+    var label: String {
         switch self {
-        case .restOver, .finished: true
-        default: false
-        }
-    }
-
-    /// The bold line in the middle of the expanded island.
-    func headline(for state: WorkoutActivityAttributes.ContentState) -> String {
-        switch self {
+        case .training: "Training"
+        case .resting: "Rest"
+        case .restPaused: "Paused"
         case .restOver: "Rest over"
-        case .finished: "Workout saved"
-        case .restPaused: "Rest paused"
-        case .training, .resting: state.exerciseName ?? "All sets done"
+        case .finished: "Saved"
         }
     }
 }
@@ -122,15 +111,18 @@ struct SetsRing: View {
                 .trim(from: 0, to: progress)
                 .stroke(complete ? Theme.good : Theme.accent, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            VStack(spacing: -2) {
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Text("\(done)")
-                    .font(Typo.display(size * 0.42))
-                    .monospacedDigit()
+                    .font(Typo.display(size * 0.4))
                     .contentTransition(.numericText())
-                Text("of \(total)")
-                    .font(Typo.body(size * 0.17, .semibold))
+                Text("/\(total)")
+                    .font(Typo.display(size * 0.22))
                     .foregroundStyle(.secondary)
             }
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .padding(size * 0.17)
         }
         .frame(width: size, height: size)
         .accessibilityElement(children: .ignore)
@@ -155,14 +147,20 @@ struct BigTime: View {
             case .restOver:
                 Text("Go")
                     .foregroundStyle(Theme.good)
-            case .training, .finished:
+            case .finished:
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(Theme.good)
+            case .training:
                 Text(startedAt, style: .timer)
             }
         }
-        .font(Typo.display(36))
+        .font(Typo.display(40))
         .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
         .multilineTextAlignment(.trailing)
-        .frame(width: 96, alignment: .trailing)
+        .frame(width: 100, alignment: .trailing)
     }
 }
 
@@ -201,10 +199,12 @@ struct CompactIndicator: View {
         switch phase {
         case .resting(let rest):
             DrainingRing(rest: rest)
-                .frame(width: 22, height: 22)
+                .frame(width: 20, height: 20)
         default:
             Image(systemName: phase.symbol)
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(phase.tint)
+                .frame(width: 20, height: 20)
         }
     }
 }
@@ -215,25 +215,31 @@ struct CompactTrailing: View {
     let startedAt: Date
 
     var body: some View {
-        switch phase {
-        case .resting(let rest):
-            Text(timerInterval: countdown(rest), countsDown: true)
-                .monospacedDigit()
-                .foregroundStyle(Theme.accent)
-                .frame(maxWidth: 44)
-        case .restPaused(let remaining):
-            Text(clock(remaining))
-                .monospacedDigit()
-                .foregroundStyle(Theme.ink3)
-        case .restOver:
-            Text("Go").foregroundStyle(Theme.good)
-        case .finished:
-            Text("Done").foregroundStyle(Theme.good)
-        case .training:
-            Text(startedAt, style: .timer)
-                .monospacedDigit()
-                .frame(maxWidth: 52)
+        Group {
+            switch phase {
+            case .resting(let rest):
+                // Timer text takes the width of its longest value, so it gets a fixed width,
+                // aligned to the island's edge.
+                Text(timerInterval: countdown(rest), countsDown: true)
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 40, alignment: .trailing)
+            case .restPaused(let remaining):
+                Text(clock(remaining))
+                    .foregroundStyle(Theme.ink3)
+            case .restOver:
+                Text("Go").foregroundStyle(Theme.good)
+            case .finished:
+                Text("Done").foregroundStyle(Theme.good)
+            case .training:
+                // Wider once the workout passes the hour ("1:02:15").
+                Text(startedAt, style: .timer)
+                    .frame(width: Date.now.timeIntervalSince(startedAt) >= 55 * 60 ? 60 : 46, alignment: .trailing)
+            }
         }
+        .font(.system(size: 15, weight: .semibold))
+        .monospacedDigit()
+        .multilineTextAlignment(.trailing)
+        .lineLimit(1)
     }
 }
 
@@ -252,6 +258,7 @@ struct MinimalIndicator: View {
                 .foregroundStyle(Theme.accent)
         default:
             Image(systemName: phase.symbol)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(phase.tint)
         }
     }
@@ -507,41 +514,53 @@ struct RestBar: View {
     }
 }
 
-/// Bottom of the expanded Dynamic Island. The headline and big time above already say what is
-/// happening, so this adds what comes next: the set and its weight, and the rest draining away.
-struct ActivityDetail: View {
+/// The row under the camera in the expanded Dynamic Island: the set ring, the exercise (the next one
+/// during rest) with its set and weight, and the big time; while resting, a bar drains below it.
+struct ExpandedIsland: View {
     let state: WorkoutActivityAttributes.ContentState
     let phase: WorkoutActivityPhase
+    let startedAt: Date
 
     var body: some View {
-        switch phase {
-        case .resting(let rest):
-            VStack(alignment: .leading, spacing: 8) {
-                NextUp(state: state)
-                RestBar(rest: rest)
-            }
-        case .restPaused, .restOver:
-            NextUp(state: state)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        case .finished(let summary):
-            Text(summary)
-                .font(Typo.body(14, .semibold))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        case .training:
-            HStack {
-                if let line = state.setLine {
-                    Text(line)
-                        .font(Typo.body(13, .semibold))
-                        .foregroundStyle(Theme.accent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Theme.accent.opacity(0.2), in: .capsule)
+        VStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                SetsRing(done: state.setsDone, total: state.setsTotal, size: 52)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(Typo.title(17))
+                    if let detail {
+                        Text(detail)
+                            .font(Typo.body(13, .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                Spacer(minLength: 0)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                BigTime(phase: phase, startedAt: startedAt)
             }
-            .lineLimit(1)
+            switch phase {
+            case .resting(let rest): RestBar(rest: rest)
+            default: EmptyView()
+            }
+        }
+    }
+
+    private var title: String {
+        switch phase {
+        case .finished: "Workout saved"
+        default: state.exerciseName ?? "All sets done"
+        }
+    }
+
+    private var detail: String? {
+        switch phase {
+        case .finished(let summary): summary
+        case .training: state.setLine
+        case .resting, .restPaused, .restOver: state.setLine.map { "Next: \($0)" }
         }
     }
 }
