@@ -108,7 +108,7 @@ struct Overlo4dApp: App {
                 // Rebuild with the new accent colour or weight unit when it changes.
                 .id("\(accent).\(unit)")
                 .sheet(isPresented: $ui.showingSettings) { SettingsSheet().environment(health).environment(coach).environment(gym).environment(ui).environment(backup)
-                        .environment(cloud).environment(sleep).environment(food).environment(bodyStore).environment(programs) }
+                        .environment(cloud).environment(sleep).environment(food).environment(bodyStore).environment(programs).environment(reps) }
                 .preferredColorScheme(AppearanceMode(rawValue: appearance)?.colorScheme)
                 .onAppear {
                     rest.requestPermission()
@@ -185,10 +185,25 @@ struct Overlo4dApp: App {
     }
 }
 
+/// What a link did, for the note at the top and for a shortcut waiting on an x-callback.
+private enum LinkOutcome {
+    /// Opened a screen.
+    case shown
+    /// Did something; the text says what ("Water: 3 of 8 glasses").
+    case done(String)
+    case failed(String)
+}
+
 struct RootView: View {
     @Environment(GymStore.self) private var gym
     @Environment(AppUI.self) private var ui
+    @Environment(FoodStore.self) private var food
+    @Environment(RepModel.self) private var reps
+    @Environment(RestTimer.self) private var rest
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tab = AppTab.home
+    /// A short note after a link logged something, so it's clear it worked.
+    @State private var linkNote: LinkNote?
     @State private var showingStart = false
     /// Chosen on the start sheet; begun once the sheet has closed so the two presentations don't clash.
     @State private var pendingStart: StartRequest?
@@ -215,6 +230,8 @@ struct RootView: View {
                 ProgressTabView()
             }
         }
+        // Scrolling down shrinks the tab bar, as in Apple's own apps, so lists get the room.
+        .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory(isEnabled: gym.activeWorkout != nil && !gym.isPresentingWorkout) {
             WorkoutAccessory()
         }
@@ -244,7 +261,18 @@ struct RootView: View {
         }
         .onOpenURL { url in
             // Widgets, the Home Screen menu and shortcuts in the Shortcuts app all open overlo4d:// links.
-            if let link = AppLink.parse(url) { open(link) }
+            handle(url)
+        }
+        .overlay(alignment: .top) {
+            if let linkNote {
+                LinkNoteView(note: linkNote)
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                    .id(linkNote.id)
+            }
+        }
+        .sensoryFeedback(trigger: linkNote) { _, note in
+            guard let note else { return nil }
+            return note.failed ? .error : .success
         }
         .onChange(of: inbox.link) { takeLink() }
         .onAppear { takeLink() }
@@ -254,14 +282,79 @@ struct RootView: View {
     private func takeLink() {
         guard let link = LinkInbox.shared.link else { return }
         LinkInbox.shared.link = nil
-        open(link)
+        note(open(link))
     }
 
-    private func open(_ link: AppLink) {
+    /// Runs a link. With Shortcuts' "Open X-Callback URL", the shortcut waits for this and then
+    /// carries on: x-success gets what was done as `result`, x-error gets the reason.
+    private func handle(_ url: URL) {
+        let parsed = AppLinkRequest.parse(url)
+        guard let request = parsed.request else {
+            if let failure = parsed.failure,
+               let back = AppLinkRequest.errorURL(failure, message: "Overlo4d can't open this link. Check it in Settings › Siri and Shortcuts.") {
+                UIApplication.shared.open(back)
+            }
+            return
+        }
+        let outcome = open(request.link)
+        let back: URL?
+        switch outcome {
+        case .shown: back = request.successURL(result: nil)
+        case .done(let message): back = request.successURL(result: message)
+        case .failed(let message): back = request.failureURL(message: message)
+        }
+        if let back {
+            UIApplication.shared.open(back)
+        } else {
+            note(outcome)
+        }
+    }
+
+    private func note(_ outcome: LinkOutcome) {
+        let note: LinkNote
+        switch outcome {
+        case .shown: return
+        case .done(let message): note = LinkNote(text: message, failed: false)
+        case .failed(let message): note = LinkNote(text: message, failed: true)
+        }
+        Motion.animate(Motion.arrive) { linkNote = note }
+        Task {
+            try? await Task.sleep(for: .seconds(2.6))
+            if linkNote?.id == note.id { Motion.animate { linkNote = nil } }
+        }
+    }
+
+    @discardableResult
+    private func open(_ link: AppLink) -> LinkOutcome {
         switch link {
         case .reps:
             tab = .home
             ui.showingReps = true
+        case .addReps(let count, let name):
+            let names = reps.exercises.map(\.name)
+            let index = name.map { AppLink.match(plan: $0, in: names) } ?? (names.isEmpty ? nil : 0)
+            guard let index else {
+                return .failed(name.map { "No rep counter exercise called \($0)" } ?? "Add an exercise to the rep counter first")
+            }
+            let exercise = reps.exercises[index]
+            reps.add(count, to: exercise)
+            return .done("+\(count) \(exercise.name) · \(reps.repsToday(for: exercise)) today")
+        case .water(let glasses):
+            let day = food.today
+            let total = min(food.water(day) + glasses, 30)
+            food.setWater(total, on: day)
+            return .done("Water: \(total) of \(food.waterGoal) glasses")
+        case .weight(let kg):
+            food.logWeight(kg, on: food.today)
+            return .done("Weight logged: \(kg.formatted(.number.precision(.fractionLength(0...1)))) kg")
+        case .rest(let seconds):
+            let length = seconds ?? gym.defaultRestSeconds
+            rest.start(seconds: length)
+            // The Lock Screen and Dynamic Island follow, even if the workout screen isn't open.
+            if let workout = gym.activeWorkout {
+                gym.updateActive(workout, rest: rest.interval)
+            }
+            return .done("Rest: \(Duration.seconds(length).formatted(.time(pattern: .minuteSecond)))")
         case .food:
             tab = .home
             ui.showingFood = true
@@ -278,8 +371,10 @@ struct RootView: View {
                 // A plan named in the link starts straight away; an unknown name opens the start sheet.
                 if let index = AppLink.match(plan: plan, in: gym.plans.map(\.name)) {
                     gym.startWorkout(from: gym.plans[index])
+                    return .done("Started \(gym.plans[index].name)")
                 } else {
                     showingStart = true
+                    return .failed("No plan called \(plan)")
                 }
             } else {
                 gym.startEmptyWorkout()
@@ -289,6 +384,7 @@ struct RootView: View {
         case .timer: ui.sheet = .timer
         case .report: ui.sheet = .report
         }
+        return .shown
     }
 
     /// The centre tab opens the start sheet (or the running workout) instead of switching tabs.
@@ -302,9 +398,37 @@ struct RootView: View {
     }
 }
 
-/// Bar above the tab bar while a workout is minimized.
+/// A short note at the top after a link did something, such as a shortcut logging water.
+struct LinkNote: Equatable {
+    let id = UUID()
+    let text: String
+    let failed: Bool
+}
+
+struct LinkNoteView: View {
+    let note: LinkNote
+
+    var body: some View {
+        Label(note.text, systemImage: note.failed ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+            .font(Typo.body(14, .semibold))
+            .foregroundStyle(note.failed ? Theme.danger : Theme.good)
+            .lineLimit(2)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.top, 6)
+            .padding(.horizontal, 20)
+            .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+/// Bar above the tab bar while a workout is minimized. Between sets it becomes the rest timer:
+/// a draining ring, the next exercise and the countdown, then a short green "Go" when it's up.
+/// When the tab bar shrinks on scroll, it sits inline beside it with just the time.
 struct WorkoutAccessory: View {
     @Environment(GymStore.self) private var gym
+    @Environment(RestTimer.self) private var rest
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
 
     var body: some View {
         if let workout = gym.activeWorkout {
@@ -312,24 +436,87 @@ struct WorkoutAccessory: View {
                 gym.isPresentingWorkout = true
             } label: {
                 HStack(spacing: 12) {
-                    Circle().fill(Theme.good).frame(width: 8, height: 8)
+                    indicator
+                        .frame(width: 22, height: 22)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(workout.name)
                             .font(Typo.title(15))
                             .lineLimit(1)
-                        Text("\(workout.completedSets.count) sets")
-                            .font(Typo.body(12))
-                            .foregroundStyle(Theme.ink3)
+                        if placement != .inline {
+                            Text(subtitle(workout))
+                                .font(Typo.body(12))
+                                .foregroundStyle(Theme.ink3)
+                                .lineLimit(1)
+                                .contentTransition(.numericText())
+                        }
                     }
-                    Spacer()
-                    Text(workout.startedAt, style: .timer)
-                        .font(Typo.display(22))
+                    Spacer(minLength: 8)
+                    time(workout)
+                        .font(Typo.display(placement == .inline ? 19 : 22))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
                 }
                 .padding(.horizontal)
                 .contentShape(.rect)
+                .animation(Motion.standard, value: rest.isRunning)
+                .animation(Motion.standard, value: rest.justFinished)
+                .animation(Motion.standard, value: workout.completedSets.count)
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Opens the workout")
+        }
+    }
+
+    @ViewBuilder private var indicator: some View {
+        if rest.justFinished {
+            Image(systemName: "bell.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.good)
+                .symbolEffect(.bounce, value: rest.justFinished)
+                .transition(.scale.combined(with: .opacity))
+        } else if let interval = rest.interval {
+            ProgressView(timerInterval: interval, countsDown: true) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            }
+            .progressViewStyle(.circular)
+            .tint(Theme.accent)
+            .transition(.scale.combined(with: .opacity))
+        } else if rest.isPaused {
+            Image(systemName: "pause.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.ink3)
+        } else {
+            Circle().fill(Theme.good).frame(width: 8, height: 8)
+                .transition(.scale.combined(with: .opacity))
+        }
+    }
+
+    private func subtitle(_ workout: Workout) -> String {
+        let done = workout.completedSets.count
+        let total = workout.allSets.count
+        guard rest.isRunning || rest.justFinished else { return "\(done) of \(total) sets" }
+        let next = workout.exercises.first { $0.sets.contains { !$0.isDone } }
+            .flatMap { gym.exercise($0.exerciseID)?.name }
+        let state = rest.justFinished ? "Rest over" : rest.isPaused ? "Rest paused" : "Rest"
+        return next.map { "\(state) · Next: \($0)" } ?? state
+    }
+
+    @ViewBuilder private func time(_ workout: Workout) -> some View {
+        if rest.justFinished {
+            Text("Go").foregroundStyle(Theme.good)
+        } else if let interval = rest.interval {
+            Text(timerInterval: interval, countsDown: true)
+                .foregroundStyle(Theme.accent)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 56, alignment: .trailing)
+        } else if let remaining = rest.pausedRemaining {
+            Text(Duration.seconds(remaining.rounded(.up)).formatted(.time(pattern: .minuteSecond)))
+                .foregroundStyle(Theme.ink3)
+        } else {
+            Text(workout.startedAt, style: .timer)
+                .multilineTextAlignment(.trailing)
         }
     }
 }

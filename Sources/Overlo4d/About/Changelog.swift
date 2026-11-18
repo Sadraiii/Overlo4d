@@ -20,6 +20,13 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.14", date: DateComponents(year: 2026, month: 11, day: 18), changes: [
+            "Shortcuts can now log for you: a glass of water, your body weight, reps on the rep counter, or a rest timer, without opening a screen. A short note confirms it. Links are in Settings › Siri and Shortcuts.",
+            "With Open X-Callback URL in Shortcuts, the shortcut waits for Overlo4d and carries on afterwards, with what was logged as its result. Starting a plan by name works the same way.",
+            "The workout bar above the tabs turns into the rest timer between sets, with a draining ring, the next exercise and the countdown, then a green \"Go\".",
+            "The tab bar shrinks while you scroll down, so lists get more room.",
+            "Dynamic Island tidied up: only small text sits beside the camera, and the set ring, exercise and time fit underneath.",
+        ]),
         ChangelogEntry(version: "0.13", date: DateComponents(year: 2026, month: 11, day: 18), changes: [
             "Dynamic Island and Lock Screen: a ring drains around the rest timer, a paused rest shows the time left, and a saved workout leaves a short summary on the Lock Screen for 15 minutes. Tapping it opens the workout you're doing, not Home.",
             "Switch the Lock Screen and Dynamic Island off in Settings › Training if you'd rather not see them.",

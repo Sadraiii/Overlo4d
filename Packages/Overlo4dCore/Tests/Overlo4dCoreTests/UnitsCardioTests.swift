@@ -145,6 +145,48 @@ import Testing
         }
     }
 
+    @Test func parsesActions() throws {
+        func parse(_ text: String) throws -> AppLink? { AppLink.parse(try #require(URL(string: text))) }
+        #expect(try parse("overlo4d://water") == .water(glasses: 1))
+        #expect(try parse("overlo4d://water?glasses=2") == .water(glasses: 2))
+        #expect(try parse("overlo4d://water?ml=500") == .water(glasses: 2))
+        #expect(try parse("overlo4d://water?glasses=0") == nil)
+        #expect(try parse("overlo4d://weight?kg=82,46") == .weight(kg: 82.5))
+        #expect(try parse("overlo4d://weight?lb=180") == .weight(kg: 81.6))
+        #expect(try parse("overlo4d://weight?kg=8.2") == nil)
+        #expect(try parse("overlo4d://weight") == nil)
+        #expect(try parse("overlo4d://rest") == .rest(seconds: nil))
+        #expect(try parse("overlo4d://rest?seconds=90") == .rest(seconds: 90))
+        #expect(try parse("overlo4d://rest?seconds=1") == .rest(seconds: 5))
+        #expect(try parse("overlo4d://reps?add=10&exercise=Push-ups") == .addReps(count: 10, exercise: "Push-ups"))
+        #expect(try parse("overlo4d://reps?add=12") == .addReps(count: 12, exercise: nil))
+        #expect(try parse("overlo4d://reps?add=lots") == nil)
+        #expect(try parse("overlo4d://reps") == .reps)
+        #expect(try parse("overlo4d://x-callback-url/water?glasses=3") == .water(glasses: 3))
+        #expect(try parse("overlo4d://x-callback-url") == nil)
+    }
+
+    @Test func actionsRoundTrip() throws {
+        for link in [AppLink.water(glasses: 2), .weight(kg: 82.5), .weight(kg: 80), .rest(seconds: 90), .rest(seconds: nil),
+                     .addReps(count: 10, exercise: "Push-ups"), .addReps(count: 5, exercise: nil)] {
+            #expect(AppLink.parse(try #require(link.url)) == link)
+        }
+    }
+
+    @Test func readsCallbacks() throws {
+        let url = try #require(URL(string: "overlo4d://x-callback-url/water?glasses=1&x-success=shortcuts://x-callback-url/done&x-error=shortcuts://err"))
+        let parsed = AppLinkRequest.parse(url)
+        let request = try #require(parsed.request)
+        #expect(request.link == .water(glasses: 1))
+        #expect(request.successURL(result: "3 of 8 glasses")?.absoluteString == "shortcuts://x-callback-url/done?result=3%20of%208%20glasses")
+        #expect(request.failureURL(message: "No")?.absoluteString == "shortcuts://err?errorMessage=No")
+        // An action the app can't do still reports back through x-error.
+        let bad = AppLinkRequest.parse(try #require(URL(string: "overlo4d://weight?kg=2&x-error=shortcuts://err")))
+        #expect(bad.request == nil)
+        #expect(bad.failure?.absoluteString == "shortcuts://err")
+        #expect(AppLinkRequest.parse(try #require(URL(string: "overlo4d://reps"))).request?.success == nil)
+    }
+
     @Test func matchesPlansLoosely() {
         let plans = ["Push Day", "Pull Day", "Legs", "Upper Body A"]
         #expect(AppLink.match(plan: "pull day", in: plans) == 1)

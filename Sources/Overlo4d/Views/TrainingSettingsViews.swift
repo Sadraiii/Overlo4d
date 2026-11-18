@@ -157,11 +157,13 @@ struct ReminderSettingsSection: View {
 /// Links that start things from the Shortcuts app, and so from Siri.
 struct ShortcutsSettingsSection: View {
     @Environment(GymStore.self) private var gym
+    @Environment(RepModel.self) private var reps
     @State private var copied: String?
 
-    private var links: [(title: String, link: AppLink)] {
+    private var screens: [(title: String, link: AppLink)] {
         var links: [(String, AppLink)] = [
             ("Start an empty workout", .start(plan: nil)),
+            ("Open the running workout", .activeWorkout),
             ("Log cardio", .cardio),
             ("Rep counter", .reps),
             ("Food diary", .food),
@@ -173,47 +175,85 @@ struct ShortcutsSettingsSection: View {
         return links
     }
 
+    /// Links that do the thing and leave the app as it was: good for automations and the Action Button.
+    private var actions: [(title: String, link: AppLink, hint: String?)] {
+        let exercise = reps.exercises.first?.name
+        return [
+            ("Drink a glass of water", .water(glasses: 1), nil),
+            ("Log body weight", .weight(kg: 80), "Swap 80 for an Ask for Input number."),
+            ("Start a 90 s rest", .rest(seconds: 90), "Shows on the Lock Screen if a workout is running."),
+            ("Add 10 reps\(exercise.map { " of \($0)" } ?? "")", .addReps(count: 10, exercise: exercise), nil),
+        ]
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Siri and Shortcuts").eyebrow(11.5)
             VStack(alignment: .leading, spacing: 0) {
-                Text("In the Shortcuts app, make a shortcut with the action Open URLs and paste one of these links. Name it, for example, Start workout, and Siri runs it when you say its name. It also works from the Action Button and the Lock Screen.")
+                Text("In the Shortcuts app, add the action Open URLs and paste one of these links. Name the shortcut, for example Start workout, and Siri runs it when you say its name. It also works from the Action Button, the Lock Screen and automations.")
                     .font(Typo.body(13))
                     .foregroundStyle(Theme.ink2)
                     .padding(14)
-                ForEach(links, id: \.title) { item in
-                    let url = item.link.url?.absoluteString ?? ""
-                    Rectangle().fill(Theme.line).frame(height: 1)
-                    Button {
-                        UIPasteboard.general.string = url
-                        copied = url
-                    } label: {
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.title).font(Typo.body(15, .semibold)).foregroundStyle(Theme.ink)
-                                Text(url)
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .foregroundStyle(Theme.ink3)
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                            }
-                            Spacer(minLength: 8)
-                            Label(copied == url ? "Copied" : "Copy", systemImage: copied == url ? "checkmark" : "doc.on.doc")
-                                .font(Typo.body(13, .bold))
-                                .foregroundStyle(copied == url ? Theme.good : Theme.accent)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
+                ForEach(screens, id: \.title) { item in
+                    row(item.title, item.link, hint: nil)
                 }
             }
             .card(padding: 0, cornerRadius: 18)
+
+            Text("Log without opening a screen").eyebrow(11.5)
+                .padding(.top, 6)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("These log straight away and show a short note. Use Open X-Callback URL instead of Open URLs and the shortcut goes on afterwards, with what was logged as its result.")
+                    .font(Typo.body(13))
+                    .foregroundStyle(Theme.ink2)
+                    .padding(14)
+                ForEach(actions, id: \.title) { item in
+                    row(item.title, item.link, hint: item.hint)
+                }
+            }
+            .card(padding: 0, cornerRadius: 18)
+
             Text("Hold the app icon on the Home Screen for Start workout, Log cardio and Rep counter.")
                 .font(Typo.body(12.5))
                 .foregroundStyle(Theme.ink3)
         }
         .sensoryFeedback(.success, trigger: copied)
+    }
+
+    private func row(_ title: String, _ link: AppLink, hint: String?) -> some View {
+        let url = link.url?.absoluteString ?? ""
+        let isCopied = copied == url
+        return VStack(spacing: 0) {
+            Rectangle().fill(Theme.line).frame(height: 1)
+            Button {
+                UIPasteboard.general.string = url
+                Motion.animate(Motion.tap) { copied = url }
+            } label: {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title).font(Typo.body(15, .semibold)).foregroundStyle(Theme.ink)
+                        Text(url)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Theme.ink3)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        if let hint {
+                            Text(hint)
+                                .font(Typo.body(12))
+                                .foregroundStyle(Theme.ink3)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Label(isCopied ? "Copied" : "Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                        .font(Typo.body(13, .bold))
+                        .foregroundStyle(isCopied ? Theme.good : Theme.accent)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
