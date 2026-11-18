@@ -20,6 +20,15 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.13", date: DateComponents(year: 2026, month: 11, day: 18), changes: [
+            "Dynamic Island and Lock Screen: a ring drains around the rest timer, a paused rest shows the time left, and a saved workout leaves a short summary on the Lock Screen for 15 minutes. Tapping it opens the workout you're doing, not Home.",
+            "Switch the Lock Screen and Dynamic Island off in Settings › Training if you'd rather not see them.",
+            "Rest timer: a ring shows the time left, and when it runs out it turns green and says \"Rest over\" before sliding away. Its sound can be turned off in Settings; the phone still vibrates.",
+            "Finishing a workout fades into the summary: the numbers count up, new records are called out at the top, and a firmer tap tells you it's saved.",
+            "Sets, drop sets, warm-ups and exercises slide in and out, and \"Up next\" moves to the next exercise smoothly.",
+            "Workout and plan cards grow into their screens and press in when touched. Buttons fade when they can't be used, and the number you're typing in is outlined.",
+            "With Reduce Motion on, all of this fades instead of moving.",
+        ]),
         ChangelogEntry(version: "0.12", date: DateComponents(year: 2026, month: 11, day: 14), changes: [
             "Kilograms or pounds: pick your unit in Settings › Units. Every weight, the suggestions, the plate calculator (45 lb bar and plates), the 1RM table and programs follow it. Your log stays as it is.",
             "Cardio: log a run, walk, ride, row, swim and more from Home or History with time, distance, effort and a note. Pace or speed and calories are worked out for you, and sessions count towards your week and streak.",
