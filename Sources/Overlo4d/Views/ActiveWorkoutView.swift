@@ -20,7 +20,6 @@ struct ActiveWorkoutView: View {
     @State private var nextUp: NextUp?
     /// Set to scroll the list to an exercise.
     @State private var jumpTarget: UUID?
-    @FocusedValue(\.fieldStepper) private var stepper
 
     struct NextUp: Equatable {
         var exerciseID: UUID?
@@ -111,6 +110,7 @@ struct ActiveWorkoutView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Minimize", systemImage: "chevron.down") {
+                        dismissKeyboard()
                         pushToStore()
                         gym.isPresentingWorkout = false
                     }
@@ -133,6 +133,7 @@ struct ActiveWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Finish") {
+                        dismissKeyboard()
                         // Nothing left unticked: no need to ask.
                         if !draft.allSets.isEmpty && draft.allSets.allSatisfy(\.isDone) { finish() } else { confirmingFinish = true }
                     }
@@ -141,22 +142,10 @@ struct ActiveWorkoutView: View {
                         .tint(Theme.good)
                 }
                 ToolbarItemGroup(placement: .keyboard) {
-                    if let stepper {
-                        Button { stepper.adjust(-1) } label: {
-                            Label("Minus \(stepper.label)", systemImage: "minus").labelStyle(.iconOnly).frame(minWidth: 44)
-                        }
-                        Text(stepper.label)
-                            .font(Typo.body(13, .semibold))
-                            .foregroundStyle(Theme.ink3)
-                            .monospacedDigit()
-                        Button { stepper.adjust(1) } label: {
-                            Label("Plus \(stepper.label)", systemImage: "plus").labelStyle(.iconOnly).frame(minWidth: 44)
-                        }
-                    }
+                    // Its own view, so the field in focus only redraws this bar, not the whole workout.
+                    KeyboardStepperBar()
                     Spacer()
-                    Button("Done") {
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
+                    Button("Done") { dismissKeyboard() }
                 }
             }
             .sheet(isPresented: $showingPicker) {
@@ -196,12 +185,18 @@ struct ActiveWorkoutView: View {
     }
 
     private func finish() {
-        rest.stop()
-        if gym.finishWorkout(draft), let saved = gym.summaryWorkout {
-            Task { await HealthSync.finished(saved, gym: gym, health: health) }
-        } else {
+        dismissKeyboard()
+        // Save first: stopping the rest timer afterwards no longer pushes this screen's copy to the store.
+        guard gym.finishWorkout(draft), let saved = gym.summaryWorkout else {
             showingNothingDone = true
+            return
         }
+        rest.stop()
+        Task { await HealthSync.finished(saved, gym: gym, health: health) }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     /// After a set is ticked off: works out what comes next (the next exercise of a superset, the
@@ -222,6 +217,26 @@ struct ActiveWorkoutView: View {
         }
         guard rest.autoStart, Supersets.restsAfter(index: index, in: ids) else { return }
         rest.start(seconds: draft.exercises[index].restSeconds)
+    }
+}
+
+/// − and + above the keyboard for the set field being typed in.
+struct KeyboardStepperBar: View {
+    @FocusedValue(\.fieldStepper) private var stepper
+
+    var body: some View {
+        if let stepper {
+            Button { stepper.adjust(-1) } label: {
+                Label("Minus \(stepper.label)", systemImage: "minus").labelStyle(.iconOnly).frame(minWidth: 44)
+            }
+            Text(stepper.label)
+                .font(Typo.body(13, .semibold))
+                .foregroundStyle(Theme.ink3)
+                .monospacedDigit()
+            Button { stepper.adjust(1) } label: {
+                Label("Plus \(stepper.label)", systemImage: "plus").labelStyle(.iconOnly).frame(minWidth: 44)
+            }
+        }
     }
 }
 

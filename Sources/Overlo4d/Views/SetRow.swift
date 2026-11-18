@@ -3,11 +3,19 @@ import Overlo4dKit
 import SwiftUI
 
 /// Plus and minus steps for the number field being typed in, shown above the keyboard.
-struct FieldStepper: Sendable {
+/// Equal when it is the same field with the same step: the closure is made anew on every update,
+/// and without this SwiftUI saw a changed value each time and redrew the workout screen in a loop.
+struct FieldStepper: Sendable, Equatable {
+    /// The field it belongs to.
+    let id: UUID
     /// e.g. "2.5" or "1".
     let label: String
     /// Called with -1 or +1.
     let adjust: @MainActor @Sendable (Int) -> Void
+
+    static func == (lhs: FieldStepper, rhs: FieldStepper) -> Bool {
+        lhs.id == rhs.id && lhs.label == rhs.label
+    }
 }
 
 extension FocusedValues {
@@ -25,6 +33,7 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
     var base: Value?
 
     @State private var text = ""
+    @State private var stepperID = UUID()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -46,7 +55,7 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
     @ViewBuilder private var field: some View {
         if let step {
             TextField(placeholder, text: $text)
-                .focusedValue(\.fieldStepper, Self.stepper(binding: $value, step: step, base: base))
+                .focusedValue(\.fieldStepper, Self.stepper(id: stepperID, binding: $value, step: step, base: base))
         } else {
             TextField(placeholder, text: $text)
         }
@@ -54,8 +63,8 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
 
     /// − and + for this field. An empty field starts from last time's value, so one tap on + gives
     /// "last time plus a step". Going to zero or below clears the field.
-    private static func stepper(binding: Binding<Value?>, step: Value, base: Value?) -> FieldStepper {
-        FieldStepper(label: format(step)) { direction in
+    private static func stepper(id: UUID, binding: Binding<Value?>, step: Value, base: Value?) -> FieldStepper {
+        FieldStepper(id: id, label: format(step)) { direction in
             let start = binding.wrappedValue ?? base ?? Value.zero
             let next = direction > 0 ? start + step : start - step
             binding.wrappedValue = next > Value.zero ? next : nil

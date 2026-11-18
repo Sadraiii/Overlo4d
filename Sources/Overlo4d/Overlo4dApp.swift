@@ -522,22 +522,18 @@ struct WorkoutAccessory: View {
 }
 
 /// Content of the full-screen workout cover: the live workout, then the summary once finished.
-/// Finishing cross-fades into the summary instead of cutting to it.
 struct WorkoutFlowView: View {
     @Environment(GymStore.self) private var gym
 
     var body: some View {
-        Group {
-            if let summary = gym.summaryWorkout {
-                WorkoutSummaryView(workout: summary)
-            } else if let workout = gym.activeWorkout {
-                ActiveWorkoutView(initial: workout)
-                    .id(workout.id)
-            } else {
-                ScreenBackground()
-            }
+        // A plain switch, not animated: the workout screen goes at once and the summary brings its own entrance.
+        if let summary = gym.summaryWorkout {
+            WorkoutSummaryView(workout: summary)
+        } else if let workout = gym.activeWorkout {
+            ActiveWorkoutView(initial: workout)
+                .id(workout.id)
+        } else {
+            ScreenBackground()
         }
-        .transition(.opacity)
-        .animation(Motion.standard, value: gym.summaryWorkout?.id)
     }
 }
