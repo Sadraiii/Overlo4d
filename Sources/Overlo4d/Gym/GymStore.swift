@@ -312,9 +312,13 @@ final class GymStore {
         writeSnapshot()
     }
 
+    /// Saves an edited workout, or adds one logged afterwards from History.
     func updateWorkout(_ workout: Workout) {
-        guard let index = workouts.firstIndex(where: { $0.id == workout.id }) else { return }
-        workouts[index] = workout
+        if let index = workouts.firstIndex(where: { $0.id == workout.id }) {
+            workouts[index] = workout
+        } else {
+            workouts.append(workout)
+        }
         workouts.sort { $0.startedAt > $1.startedAt }
         recomputeRecords()
         save()

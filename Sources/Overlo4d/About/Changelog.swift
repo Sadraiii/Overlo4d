@@ -20,6 +20,11 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.15", date: DateComponents(year: 2026, month: 11, day: 18), changes: [
+            "Fixed: a workout opened from Home could not be closed. Workouts and plans open like other screens again, with a back button and a swipe from the edge.",
+            "Empty workout: start one straight from Home, under Start workout. The start sheet says \"Start empty workout\" when that is picked.",
+            "History › + › Past workout adds a workout you did without the app: set the time, add exercises and sets, and save.",
+        ]),
         ChangelogEntry(version: "0.14", date: DateComponents(year: 2026, month: 11, day: 18), changes: [
             "Shortcuts can now log for you: a glass of water, your body weight, reps on the rep counter, or a rest timer, without opening a screen. A short note confirms it. Links are in Settings › Siri and Shortcuts.",
             "With Open X-Callback URL in Shortcuts, the shortcut waits for Overlo4d and carries on afterwards, with what was logged as its result. Starting a plan by name works the same way.",

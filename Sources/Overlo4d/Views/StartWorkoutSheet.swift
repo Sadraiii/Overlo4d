@@ -97,7 +97,7 @@ struct StartWorkoutSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button(action: start) {
-                    Label("Start", systemImage: "play.fill")
+                    Label(choice == .empty ? "Start empty workout" : "Start", systemImage: "play.fill")
                 }
                 .buttonStyle(.bigPrimary)
                 .padding(.horizontal, 16)

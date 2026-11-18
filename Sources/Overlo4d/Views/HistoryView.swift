@@ -7,10 +7,11 @@ struct HistoryView: View {
     @Environment(HealthManager.self) private var health
     @State private var exporting = false
     @State private var loggingCardio = false
+    /// A workout done without the app running, added by hand.
+    @State private var addingWorkout: Workout?
     /// What was just swiped away, kept for a few seconds so it can be put back.
     @State private var undo: HistoryItem?
     /// A workout card grows into its detail screen.
-    @Namespace private var zoom
 
     private var isEmpty: Bool { gym.workouts.isEmpty && gym.healthWorkouts.isEmpty && gym.cardio.isEmpty }
 
@@ -40,7 +41,6 @@ struct HistoryView: View {
                                 switch item {
                                 case .workout(let workout):
                                     NavigationLink(value: workout.id) { WorkoutCard(workout: workout) }
-                                        .matchedTransitionSource(id: workout.id, in: zoom)
                                 case .health(let workout):
                                     NavigationLink(value: workout) { HealthWorkoutCard(workout: workout) }
                                 case .cardio(let session):
@@ -88,13 +88,20 @@ struct HistoryView: View {
             }
             .navigationTitle("History")
             .toolbar {
-                Button("Log cardio", systemImage: "figure.run") { loggingCardio = true }
+                Menu("Add", systemImage: "plus") {
+                    Button("Past workout", systemImage: "dumbbell") {
+                        let start = Date.now.addingTimeInterval(-3600)
+                        addingWorkout = Workout(name: gym.defaultWorkoutName(), startedAt: start, endedAt: .now, exercises: [])
+                    }
+                    Button("Cardio", systemImage: "figure.run") { loggingCardio = true }
+                }
                 if !gym.workouts.isEmpty {
                     Button("Export", systemImage: "square.and.arrow.up") { exporting = true }
                 }
             }
             .sheet(isPresented: $exporting) { ExportSheet() }
             .sheet(isPresented: $loggingCardio) { CardioLogSheet() }
+            .sheet(item: $addingWorkout) { EditWorkoutView(workout: $0, isNew: true) }
             .navigationDestination(for: CardioRoute.self) { CardioDetailView(sessionID: $0.id) }
             .safeAreaInset(edge: .bottom) {
                 if let undo {
@@ -115,7 +122,6 @@ struct HistoryView: View {
             .navigationDestination(for: UUID.self) { id in
                 if let workout = gym.workout(id) {
                     WorkoutDetailView(workout: workout)
-                        .navigationTransition(.zoom(sourceID: id, in: zoom))
                 }
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
@@ -362,6 +368,8 @@ struct EditWorkoutView: View {
     @Environment(GymStore.self) private var gym
     @Environment(\.dismiss) private var dismiss
     @State var workout: Workout
+    /// Adding a workout to History rather than editing one.
+    var isNew = false
     @State private var showingPicker = false
 
     var body: some View {
@@ -405,7 +413,7 @@ struct EditWorkoutView: View {
             }
             .screenBackground()
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Edit workout")
+            .navigationTitle(isNew ? "Add workout" : "Edit workout")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
             .toolbar {
@@ -425,6 +433,8 @@ struct EditWorkoutView: View {
                         gym.updateWorkout(workout)
                         dismiss()
                     }
+                    // A new workout needs at least one set with values.
+                    .disabled(isNew && !workout.allSets.contains(where: \.hasValues))
                 }
             }
             .sheet(isPresented: $showingPicker) {
