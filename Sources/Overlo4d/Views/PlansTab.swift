@@ -11,6 +11,8 @@ struct PlansTab: View {
     @State private var openedProgram: UUID?
     @State private var newProgram = false
     @State private var browsingTemplates = false
+    /// A plan card grows into the plan's screen.
+    @Namespace private var zoom
 
     var body: some View {
         NavigationStack {
@@ -25,6 +27,7 @@ struct PlansTab: View {
                             onEdit: { editingPlan = plan },
                             onDelete: { deletingPlan = plan }
                         )
+                        .matchedTransitionSource(id: plan.id, in: zoom)
                     }
 
                     if gym.plans.isEmpty {
@@ -61,7 +64,10 @@ struct PlansTab: View {
                 }
             }
             .sheet(isPresented: $browsingTemplates) { PlanTemplateGallery() }
-            .navigationDestination(item: $openedPlan) { PlanDetailView(planID: $0) }
+            .navigationDestination(item: $openedPlan) { id in
+                PlanDetailView(planID: id)
+                    .navigationTransition(.zoom(sourceID: id, in: zoom))
+            }
             .navigationDestination(item: $openedProgram) { ProgramDetailView(programID: $0) }
             .sheet(isPresented: $newProgram) {
                 NewProgramSheet { openedProgram = $0.id }

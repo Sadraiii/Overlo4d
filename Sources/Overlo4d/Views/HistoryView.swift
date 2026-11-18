@@ -9,6 +9,8 @@ struct HistoryView: View {
     @State private var loggingCardio = false
     /// What was just swiped away, kept for a few seconds so it can be put back.
     @State private var undo: HistoryItem?
+    /// A workout card grows into its detail screen.
+    @Namespace private var zoom
 
     private var isEmpty: Bool { gym.workouts.isEmpty && gym.healthWorkouts.isEmpty && gym.cardio.isEmpty }
 
@@ -38,6 +40,7 @@ struct HistoryView: View {
                                 switch item {
                                 case .workout(let workout):
                                     NavigationLink(value: workout.id) { WorkoutCard(workout: workout) }
+                                        .matchedTransitionSource(id: workout.id, in: zoom)
                                 case .health(let workout):
                                     NavigationLink(value: workout) { HealthWorkoutCard(workout: workout) }
                                 case .cardio(let session):
@@ -112,6 +115,7 @@ struct HistoryView: View {
             .navigationDestination(for: UUID.self) { id in
                 if let workout = gym.workout(id) {
                     WorkoutDetailView(workout: workout)
+                        .navigationTransition(.zoom(sourceID: id, in: zoom))
                 }
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }

@@ -16,6 +16,8 @@ struct HomeTab: View {
     @AppStorage("changelog.seenVersion") private var seenVersion = ""
     /// Which cards show and in what order (see `HomeLayout`).
     @AppStorage("home.layout") private var layoutRaw = ""
+    /// The last workout card grows into its detail screen.
+    @Namespace private var zoom
 
     var body: some View {
         @Bindable var ui = ui
@@ -87,7 +89,8 @@ struct HomeTab: View {
                         NavigationLink(value: last.id) {
                             WorkoutCard(workout: last)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
+                        .matchedTransitionSource(id: last.id, in: zoom)
                     }
 
                     Button("Edit Home", systemImage: "slider.horizontal.3") { editingLayout = true }
@@ -105,6 +108,7 @@ struct HomeTab: View {
             .navigationDestination(for: UUID.self) { id in
                 if let workout = gym.workout(id) {
                     WorkoutDetailView(workout: workout)
+                        .navigationTransition(.zoom(sourceID: id, in: zoom))
                 }
             }
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
@@ -381,7 +385,7 @@ struct RepsCard: View {
             .card(padding: 15)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
     }
 }
 
@@ -449,7 +453,7 @@ struct ToolButton: View {
             .card(padding: 0, cornerRadius: 18)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
     }
 }
 
@@ -511,7 +515,7 @@ struct AddExerciseButton: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.line2, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
     }
 }
 

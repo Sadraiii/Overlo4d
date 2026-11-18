@@ -74,7 +74,7 @@ struct RecoveryCard: View {
                 .card(padding: 14, cornerRadius: 20)
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
         }
     }
 

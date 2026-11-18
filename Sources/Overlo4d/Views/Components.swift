@@ -42,10 +42,13 @@ extension View {
     }
 }
 
-/// Buttons: filled accent, ink, outline, done and quiet.
+/// Buttons: filled accent, ink, outline, done and quiet. They press in slightly when touched
+/// and fade back when disabled.
 struct OOButtonStyle: ButtonStyle {
     enum Kind { case primary, ink, outline, done, quiet, danger }
     enum Shape { case pill, rounded }
+
+    @Environment(\.isEnabled) private var isEnabled
 
     var kind: Kind = .primary
     var shape: Shape = .rounded
@@ -69,8 +72,11 @@ struct OOButtonStyle: ButtonStyle {
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: height)
             .background(background, in: .rect(cornerRadius: radius))
             .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(border, lineWidth: 1))
+            // A "done" button is often disabled on purpose (Saved, Copied) and stays fully visible.
+            .opacity(isEnabled || kind == .done ? 1 : 0.45)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(Motion.tap, value: configuration.isPressed)
+            .animation(Motion.standard, value: isEnabled)
     }
 }
 
@@ -164,27 +170,23 @@ struct Tile: View {
     }
 }
 
-/// Pill such as "In progress" with an optional pulsing dot.
+/// Pill such as "In progress" with an optional breathing dot.
 struct StatusPill: View {
     let text: String
     var live = false
 
-    @State private var pulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 7) {
             if live {
-                Circle()
-                    .fill(Theme.good)
-                    .frame(width: 7, height: 7)
-                    .overlay(
-                        Circle()
-                            .stroke(Theme.good.opacity(pulse ? 0 : 0.6), lineWidth: pulse ? 9 : 0)
-                            .scaleEffect(pulse ? 2.2 : 1)
-                    )
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) { pulse = true }
-                    }
+                // A symbol effect is handed to the system's renderer once; a repeating SwiftUI
+                // animation would update the view on every frame for the whole workout.
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 7))
+                    .foregroundStyle(Theme.good)
+                    .symbolEffect(.breathe, isActive: !reduceMotion)
+                    .accessibilityHidden(true)
             }
             Text(text)
         }

@@ -21,7 +21,7 @@ struct TimeField: View {
         ))
         .keyboardType(.numberPad)
         .focused($focused)
-        .setField()
+        .setField(focused: focused)
         .onAppear { digits = TimeEntry.digits(fromSeconds: seconds ?? 0) }
         .onChange(of: seconds) { _, newValue in
             if TimeEntry.seconds(fromDigits: digits) != newValue {

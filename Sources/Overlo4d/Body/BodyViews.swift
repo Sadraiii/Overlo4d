@@ -49,7 +49,7 @@ struct BodyCard: View {
             .contentShape(.rect)
             .card(padding: 14)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
     }
 
     /// Waist when measured, otherwise the first tracked measurement with a reading.

@@ -101,7 +101,7 @@ struct FoodCard: View {
             .card(padding: 15)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .onChange(of: health.today.activeEnergy, initial: true) { _, kcal in
             food.recordExercise(kcal, on: food.today)
         }

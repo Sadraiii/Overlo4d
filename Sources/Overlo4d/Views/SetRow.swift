@@ -25,11 +25,13 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
     var base: Value?
 
     @State private var text = ""
+    @FocusState private var focused: Bool
 
     var body: some View {
         field
             .keyboardType(decimal ? .decimalPad : .numberPad)
-            .setField()
+            .focused($focused)
+            .setField(focused: focused)
             .onAppear { text = Self.format(value) }
             .onChange(of: text) { _, newText in
                 let parsed = Value(newText.replacingOccurrences(of: ",", with: "."))
@@ -68,15 +70,16 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
 }
 
 extension View {
-    /// Look of the number and time inputs in set rows.
-    func setField() -> some View {
+    /// Look of the number and time inputs in set rows. The field being typed in gets an accent edge.
+    func setField(focused: Bool = false) -> some View {
         multilineTextAlignment(.center)
             .font(Typo.display(22))
             .monospacedDigit()
             .foregroundStyle(Theme.ink)
             .frame(height: 40)
             .background(Theme.fill, in: .rect(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(focused ? Theme.accent : Theme.line, lineWidth: focused ? 1.5 : 1))
+            .animation(Motion.tap, value: focused)
     }
 }
 

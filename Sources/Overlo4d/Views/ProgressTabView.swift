@@ -153,7 +153,7 @@ struct ProgressOverview: View {
                 .foregroundStyle(Theme.ink)
                 .card(padding: 10, cornerRadius: 18)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
 
             HStack(spacing: 8) {
                 Tile(value: "\(gym.workouts.count)", label: "Workouts")

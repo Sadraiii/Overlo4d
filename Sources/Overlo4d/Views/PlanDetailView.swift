@@ -72,7 +72,7 @@ struct PlanDetailView: View {
                         NavigationLink(value: session.id) {
                             WorkoutCard(workout: session)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable)
                     }
                 } else {
                     Text("No sessions yet")
