@@ -160,7 +160,18 @@ struct BigTime: View {
         .lineLimit(1)
         .minimumScaleFactor(0.7)
         .multilineTextAlignment(.trailing)
-        .frame(width: 100, alignment: .trailing)
+        // Timer text takes the width of its longest value, so each state gets a width that just
+        // fits it; the exercise name beside it keeps the rest.
+        .frame(width: width, alignment: .trailing)
+    }
+
+    private var width: CGFloat {
+        switch phase {
+        case .resting, .restPaused: 64
+        case .restOver: 44
+        case .finished: 34
+        case .training: 88
+        }
     }
 }
 
@@ -516,6 +527,7 @@ struct RestBar: View {
 
 /// The row under the camera in the expanded Dynamic Island: the set ring, the exercise (the next one
 /// during rest) with its set and weight, and the big time; while resting, a bar drains below it.
+/// Long exercise names shrink a little before they are cut.
 struct ExpandedIsland: View {
     let state: WorkoutActivityAttributes.ContentState
     let phase: WorkoutActivityPhase
@@ -524,7 +536,7 @@ struct ExpandedIsland: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack(alignment: .center, spacing: 12) {
-                SetsRing(done: state.setsDone, total: state.setsTotal, size: 52)
+                SetsRing(done: state.setsDone, total: state.setsTotal, size: 48)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -537,7 +549,7 @@ struct ExpandedIsland: View {
                     }
                 }
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.75)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 BigTime(phase: phase, startedAt: startedAt)
@@ -560,7 +572,8 @@ struct ExpandedIsland: View {
         switch phase {
         case .finished(let summary): summary
         case .training: state.setLine
-        case .resting, .restPaused, .restOver: state.setLine.map { "Next: \($0)" }
+        // The state label above says it is rest, so the exercise here is the next one.
+        case .resting, .restPaused, .restOver: state.setLine
         }
     }
 }
