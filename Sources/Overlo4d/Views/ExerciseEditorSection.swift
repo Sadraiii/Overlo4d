@@ -22,6 +22,7 @@ struct ExerciseEditorSection: View {
     var onMove: (Int) -> Void = { _ in }
     var onSetCompleted: (WorkoutExercise) -> Void = { _ in }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("progression.enabled") private var showsProgression = true
     @State private var showingPlates = false
     @State private var showingDemo = false
@@ -75,6 +76,7 @@ struct ExerciseEditorSection: View {
                                         .padding(.horizontal, 7)
                                         .padding(.vertical, 2)
                                         .background(Theme.accent, in: .capsule)
+                                        .transition(.pop(reduceMotion: reduceMotion))
                                 }
                                 if supersetPosition != .none {
                                     Label(groupLabel ?? "Superset", systemImage: "link")
@@ -206,7 +208,7 @@ struct ExerciseEditorSection: View {
                 // Same values as the set above (assistance and distance too), as a normal set.
                 var new = exercise.sets.last?.copyForNewSet() ?? WorkoutSet()
                 new.type = .normal
-                exercise.sets.append(new)
+                Motion.animate { exercise.sets.append(new) }
             } label: {
                 Label("Add set", systemImage: "plus")
                     .font(Typo.body(14, .semibold))
@@ -229,7 +231,7 @@ struct ExerciseEditorSection: View {
             let step = gym.progressionStep(for: exercise.exerciseID, weight: weight)
             drop.weight = max(step, Plates.round(weight * 0.8, to: step))
         }
-        exercise.sets.insert(drop, at: index + 1)
+        Motion.animate { exercise.sets.insert(drop, at: index + 1) }
     }
 
     /// Swaps in another exercise (e.g. the machine is taken), keeping the number and types of sets.
@@ -257,9 +259,11 @@ struct ExerciseEditorSection: View {
     /// Replaces warm-ups not done yet with a fresh ramp, placed before the working sets.
     private func addWarmUps(for def: ExerciseDef?) {
         let sets = warmUps(for: def)
-        exercise.sets.removeAll { $0.type == .warmup && !$0.isDone }
-        let index = exercise.sets.lastIndex { $0.type == .warmup }.map { $0 + 1 } ?? 0
-        exercise.sets.insert(contentsOf: sets, at: index)
+        Motion.animate {
+            exercise.sets.removeAll { $0.type == .warmup && !$0.isDone }
+            let index = exercise.sets.lastIndex { $0.type == .warmup }.map { $0 + 1 } ?? 0
+            exercise.sets.insert(contentsOf: sets, at: index)
+        }
     }
 }
 

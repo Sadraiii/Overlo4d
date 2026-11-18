@@ -70,7 +70,7 @@ final class GymStore {
         if let activeWorkout {
             LiveActivityManager.shared.resume(for: activeWorkout, names: name(of:))
         } else {
-            LiveActivityManager.shared.end()
+            LiveActivityManager.shared.endLeftovers()
         }
     }
 
@@ -210,7 +210,9 @@ final class GymStore {
         LiveActivityManager.shared.start(for: workout, names: name(of:))
     }
 
-    func updateActive(_ workout: Workout, rest: ClosedRange<Date>?) {
+    /// Keeps the running workout and its Live Activity up to date. `rest` is a running rest
+    /// countdown, `restPaused` the seconds left on a paused one.
+    func updateActive(_ workout: Workout, rest: ClosedRange<Date>?, restPaused: TimeInterval? = nil) {
         guard let previous = activeWorkout else { return }
         if previous != workout {
             activeWorkout = workout
@@ -225,7 +227,16 @@ final class GymStore {
             // The lock screen timer counts from the start, which a Live Activity can't change.
             LiveActivityManager.shared.start(for: workout, names: name(of:))
         }
-        LiveActivityManager.shared.update(for: workout, rest: rest, names: name(of:))
+        LiveActivityManager.shared.update(for: workout, rest: rest, restPaused: restPaused, names: name(of:))
+    }
+
+    /// Starts or ends the running workout's Live Activity after the setting was switched.
+    func liveActivitySettingChanged() {
+        if let activeWorkout, LiveActivityManager.isEnabled {
+            LiveActivityManager.shared.start(for: activeWorkout, names: name(of:))
+        } else {
+            LiveActivityManager.shared.end()
+        }
     }
 
     func newWorkoutExercise(for exercise: ExerciseDef) -> WorkoutExercise {
@@ -253,7 +264,7 @@ final class GymStore {
         recomputeRecords()
         save()
         writeSnapshot()
-        LiveActivityManager.shared.end()
+        LiveActivityManager.shared.finish(workout, names: name(of:))
         return true
     }
 

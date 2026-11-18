@@ -6,6 +6,7 @@ struct ActiveWorkoutView: View {
     @Environment(GymStore.self) private var gym
     @Environment(RestTimer.self) private var rest
     @Environment(HealthManager.self) private var health
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Local copy of the workout. Edits are pushed to the store, so this view never binds to the store's
     /// optional `activeWorkout` (which becomes nil when the workout is finished or discarded).
@@ -52,12 +53,16 @@ struct ActiveWorkoutView: View {
                         onSuperset: { draft.exercises.linkSuperset(exercise.id, with: $0) },
                         onLeaveSuperset: { draft.exercises.unlinkSuperset(exercise.id) },
                         onRemove: {
-                            draft.exercises.removeAll { $0.id == exercise.id }
-                            draft.exercises.normalizeSupersets()
+                            Motion.animate {
+                                draft.exercises.removeAll { $0.id == exercise.id }
+                                draft.exercises.normalizeSupersets()
+                            }
                         },
-                        onMove: {
-                            draft.exercises.move(id: exercise.id, by: $0)
-                            draft.exercises.normalizeSupersets()
+                        onMove: { offset in
+                            Motion.animate {
+                                draft.exercises.move(id: exercise.id, by: offset)
+                                draft.exercises.normalizeSupersets()
+                            }
                         },
                         onSetCompleted: { setCompleted(in: $0) }
                     )
@@ -86,27 +91,27 @@ struct ActiveWorkoutView: View {
             .listSectionSpacing(14)
             .onChange(of: jumpTarget) { _, target in
                 guard let target else { return }
-                withAnimation(.snappy) { proxy.scrollTo(target, anchor: .top) }
+                Motion.animate { proxy.scrollTo(target, anchor: .top) }
                 jumpTarget = nil
             }
             }
             .screenBackground()
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
-                if rest.isRunning {
+                if rest.isRunning || rest.justFinished {
                     RestDock(nextUp: nextUp?.text)
                         .padding(.horizontal, 12)
                         .padding(.bottom, 6)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(.rise(reduceMotion: reduceMotion))
                 }
             }
-            .animation(.spring(duration: 0.3), value: rest.isRunning)
+            .animation(reduceMotion ? Motion.reduced : Motion.arrive, value: rest.isRunning || rest.justFinished)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: ExerciseDef.self) { ExerciseDetailView(exercise: $0) }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Minimize", systemImage: "chevron.down") {
-                        gym.updateActive(draft, rest: rest.interval)
+                        pushToStore()
                         gym.isPresentingWorkout = false
                     }
                 }
@@ -156,7 +161,7 @@ struct ActiveWorkoutView: View {
             }
             .sheet(isPresented: $showingPicker) {
                 ExercisePicker { exercises in
-                    draft.exercises += exercises.map(gym.newWorkoutExercise)
+                    Motion.animate { draft.exercises += exercises.map(gym.newWorkoutExercise) }
                 }
             }
             .sheet(isPresented: $showingTimer) { TimerSheet() }
@@ -179,9 +184,15 @@ struct ActiveWorkoutView: View {
             } message: {
                 Text("Tick off at least one set, or discard the workout.")
             }
-            .onChange(of: draft) { gym.updateActive(draft, rest: rest.interval) }
-            .onChange(of: rest.endDate) { gym.updateActive(draft, rest: rest.interval) }
+            .onChange(of: draft) { pushToStore() }
+            .onChange(of: rest.endDate) { pushToStore() }
+            .onChange(of: rest.pausedRemaining) { pushToStore() }
         }
+    }
+
+    /// Saves the draft and refreshes the Live Activity with the rest countdown (running or paused).
+    private func pushToStore() {
+        gym.updateActive(draft, rest: rest.interval, restPaused: rest.pausedRemaining)
     }
 
     private func finish() {
@@ -199,14 +210,15 @@ struct ActiveWorkoutView: View {
         guard let index = draft.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
         let ids = draft.exercises.supersetIDs
         let remaining = draft.exercises.map { $0.sets.filter { !$0.isDone }.count }
+        // "Up next" moves to its new exercise rather than jumping.
         if let next = Supersets.next(after: index, in: ids, remaining: remaining) {
             let target = draft.exercises[next]
             let number = target.sets.count - remaining[next] + 1
-            nextUp = NextUp(exerciseID: target.id, text: "\(gym.name(of: target.exerciseID)) · set \(number) of \(target.sets.count)")
+            Motion.animate { nextUp = NextUp(exerciseID: target.id, text: "\(gym.name(of: target.exerciseID)) · set \(number) of \(target.sets.count)") }
             // Bring the next exercise into view when it isn't the one just done.
             if next != index { jumpTarget = target.id }
         } else {
-            nextUp = NextUp(exerciseID: nil, text: "All sets done")
+            Motion.animate { nextUp = NextUp(exerciseID: nil, text: "All sets done") }
         }
         guard rest.autoStart, Supersets.restsAfter(index: index, in: ids) else { return }
         rest.start(seconds: draft.exercises[index].restSeconds)
@@ -263,7 +275,7 @@ struct WorkoutHeader: View {
             .padding(14)
             .background(Theme.card, in: .rect(cornerRadius: 20))
             .shadow(color: Theme.shadow, radius: 10, y: 3)
-            .animation(.snappy, value: draft.completedSets.count)
+            .animation(Motion.standard, value: draft.completedSets.count)
         }
         .padding(.horizontal, 4)
         .sheet(isPresented: $editingTimes) { WorkoutTimesSheet(workout: $draft) }
@@ -276,74 +288,136 @@ struct WorkoutHeader: View {
     }
 }
 
-/// Rest countdown above the bottom edge: time left, what comes next, and the controls.
+/// Rest countdown above the bottom edge: a ring and the time left, what comes next, and the controls.
+/// When the time is up it turns green and says "Rest over" for a moment before it slides away.
 struct RestDock: View {
     @Environment(RestTimer.self) private var rest
     /// e.g. "Cable Fly · set 2 of 3".
     var nextUp: String?
+    /// Counts taps on −15, +15 and +30, for their haptic.
+    @State private var adjustments = 0
 
     var body: some View {
-        if rest.isRunning {
-            VStack(spacing: 10) {
-                TimelineView(.periodic(from: .now, by: 0.25)) { context in
-                    let remaining = rest.pausedRemaining ?? max(0, (rest.endDate ?? context.date).timeIntervalSince(context.date))
-                    VStack(spacing: 8) {
-                        HStack(alignment: .center, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(rest.isPaused ? "Paused" : "Rest").eyebrow(11)
-                                Text(Fmt.seconds(Int(remaining.rounded(.up))))
-                                    .font(Typo.display(40))
-                                    .monospacedDigit()
-                                    .foregroundStyle(rest.isPaused ? Theme.ink3 : Theme.ink)
-                                    .contentTransition(.numericText(countsDown: true))
-                            }
-                            Spacer(minLength: 8)
-                            if let nextUp {
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text("Next").eyebrow(10.5)
-                                    Text(nextUp)
-                                        .font(Typo.body(13.5, .semibold))
-                                        .foregroundStyle(Theme.ink)
-                                        .multilineTextAlignment(.trailing)
-                                        .lineLimit(2)
-                                }
-                            }
-                        }
-                        GeometryReader { proxy in
-                            let left = rest.total > 0 ? min(1, max(0, remaining / rest.total)) : 0
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Theme.line)
-                                Capsule().fill(Theme.accent).frame(width: proxy.size.width * left)
-                            }
-                        }
-                        .frame(height: 5)
-                        .accessibilityHidden(true)
-                    }
-                }
-                HStack(spacing: 6) {
-                    Button("−15") { rest.adjust(by: -15) }
-                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
-                    Button("+15") { rest.adjust(by: 15) }
-                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
-                    Button("+30") { rest.adjust(by: 30) }
-                        .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
-                    Button(rest.isPaused ? "Resume" : "Pause", systemImage: rest.isPaused ? "play.fill" : "pause.fill") {
-                        if rest.isPaused { rest.resume() } else { rest.pause() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
-                    Button("Skip") { rest.stop() }
-                        .buttonStyle(OOButtonStyle(kind: .primary, shape: .pill, height: 42, fullWidth: true))
-                }
+        VStack(spacing: 12) {
+            if rest.justFinished {
+                restOver
+                    .transition(.opacity)
+            } else {
+                countdown
+                    .transition(.opacity)
+                controls
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 12)
-            .background(Theme.card, in: .rect(cornerRadius: 26))
-            .overlay(RoundedRectangle(cornerRadius: 26).strokeBorder(Theme.line, lineWidth: 1))
-            .shadow(color: .black.opacity(0.14), radius: 20, y: 8)
-            .sensoryFeedback(.selection, trigger: rest.isPaused)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Theme.card, in: .rect(cornerRadius: 26))
+        .overlay(RoundedRectangle(cornerRadius: 26).strokeBorder(rest.justFinished ? Theme.good.opacity(0.5) : Theme.line, lineWidth: 1))
+        .shadow(color: .black.opacity(0.14), radius: 20, y: 8)
+        .animation(Motion.standard, value: rest.justFinished)
+        .sensoryFeedback(.selection, trigger: rest.isPaused)
+        .sensoryFeedback(.selection, trigger: adjustments)
+    }
+
+    /// Updates four times a second: enough for the seconds, and the ring glides between ticks.
+    private var countdown: some View {
+        TimelineView(.periodic(from: .now, by: 0.25)) { context in
+            let remaining = rest.pausedRemaining ?? max(0, (rest.endDate ?? context.date).timeIntervalSince(context.date))
+            let left = rest.total > 0 ? min(1, max(0, remaining / rest.total)) : 0
+            HStack(alignment: .center, spacing: 14) {
+                RestRing(fraction: left, isPaused: rest.isPaused)
+                    .frame(width: 54, height: 54)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(rest.isPaused ? "Paused" : "Rest").eyebrow(11)
+                    Text(Fmt.seconds(Int(remaining.rounded(.up))))
+                        .font(Typo.display(40))
+                        .monospacedDigit()
+                        .foregroundStyle(rest.isPaused ? Theme.ink3 : Theme.ink)
+                }
+                .accessibilityElement(children: .combine)
+                Spacer(minLength: 8)
+                if let nextUp { next(nextUp, alignment: .trailing) }
+            }
+        }
+    }
+
+    private var restOver: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: "bell.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Theme.good)
+                .frame(width: 54, height: 54)
+                .background(Theme.goodSoft, in: .circle)
+                .accessibilityHidden(true)
+            Text("Rest over")
+                .font(Typo.title(24))
+                .foregroundStyle(Theme.good)
+            Spacer(minLength: 8)
+            if let nextUp { next(nextUp, alignment: .trailing) }
+        }
+    }
+
+    private func next(_ text: String, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text("Next").eyebrow(10.5)
+            Text(text)
+                .font(Typo.body(13.5, .semibold))
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(2)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var controls: some View {
+        HStack(spacing: 6) {
+            Button("−15") { adjust(by: -15) }
+                .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                .accessibilityLabel("15 seconds less")
+            Button("+15") { adjust(by: 15) }
+                .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                .accessibilityLabel("15 seconds more")
+            Button("+30") { adjust(by: 30) }
+                .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+                .accessibilityLabel("30 seconds more")
+            Button(rest.isPaused ? "Resume" : "Pause", systemImage: rest.isPaused ? "play.fill" : "pause.fill") {
+                if rest.isPaused { rest.resume() } else { rest.pause() }
+            }
+            .labelStyle(.iconOnly)
+            .contentTransition(.symbolEffect(.replace))
+            .buttonStyle(OOButtonStyle(kind: .outline, shape: .pill, height: 42, fullWidth: true))
+            Button("Skip") { rest.stop() }
+                .buttonStyle(OOButtonStyle(kind: .primary, shape: .pill, height: 42, fullWidth: true))
+        }
+    }
+
+    private func adjust(by seconds: Int) {
+        rest.adjust(by: seconds)
+        adjustments += 1
+    }
+}
+
+/// How much rest is left, as a ring that empties clockwise. Grey while paused.
+struct RestRing: View {
+    let fraction: Double
+    var isPaused = false
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Theme.line, lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(isPaused ? Theme.ink3 : Theme.accent, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                // Glides between the dock's quarter-second updates instead of stepping.
+                .animation(.linear(duration: 0.25), value: fraction)
+            Image(systemName: isPaused ? "pause.fill" : "timer")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(isPaused ? Theme.ink3 : Theme.accent)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .padding(3)
+        .animation(Motion.tap, value: isPaused)
+        .accessibilityHidden(true)
     }
 }
 

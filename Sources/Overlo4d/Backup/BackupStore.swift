@@ -44,7 +44,7 @@ final class BackupStore {
 
     /// Settings that belong to the user rather than this phone. Health access and API keys are set up again on a new phone.
     private static let settingsKeys = [
-        "defaultRestSeconds", "rest.autoStart", "recap.dismissedWeek", "changelog.seenVersion",
+        "defaultRestSeconds", "rest.autoStart", "rest.sound", "liveActivity.enabled", "recap.dismissedWeek", "changelog.seenVersion",
         "coach.goal", "coach.model",
         "training.weeklyGoal", "progression.enabled", "progression.step", "home.layout",
         "reminders.enabled", "reminders.days", "reminders.minutes", "reminders.nudgeDays", "reminders.weeklyReport", "deload.start",

@@ -6,6 +6,9 @@ public enum AppLink: Equatable, Sendable {
     case reps
     case food
     case train
+    /// The workout in progress, or Home when there is none. Never starts a workout, so a
+    /// Live Activity left on the Lock Screen can't begin a new one by mistake.
+    case activeWorkout
     /// Start a workout: empty, or from the plan with this name.
     case start(plan: String?)
     case cardio
@@ -25,6 +28,7 @@ public enum AppLink: Equatable, Sendable {
         case "reps": return .reps
         case "food": return .food
         case "train": return .train
+        case "active": return .activeWorkout
         case "start", "workout":
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
             let plan = items.first { $0.name.lowercased() == "plan" }?.value?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -43,6 +47,7 @@ public enum AppLink: Equatable, Sendable {
         case .reps: return URL(string: "overlo4d://reps")
         case .food: return URL(string: "overlo4d://food")
         case .train: return URL(string: "overlo4d://train")
+        case .activeWorkout: return URL(string: "overlo4d://active")
         case .start(let plan):
             guard let plan, !plan.isEmpty else { return URL(string: "overlo4d://start") }
             var components = URLComponents()

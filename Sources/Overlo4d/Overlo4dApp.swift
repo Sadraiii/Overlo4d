@@ -267,6 +267,8 @@ struct RootView: View {
             ui.showingFood = true
         case .train:
             tab = .home
+        case .activeWorkout:
+            if gym.activeWorkout != nil { gym.isPresentingWorkout = true } else { tab = .home }
         case .history:
             tab = .history
         case .start(let plan):
@@ -333,17 +335,22 @@ struct WorkoutAccessory: View {
 }
 
 /// Content of the full-screen workout cover: the live workout, then the summary once finished.
+/// Finishing cross-fades into the summary instead of cutting to it.
 struct WorkoutFlowView: View {
     @Environment(GymStore.self) private var gym
 
     var body: some View {
-        if let summary = gym.summaryWorkout {
-            WorkoutSummaryView(workout: summary)
-        } else if let workout = gym.activeWorkout {
-            ActiveWorkoutView(initial: workout)
-                .id(workout.id)
-        } else {
-            ScreenBackground()
+        Group {
+            if let summary = gym.summaryWorkout {
+                WorkoutSummaryView(workout: summary)
+            } else if let workout = gym.activeWorkout {
+                ActiveWorkoutView(initial: workout)
+                    .id(workout.id)
+            } else {
+                ScreenBackground()
+            }
         }
+        .transition(.opacity)
+        .animation(Motion.standard, value: gym.summaryWorkout?.id)
     }
 }

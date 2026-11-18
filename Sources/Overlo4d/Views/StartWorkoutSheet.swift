@@ -264,10 +264,11 @@ struct SettingsSheet: View {
     }
 }
 
-/// Rest timer defaults: start automatically after each set, and how long.
+/// Rest timer defaults: start automatically after each set, how long, and whether it ends with a sound.
 struct RestSettingsSection: View {
     @AppStorage("rest.autoStart") private var autoStart = true
     @AppStorage("defaultRestSeconds") private var defaultRest = 90
+    @AppStorage(RestTimer.soundKey) private var playsSound = true
 
     private static let options = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 
@@ -289,14 +290,26 @@ struct RestSettingsSection: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
+                Rectangle().fill(Theme.line).frame(height: 1)
+                Toggle(isOn: $playsSound) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sound when it ends").font(Typo.body(15, .semibold))
+                        Text("The phone still vibrates when this is off.")
+                            .font(Typo.body(13))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                }
+                .padding(14)
             }
             .card(padding: 0, cornerRadius: 18)
         }
     }
 }
 
-/// Weekly workout goal and the progression suggestions shown during a workout.
+/// Weekly workout goal, the progression suggestions shown during a workout and the Live Activity.
 struct TrainingSettingsSection: View {
+    @Environment(GymStore.self) private var gym
+    @AppStorage(LiveActivityManager.enabledKey) private var showsLiveActivity = true
     @AppStorage("training.weeklyGoal") private var weeklyGoal = 0
     @AppStorage("progression.enabled") private var suggestions = true
     @AppStorage("progression.step") private var step = 0.0
@@ -347,6 +360,17 @@ struct TrainingSettingsSection: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
                 }
+                Rectangle().fill(Theme.line).frame(height: 1)
+                Toggle(isOn: $showsLiveActivity) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Lock Screen and Dynamic Island").font(Typo.body(15, .semibold))
+                        Text("The workout's time, sets and rest countdown while you train.")
+                            .font(Typo.body(13))
+                            .foregroundStyle(Theme.ink3)
+                    }
+                }
+                .padding(14)
+                .onChange(of: showsLiveActivity) { gym.liveActivitySettingChanged() }
             }
             .card(padding: 0, cornerRadius: 18)
         }

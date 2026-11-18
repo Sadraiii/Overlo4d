@@ -12,11 +12,19 @@ final class RestTimer {
     private(set) var total: TimeInterval = 0
     /// Seconds left while the countdown is paused.
     private(set) var pausedRemaining: TimeInterval?
+    /// True for a moment after the countdown ran out with the app open, so the dock can say "Rest over".
+    private(set) var justFinished = false
 
     /// Ends the countdown in the app, whichever screen is showing.
     @ObservationIgnored private var finishTask: Task<Void, Never>?
+    /// Takes "Rest over" down again.
+    @ObservationIgnored private var finishedTask: Task<Void, Never>?
+    /// How long "Rest over" stays up: long enough to read at a glance, short enough not to linger.
+    private static let finishedDisplay = Duration.seconds(2.5)
 
     private static let notificationID = "rest-timer"
+    /// Play a sound when the rest ends (in the app and in the notification). Set in Settings.
+    nonisolated static let soundKey = "rest.sound"
     private enum Keys {
         static let end = "rest.endDate"
         static let total = "rest.total"
@@ -62,15 +70,30 @@ final class RestTimer {
     /// Set in Settings.
     var autoStart: Bool { UserDefaults.standard.object(forKey: "rest.autoStart") as? Bool ?? true }
 
-    /// Called when the countdown reaches zero while the app is open: sound and haptic, then hide.
-    /// Coming back to the app long after the end only hides it; the notification already rang.
+    var playsSound: Bool { UserDefaults.standard.object(forKey: Self.soundKey) as? Bool ?? true }
+
+    /// Called when the countdown reaches zero while the app is open: sound, haptic and a short
+    /// "Rest over", then hide. Coming back to the app long after the end only hides it;
+    /// the notification already rang.
     func finish() {
         guard let endDate else { return }
-        if Date.now.timeIntervalSince(endDate) < 3 {
-            AudioServicesPlaySystemSound(1005)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-        }
+        let endedJustNow = Date.now.timeIntervalSince(endDate) < 3
         stop()
+        guard endedJustNow else { return }
+        if playsSound { AudioServicesPlaySystemSound(1005) }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        justFinished = true
+        finishedTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.finishedDisplay)
+            guard !Task.isCancelled else { return }
+            self?.justFinished = false
+        }
+    }
+
+    private func clearFinished() {
+        finishedTask?.cancel()
+        finishedTask = nil
+        justFinished = false
     }
 
     func requestPermission() {
@@ -81,6 +104,7 @@ final class RestTimer {
 
     func start(seconds: Int) {
         guard seconds > 0 else { return }
+        clearFinished()
         total = TimeInterval(seconds)
         pausedRemaining = nil
         endDate = .now.addingTimeInterval(total)
@@ -128,6 +152,7 @@ final class RestTimer {
     }
 
     func stop() {
+        clearFinished()
         endDate = nil
         pausedRemaining = nil
         scheduleFinish()
@@ -162,7 +187,7 @@ final class RestTimer {
         let content = UNMutableNotificationContent()
         content.title = "Rest over"
         content.body = "Next set."
-        content.sound = .default
+        content.sound = playsSound ? .default : nil
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, endDate.timeIntervalSinceNow), repeats: false)
         center.add(UNNotificationRequest(identifier: Self.notificationID, content: content, trigger: trigger))
     }

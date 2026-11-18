@@ -129,6 +129,8 @@ import Testing
         #expect(AppLink.parse(try #require(URL(string: "overlo4d://start?plan=Push%20Day"))) == .start(plan: "Push Day"))
         #expect(AppLink.parse(try #require(URL(string: "OVERLO4D://Cardio"))) == .cardio)
         #expect(AppLink.parse(try #require(URL(string: "overlo4d://nope"))) == nil)
+        // The Live Activity's link opens the running workout; it must not parse as "start".
+        #expect(AppLink.parse(try #require(URL(string: "overlo4d://active"))) == .activeWorkout)
         // Links from when the app was called Tally still work.
         #expect(AppLink.parse(try #require(URL(string: "tally://reps"))) == .reps)
         #expect(AppLink.parse(try #require(URL(string: "tally://start?plan=Push%20Day"))) == .start(plan: "Push Day"))
@@ -138,7 +140,7 @@ import Testing
     }
 
     @Test func linksRoundTrip() throws {
-        for link in [AppLink.reps, .food, .train, .start(plan: nil), .start(plan: "Legs & Core"), .cardio, .plates, .timer, .report, .history] {
+        for link in [AppLink.reps, .food, .train, .activeWorkout, .start(plan: nil), .start(plan: "Legs & Core"), .cardio, .plates, .timer, .report, .history] {
             #expect(AppLink.parse(try #require(link.url)) == link)
         }
     }

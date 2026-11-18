@@ -231,8 +231,8 @@ struct SetRow: View {
             }
         }
         .listRowBackground(set.isDone ? Theme.goodSoft : Theme.card)
-        .animation(.snappy, value: set.isDone)
-        .sensoryFeedback(.success, trigger: set.isDone) { _, done in done }
+        .animation(Motion.tap, value: set.isDone)
+        .sensoryFeedback(.setDone, trigger: set.isDone) { _, done in done }
     }
 
     private var badgeColor: Color {
