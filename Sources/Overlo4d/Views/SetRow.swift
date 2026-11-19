@@ -43,12 +43,14 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
             .setField(focused: focused)
             .onAppear { text = Self.format(value) }
             .onChange(of: text) { _, newText in
-                let parsed = Value(newText.replacingOccurrences(of: ",", with: "."))
+                // Text that is just how the value is shown never writes back, so showing a field
+                // can't change the workout.
+                guard newText != Self.format(value) else { return }
+                let parsed = Self.parse(newText)
                 if parsed != value { value = newText.isEmpty ? nil : parsed }
             }
             .onChange(of: value) { _, newValue in
-                let current = Value(text.replacingOccurrences(of: ",", with: "."))
-                if current != newValue { text = Self.format(newValue) }
+                if Self.parse(text) != newValue { text = Self.format(newValue) }
             }
     }
 
@@ -71,10 +73,19 @@ struct NumberField<Value: Numeric & Comparable & LosslessStringConvertible & Equ
         }
     }
 
+    /// In the phone's decimal mark ("62,5" in Sweden), never with grouping: "1 000" read back as
+    /// nothing, and "62,5" with its comma dropped read back as 625.
     private static func format(_ value: Value?) -> String {
         guard let value else { return "" }
-        if let double = value as? Double { return Fmt.weight(double).replacingOccurrences(of: ",", with: "") }
+        if let double = value as? Double {
+            return NumberInput.text(double, decimalSeparator: Locale.current.decimalSeparator ?? ".")
+        }
         return String(describing: value)
+    }
+
+    private static func parse(_ text: String) -> Value? {
+        if Value.self == Double.self { return NumberInput.double(text) as? Value }
+        return Value(text.filter { !$0.isWhitespace })
     }
 }
 
