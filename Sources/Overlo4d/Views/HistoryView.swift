@@ -11,7 +11,6 @@ struct HistoryView: View {
     @State private var addingWorkout: Workout?
     /// What was just swiped away, kept for a few seconds so it can be put back.
     @State private var undo: HistoryItem?
-    /// A workout card grows into its detail screen.
 
     private var isEmpty: Bool { gym.workouts.isEmpty && gym.healthWorkouts.isEmpty && gym.cardio.isEmpty }
 
@@ -48,6 +47,8 @@ struct HistoryView: View {
                                 }
                             }
                             .navigationLinkIndicatorVisibility(.hidden)
+                            // Workouts from Apple Health belong to Health, so they can't be swiped away here.
+                            .deleteDisabled(item.isFromHealth)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
@@ -152,6 +153,10 @@ enum HistoryItem: Identifiable {
         }
     }
 
+    var isFromHealth: Bool {
+        if case .health = self { true } else { false }
+    }
+
     /// "Push Day deleted", for the undo bar.
     var deletedText: String {
         switch self {
@@ -215,11 +220,14 @@ extension HistoryView {
         withAnimation(.snappy) { undo = item }
     }
 
-    /// Once a delete can't be undone any more, its copy in Apple Health goes too.
+    /// Once a delete can't be undone any more, the copy Overlo4d saved in Apple Health goes too.
     func finalize(_ item: HistoryItem) async {
-        if case .cardio(let session) = item, let healthID = session.savedHealthID {
-            _ = await health.deleteWorkout(healthID)
+        let healthID: UUID? = switch item {
+        case .workout(let workout): workout.savedHealthID
+        case .cardio(let session): session.savedHealthID
+        case .health: nil
         }
+        if let healthID { _ = await health.deleteWorkout(healthID) }
     }
 
     func restore(_ item: HistoryItem) {
@@ -234,6 +242,7 @@ extension HistoryView {
 
 struct WorkoutDetailView: View {
     @Environment(GymStore.self) private var gym
+    @Environment(HealthManager.self) private var health
     @Environment(\.dismiss) private var dismiss
     let workout: Workout
 
@@ -353,6 +362,10 @@ struct WorkoutDetailView: View {
             Button("Delete", role: .destructive) {
                 dismiss()
                 gym.deleteWorkout(workout)
+                // Overlo4d's own copy in Apple Health goes with it; a linked Watch session stays.
+                if let healthID = workout.savedHealthID {
+                    Task { _ = await health.deleteWorkout(healthID) }
+                }
             }
         }
         .alert("Saved as plan", isPresented: $savedPlan) {

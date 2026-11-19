@@ -26,6 +26,10 @@ struct TrainingEntry: TimelineEntry {
     var workoutsThisWeek: Int { snapshot.workoutsThisWeek(date) }
     var todayIndex: Int { ActivitySnapshot.weekdayIndex(of: date) }
     var streak: Int { snapshot.currentStreak(at: date) }
+    /// Workouts a week aimed for; 0 when no goal is set.
+    var goal: Int { snapshot.weeklyGoal ?? 0 }
+    /// "3" or, with a goal, "3/4".
+    var countText: String { goal > 0 ? "\(workoutsThisWeek)/\(goal)" : "\(workoutsThisWeek)" }
     var trainedToday: Bool { days.indices.contains(todayIndex) && days[todayIndex] }
 }
 
@@ -64,7 +68,8 @@ extension ActivitySnapshot {
         return ActivitySnapshot(
             workoutDates: dates,
             weekStreak: 6,
-            lastWorkout: LastWorkout(name: "Push day", date: dates.first ?? .now, duration: 3240, volume: 8420, sets: 18, records: 2)
+            lastWorkout: LastWorkout(name: "Push day", date: dates.first ?? .now, duration: 3240, volume: 8420, sets: 18, records: 2),
+            weeklyGoal: 4
         )
     }
 }
@@ -88,7 +93,11 @@ struct TrainingWidgetView: View {
 
     // MARK: Home screen
 
-    private var countUnit: String { entry.workoutsThisWeek == 1 ? "workout" : "workouts" }
+    /// Next to the big number: "of 4" with a weekly goal, otherwise "workouts".
+    private var countUnit: String {
+        if entry.goal > 0 { return "of \(entry.goal)" }
+        return entry.workoutsThisWeek == 1 ? "workout" : "workouts"
+    }
 
     @ViewBuilder
     private var streakChip: some View {
@@ -220,7 +229,7 @@ struct TrainingWidgetView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: "dumbbell.fill").font(.system(size: 11, weight: .bold))
-                Text("\(entry.workoutsThisWeek) this week")
+                Text("\(entry.countText) this week")
                     .font(Typo.body(14, .bold))
                 if entry.streak > 0 {
                     Spacer(minLength: 2)
@@ -244,7 +253,7 @@ struct TrainingWidgetView: View {
     @ViewBuilder
     private var inline: some View {
         if entry.streak > 0 {
-            Label("\(entry.workoutsThisWeek) this week · \(entry.streak) wk streak", systemImage: "flame.fill")
+            Label("\(entry.countText) this week · \(entry.streak) wk streak", systemImage: "flame.fill")
         } else {
             Label("\(entry.workoutsThisWeek) \(countUnit) this week", systemImage: "dumbbell.fill")
         }

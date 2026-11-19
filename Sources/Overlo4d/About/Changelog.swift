@@ -20,6 +20,13 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.18", date: DateComponents(year: 2026, month: 11, day: 19), changes: [
+            "The Training widget shows your weekly goal, like \"2 of 4\", on the Home Screen and Lock Screen.",
+            "Fixed: deleting a workout left Overlo4d's copy of it in Apple Health. It now goes too; a Watch session linked to it stays.",
+            "Fixed: workouts from Apple Health in History showed a Delete button that did nothing. They can't be swiped away now, since they belong to Health.",
+            "Fixed: a custom exercise could be deleted while it was in the workout you were doing.",
+            "Backups now keep your exercise demo choices and the Workout API animation you picked per exercise.",
+        ]),
         ChangelogEntry(version: "0.17", date: DateComponents(year: 2026, month: 11, day: 19), changes: [
             "Fixed: weights with a decimal comma, like 62,5, could turn into 625 when a set scrolled back into view. Set fields now use your phone's decimal mark and never change a value just by showing it.",
         ]),

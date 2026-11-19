@@ -160,8 +160,10 @@ final class GymStore {
     }
 
     func isUsed(_ exercise: ExerciseDef) -> Bool {
-        workouts.contains { $0.exercises.contains { $0.exerciseID == exercise.id } }
-            || plans.contains { $0.exercises.contains { $0.exerciseID == exercise.id } }
+        let uses: ([WorkoutExercise]) -> Bool = { $0.contains { $0.exerciseID == exercise.id } }
+        return workouts.contains { uses($0.exercises) }
+            || plans.contains { uses($0.exercises) }
+            || uses(activeWorkout?.exercises ?? [])
     }
 
     func deleteExercise(_ exercise: ExerciseDef) {
@@ -730,7 +732,8 @@ final class GymStore {
         return ActivitySnapshot(
             workoutDates: activityDates.filter { $0 >= since },
             weekStreak: weekStreak,
-            lastWorkout: last
+            lastWorkout: last,
+            weeklyGoal: weeklyGoal > 0 ? weeklyGoal : nil
         )
     }
 
@@ -749,6 +752,11 @@ final class GymStore {
     }
 
     /// Shares a summary with the Training widget.
+    /// Rewrites the Training widget's data, e.g. after the weekly goal changed.
+    func refreshWidgetSnapshot() {
+        writeSnapshot()
+    }
+
     private func writeSnapshot() {
         SharedStorage.save(snapshot, to: SharedStorage.activityFile)
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetKind.training)

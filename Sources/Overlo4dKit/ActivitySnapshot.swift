@@ -24,11 +24,14 @@ public struct ActivitySnapshot: Codable, Sendable {
     public var workoutDates: [Date]
     public var weekStreak: Int
     public var lastWorkout: LastWorkout?
+    /// Workouts a week the user aims for; nil when no goal is set. Optional so older files still decode.
+    public var weeklyGoal: Int?
 
-    public init(workoutDates: [Date] = [], weekStreak: Int = 0, lastWorkout: LastWorkout? = nil) {
+    public init(workoutDates: [Date] = [], weekStreak: Int = 0, lastWorkout: LastWorkout? = nil, weeklyGoal: Int? = nil) {
         self.workoutDates = workoutDates
         self.weekStreak = weekStreak
         self.lastWorkout = lastWorkout
+        self.weeklyGoal = weeklyGoal
     }
 
     /// Seven flags (first weekday → last) for whether a workout happened that day.

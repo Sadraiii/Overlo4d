@@ -335,6 +335,8 @@ struct TrainingSettingsSection: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+                // The Training widget shows progress toward the goal.
+                .onChange(of: weeklyGoal) { gym.refreshWidgetSnapshot() }
                 Rectangle().fill(Theme.line).frame(height: 1)
                 Toggle(isOn: $suggestions) {
                     VStack(alignment: .leading, spacing: 2) {

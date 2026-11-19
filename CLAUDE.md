@@ -91,7 +91,7 @@ UserDefaults settings (those that belong to the user are in `BackupStore.setting
 
 **Tools and extras**: `Tools/` plate calculator, 1RM calculator, stopwatch/countdown/intervals/EMOM; `QuickCount/` rep counter (Outdoor Office style, shared with the Reps widget); `Share/` story-style share cards (PNG), export to CSV/text/JSON (`Overlo4dCore/Export`); `About/Changelog.swift`; Edit Home sheet (`HomeLayout`, hide/reorder cards); Home is `Views/HomeTab` (greeting, week card with weekly goal, tool tiles, Today and Training sections).
 
-**Widgets** (`Overlo4dWidget/*`): Training, Food, Reps; small/medium/large + lock-screen accessory + StandBy; tint-safe colours (`WidgetColors`). They read App Group JSON snapshots written by the app; app reloads timelines on going to background.
+**Widgets** (`Overlo4dWidget/*`): Training, Food, Reps; small/medium/large + lock-screen accessory + StandBy; tint-safe colours (`WidgetColors`). They read App Group JSON snapshots written by the app; app reloads timelines on going to background. Training shows the weekly goal from `ActivitySnapshot.weeklyGoal` (rewritten when the goal changes).
 
 **Backup** (`Backup/*`, `Overlo4dCore/Backup`): one JSON of all data files + settings written to a user-picked folder (iCloud Drive) via security-scoped bookmark; automatic when leaving the app if data changed; restore on a new phone. Add any new data file to `BackupStore.documentFiles`.
 
@@ -122,11 +122,11 @@ UserDefaults settings (those that belong to the user are in `BackupStore.setting
 - **Haptics**: `.sensoryFeedback` at the call site: `.selection` for picking or nudging a value, `.setDone` (success) for a ticked set, `.workoutDone` (heavy impact) for a saved workout, `.success` for other completions; the rest end plays a notification haptic from `RestTimer`.
 - **UI**: `.card()` (white, radius 22, faint edge, soft shadow), `Theme.fill` for wells/badges, `.eyebrow()` for small sentence-case labels, headings Schibsted Grotesk bold in sentence case (`Typo.title`, `.display()` renders Grotesk). **Big Shoulders condensed only for numbers** (`Typo.display`). No all-caps headings, no ticket/bib styling. Colours via `Theme`/`Accent` tokens (light + dark), never hard-coded.
 - User-facing copy says "Overlo4d". Plain, short sentences.
-- Every release: bump version in **both** `Support/Overlo4d-Info.plist` and `Support/Overlo4dWidget-Info.plist` (version + build) and add a `Changelog.entries` item at the top (`About/Changelog.swift`). Currently 0.17 / 17, stage "Beta".
+- Every release: bump version in **both** `Support/Overlo4d-Info.plist` and `Support/Overlo4dWidget-Info.plist` (version + build) and add a `Changelog.entries` item at the top (`About/Changelog.swift`). Currently 0.18 / 18, stage "Beta".
 - New data file → add to `BackupStore.documentFiles`; new user setting → add to `BackupStore.settingsKeys`; new widget-visible data → App Group file via `SharedStorage`.
 - Pure logic + tests in Overlo4dCore first, then wire UI. Keep structs `Sendable`; mind Swift 6 strict concurrency (stores are `@MainActor`).
 - Don't add dependencies. Don't commit keys or tokens.
-- Known gaps / ideas: kg only (no lb), no confirm/undo on swipe-delete of a workout, widgets don't show the weekly goal, no watchOS app, no interactive widget buttons (xtool), progress photos not in backup.
+- Known gaps / ideas: body weight kg only, no watchOS app, no interactive widget buttons (xtool), progress photos not in backup.
 
 ## Git rules (the user's standing rules)
 - **Commit straight to `main`. No branches, no PRs.** Always `git pull --rebase origin main` first: other Claude threads commit to main concurrently (e.g. muscle GIFs, new features).

@@ -50,6 +50,7 @@ final class BackupStore {
         "reminders.enabled", "reminders.days", "reminders.minutes", "reminders.nudgeDays", "reminders.weeklyReport", "deload.start",
         "sleep.goalHours", "sleep.wakeMinutes", "sleep.reminders", "sleep.windDownMinutes", "sleep.morningCheckIn", "sleep.caffeineCutoff",
         "clock.mode", "clock.work", "clock.rest", "clock.rounds", "clock.countdown", "clock.minutes",
+        "exerciseDemo.style", "workoutapi.overrides", "workoutapi.thumbnails", "workoutapi.variant", "deload.snoozedUntil",
     ]
     private static let sharedSettingsKeys = [Accent.storageKey, AppearanceMode.storageKey, SharedUnit.storageKey]
 
