@@ -11,6 +11,7 @@ enum PeptideRoute: Hashable {
 /// The tracker's first screen: one card per peptide, the latest entries, and the menu.
 struct PeptideHome: View {
     let store: PeptideStore
+    let training: PeptideTrainingContext
     let onHide: () -> Void
 
     @State private var path: [PeptideRoute] = []
@@ -30,8 +31,19 @@ struct PeptideHome: View {
                     } else {
                         ForEach(store.data.profiles) { profile in
                             PeptideCard(profile: profile, due: store.dueToday(profile),
+                                        adherence: store.data.adherence(profile, now: .now),
                                         open: { path.append(.profile(profile.id)) },
                                         log: { logging = profile })
+                        }
+
+                        SectionHead("Calendar")
+                        PeptideCalendarCard(data: store.data, training: training)
+                        if let since = store.data.profiles.compactMap({ $0.startDay() }).min() {
+                            PeptideTrainingCard(
+                                summary: PeptideTrainingSummary.build(since: since, today: DayKey(.now),
+                                                                      workoutDays: training.workoutDays, weights: training.weights),
+                                title: "Training while tracking"
+                            )
                         }
                     }
 
@@ -62,7 +74,7 @@ struct PeptideHome: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: PeptideRoute.self) { route in
                 switch route {
-                case .profile(let id): PeptideDetailView(store: store, id: id, onHide: onHide)
+                case .profile(let id): PeptideDetailView(store: store, id: id, training: training, onHide: onHide)
                 case .history: PeptideHistoryView(store: store, onHide: onHide)
                 }
             }
@@ -145,6 +157,7 @@ struct PeptideHome: View {
 struct PeptideCard: View {
     let profile: PeptideProfile
     let due: Int
+    let adherence: PeptideAdherence?
     let open: () -> Void
     let log: () -> Void
 
@@ -186,6 +199,7 @@ struct PeptideCard: View {
                     if profile.tracksVial && math.hasDose {
                         VialBar(profile: profile)
                     }
+                    PeptideFacts(profile: profile, adherence: adherence)
                 }
                 .contentShape(.rect)
             }
@@ -234,6 +248,7 @@ struct VialBar: View {
 struct PeptideDetailView: View {
     let store: PeptideStore
     let id: UUID
+    let training: PeptideTrainingContext
     let onHide: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -253,6 +268,10 @@ struct PeptideDetailView: View {
                     .buttonStyle(.bigPrimary)
                     .disabled(!draft.reconstitution.hasDose || draft.reconstitution.units <= 0)
 
+                if let saved {
+                    PeptideFacts(profile: saved, adherence: store.data.adherence(saved, now: .now))
+                }
+
                 if let saved, saved.tracksVial, saved.reconstitution.hasDose {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -270,6 +289,25 @@ struct PeptideDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .card(padding: 16, cornerRadius: 20)
+                }
+
+                if let saved, let since = saved.startDay() {
+                    PeptideTrainingCard(
+                        summary: PeptideTrainingSummary.build(since: since, today: DayKey(.now),
+                                                              workoutDays: training.workoutDays, weights: training.weights),
+                        title: saved.cycle == nil ? "Training since you added it" : "Training this cycle"
+                    )
+                }
+
+                if let feeling = store.data.averageFeeling(id, now: .now) {
+                    HStack {
+                        Text("How you felt, last 4 weeks").font(Typo.body(15, .semibold))
+                        Spacer()
+                        Text("\(PeptideFormat.number(feeling, places: 1)) / 5")
+                            .font(Typo.display(24))
+                            .monospacedDigit()
+                    }
+                    .card(padding: 14, cornerRadius: 18)
                 }
 
                 if loaded {
@@ -318,16 +356,23 @@ struct PeptideDetailView: View {
             // The vial is counted in the store, so keep its numbers and take the rest from the form.
             let remaining = current.remainingMg
             let opened = current.vialOpened
+            let created = current.createdAt
             current = edited
             current.remainingMg = remaining
             current.vialOpened = opened
+            current.createdAt = created
             if current != store.profile(id) { store.save(current) }
         }
         .sheet(item: $logging) { profile in PeptideLogSheet(store: store, profile: profile) }
         .confirmationDialog("Start a new vial?", isPresented: $confirmingVial, titleVisibility: .visible) {
-            Button("New vial, \(PeptideFormat.number(draft.vialMg, places: 2)) mg") { store.startNewVial(id) }
+            Button("New vial, \(PeptideFormat.number(draft.vialMg, places: 2)) mg") {
+                store.startNewVial(id)
+                // Opening one takes it from the spares; keep the form in step.
+                if let spares = store.profile(id)?.spareVials { draft.spareVials = spares }
+            }
         } message: {
-            Text("What is left counts from a full vial again. Your entries stay.")
+            Text(draft.spareVials > 0 ? "What is left counts from a full vial again, and one spare is used. Your entries stay."
+                 : "What is left counts from a full vial again. Your entries stay.")
         }
         .confirmationDialog("Delete \(draft.name.isEmpty ? "this peptide" : draft.name)?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete peptide", role: .destructive) {
@@ -351,22 +396,33 @@ struct PeptideLogSheet: View {
     @State private var site: InjectionSite?
     @State private var suggested: InjectionSite?
     @State private var notes = ""
+    @State private var units: Double = 0
+    @State private var feeling: Int?
 
     var body: some View {
         let math = profile.reconstitution
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    HStack(alignment: .lastTextBaseline, spacing: 6) {
-                        Text(PeptideFormat.number(math.units, places: 1))
-                            .font(Typo.display(56))
-                            .monospacedDigit()
-                        Text(math.units == 1 ? "unit" : "units").eyebrow(13)
-                        Spacer()
-                        Text(PeptideFormat.amount(mcg: math.drawnMcg, unit: profile.doseUnit))
-                            .font(Typo.display(24))
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.ink2)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .lastTextBaseline, spacing: 6) {
+                            Text(PeptideFormat.number(units, places: 1))
+                                .font(Typo.display(56))
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                            Text(units == 1 ? "unit" : "units").eyebrow(13)
+                            Spacer()
+                            Text(PeptideFormat.amount(mcg: units * math.mcgPerUnit, unit: profile.doseUnit))
+                                .font(Typo.display(24))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.ink2)
+                        }
+                        Stepper(value: $units, in: math.tickUnits...math.syringe.units, step: math.tickUnits) {
+                            Text(abs(units - math.units) < 1e-9 ? "Your target" : "Changed from \(PeptideFormat.units(math.units))")
+                                .font(Typo.body(13))
+                                .foregroundStyle(Theme.ink3)
+                        }
+                        .sensoryFeedback(.selection, trigger: units)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .card(padding: 16, cornerRadius: 20)
@@ -401,6 +457,11 @@ struct PeptideLogSheet: View {
                         }
                     }
 
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("How you feel (optional)").eyebrow(11.5)
+                        FeelingPicker(feeling: $feeling)
+                    }
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes").eyebrow(11.5)
                         TextField("Optional", text: $notes, axis: .vertical)
@@ -417,7 +478,7 @@ struct PeptideLogSheet: View {
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
                 Button("Log entry", systemImage: "checkmark") {
-                    store.log(profile.id, at: date, site: site, notes: notes)
+                    store.log(profile.id, at: date, site: site, notes: notes, units: units, feeling: feeling)
                     dismiss()
                 }
                 .buttonStyle(.bigPrimary)
@@ -437,6 +498,7 @@ struct PeptideLogSheet: View {
                 guard suggested == nil else { return }
                 suggested = store.data.nextSite()
                 site = suggested
+                units = max(math.units, math.tickUnits)
             }
         }
         .presentationDetents([.large])
@@ -482,7 +544,7 @@ struct PeptideLogRow: View {
     }
 
     private var detail: String {
-        [showsName ? when : nil, entry.site?.label].compactMap { $0 }.joined(separator: " · ")
+        [showsName ? when : nil, entry.site?.label, entry.feeling.map { "Felt \($0)/5" }].compactMap { $0 }.joined(separator: " · ")
     }
 }
 

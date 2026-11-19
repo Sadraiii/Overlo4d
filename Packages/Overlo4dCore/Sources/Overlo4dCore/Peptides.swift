@@ -177,11 +177,21 @@ public struct PeptideProfile: Codable, Identifiable, Hashable, Sendable {
     public var remainingMg: Double?
     public var vialOpened: Date?
     public var notes: String
+    /// Unopened vials on hand. Starting a new vial takes one.
+    public var spareVials: Int
+    /// Days a mixed vial is used for, as the user typed it; nil for no limit shown.
+    public var keepsDays: Int?
+    /// Weeks on and off; nil for no cycle.
+    public var cycle: PeptideCycle?
+    /// Minutes after midnight for a reminder on days something is due; nil for none.
+    public var reminderMinutes: Int?
+    public var createdAt: Date?
 
     public init(id: UUID = UUID(), name: String = "", vialMg: Double = 0, waterMl: Double = 0, dose: Double = 0,
                 doseUnit: DoseUnit = .mcg, schedule: PeptideSchedule = .daily, syringe: SyringeSize = .u100,
                 halfUnits: Bool = false, tracksVial: Bool = true, remainingMg: Double? = nil, vialOpened: Date? = nil,
-                notes: String = "") {
+                notes: String = "", spareVials: Int = 0, keepsDays: Int? = nil, cycle: PeptideCycle? = nil,
+                reminderMinutes: Int? = nil, createdAt: Date? = nil) {
         self.id = id
         self.name = name
         self.vialMg = vialMg
@@ -195,6 +205,11 @@ public struct PeptideProfile: Codable, Identifiable, Hashable, Sendable {
         self.remainingMg = remainingMg
         self.vialOpened = vialOpened
         self.notes = notes
+        self.spareVials = max(0, spareVials)
+        self.keepsDays = keepsDays
+        self.cycle = cycle
+        self.reminderMinutes = reminderMinutes
+        self.createdAt = createdAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -212,6 +227,11 @@ public struct PeptideProfile: Codable, Identifiable, Hashable, Sendable {
         remainingMg = try c.decodeIfPresent(Double.self, forKey: .remainingMg)
         vialOpened = try c.decodeIfPresent(Date.self, forKey: .vialOpened)
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        spareVials = max(0, try c.decodeIfPresent(Int.self, forKey: .spareVials) ?? 0)
+        keepsDays = try c.decodeIfPresent(Int.self, forKey: .keepsDays)
+        cycle = try? c.decodeIfPresent(PeptideCycle.self, forKey: .cycle)
+        reminderMinutes = try c.decodeIfPresent(Int.self, forKey: .reminderMinutes)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 
     public var doseMcg: Double { dose * doseUnit.perMcg }
@@ -251,9 +271,12 @@ public struct PeptideLogEntry: Codable, Identifiable, Hashable, Sendable {
     public var notes: String
     /// The entry was counted against the vial, so deleting it gives the amount back.
     public var countedInVial: Bool
+    /// How the user felt, 1 (bad) to 5 (great); nil when not given.
+    public var feeling: Int?
 
     public init(id: UUID = UUID(), date: Date, peptideID: UUID, peptideName: String, amountMcg: Double,
-                unit: DoseUnit = .mcg, units: Double, site: InjectionSite? = nil, notes: String = "", countedInVial: Bool = false) {
+                unit: DoseUnit = .mcg, units: Double, site: InjectionSite? = nil, notes: String = "", countedInVial: Bool = false,
+                feeling: Int? = nil) {
         self.id = id
         self.date = date
         self.peptideID = peptideID
@@ -264,6 +287,7 @@ public struct PeptideLogEntry: Codable, Identifiable, Hashable, Sendable {
         self.site = site
         self.notes = notes
         self.countedInVial = countedInVial
+        self.feeling = feeling.map { min(5, max(1, $0)) }
     }
 
     public init(from decoder: Decoder) throws {
@@ -278,6 +302,7 @@ public struct PeptideLogEntry: Codable, Identifiable, Hashable, Sendable {
         site = try? c.decodeIfPresent(InjectionSite.self, forKey: .site)
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         countedInVial = try c.decodeIfPresent(Bool.self, forKey: .countedInVial) ?? false
+        feeling = (try? c.decodeIfPresent(Int.self, forKey: .feeling)).flatMap { $0 }.map { min(5, max(1, $0)) }
     }
 }
 
@@ -318,6 +343,7 @@ public struct PeptideData: Codable, Equatable, Sendable {
             profiles[index] = profile
         } else {
             if profile.remainingMg == nil { profile.startNewVial(at: now) }
+            if profile.createdAt == nil { profile.createdAt = now }
             profiles.append(profile)
         }
     }
@@ -327,24 +353,32 @@ public struct PeptideData: Codable, Equatable, Sendable {
         profiles.removeAll { $0.id == id }
     }
 
+    /// Opens a fresh vial, taking one from the spares when there are any.
     public mutating func startNewVial(_ id: UUID, now: Date) {
         guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
         profiles[index].startNewVial(at: now)
+        if profiles[index].spareVials > 0 { profiles[index].spareVials -= 1 }
     }
 
-    /// Records one entry at the profile's target, drawn to the nearest mark, and counts the
-    /// vial down when the profile tracks it. Returns nil when the profile has no usable numbers.
+    /// Records one entry and counts the vial down when the profile tracks it. `units` is what was
+    /// actually drawn; nil means the profile's target, drawn to the nearest mark. Returns nil when
+    /// the profile has no usable numbers.
     @discardableResult
-    public mutating func log(_ id: UUID, at date: Date, site: InjectionSite?, notes: String = "") -> PeptideLogEntry? {
+    public mutating func log(_ id: UUID, at date: Date, site: InjectionSite?, notes: String = "",
+                             units drawn: Double? = nil, feeling: Int? = nil) -> PeptideLogEntry? {
         guard let index = profiles.firstIndex(where: { $0.id == id }) else { return nil }
         let profile = profiles[index]
         let math = profile.reconstitution
-        guard math.hasDose, math.units > 0 else { return nil }
-        let entry = PeptideLogEntry(date: date, peptideID: id, peptideName: profile.name, amountMcg: math.drawnMcg,
-                                    unit: profile.doseUnit, units: math.units, site: site,
-                                    notes: notes.trimmingCharacters(in: .whitespacesAndNewlines), countedInVial: profile.tracksVial)
+        guard math.hasConcentration else { return nil }
+        let units = drawn ?? math.units
+        guard units > 0, units.isFinite, drawn != nil || math.hasDose else { return nil }
+        let amount = units * math.mcgPerUnit
+        let entry = PeptideLogEntry(date: date, peptideID: id, peptideName: profile.name, amountMcg: amount,
+                                    unit: profile.doseUnit, units: units, site: site,
+                                    notes: notes.trimmingCharacters(in: .whitespacesAndNewlines), countedInVial: profile.tracksVial,
+                                    feeling: feeling)
         if profile.tracksVial {
-            profiles[index].remainingMg = max(0, profile.leftMg - math.drawnMcg / 1000)
+            profiles[index].remainingMg = max(0, profile.leftMg - amount / 1000)
         }
         logs.append(entry)
         logs.sort { $0.date > $1.date }
@@ -361,10 +395,12 @@ public struct PeptideData: Codable, Equatable, Sendable {
         profiles[index].remainingMg = min(profile.vialMg, profile.leftMg + entry.amountMcg / 1000)
     }
 
-    /// Entries still open today for a profile.
+    /// Entries still open today for a profile. Nothing is due in an off week of its cycle.
     public func dueToday(_ profile: PeptideProfile, now: Date, calendar: Calendar = .current) -> Int {
+        let today = DayKey(now, calendar: calendar)
+        if let cycle = profile.cycle, !cycle.phase(on: today, calendar: calendar).isOn { return 0 }
         let days = logs(for: profile.id).map { DayKey($0.date, calendar: calendar) }
-        return profile.schedule.dueToday(logDays: days, today: DayKey(now, calendar: calendar), calendar: calendar)
+        return profile.schedule.dueToday(logDays: days, today: today, calendar: calendar)
     }
 
     public func nextSite() -> InjectionSite? { InjectionSite.next(after: logs) }

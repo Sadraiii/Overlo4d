@@ -132,6 +132,7 @@ struct Overlo4dApp: App {
             if phase != .inactive { TrainingReminders.reschedule(gym: gym) }
             if phase == .background {
                 backup.backUpIfChanged()
+                PeptideReminders.refreshFromDisk()
                 let toolbox = CoachToolbox(gym: gym, sleep: sleep, food: food, body: bodyStore, programs: programs)
                 Task { await cloud.sync(toolbox: toolbox) }
                 // Leave the widgets showing exactly what the app last showed.

@@ -6,6 +6,8 @@ import UIKit
 /// Settings: the one way into the peptide tracker.
 struct PeptideSettingsSection: View {
     @Environment(AppUI.self) private var ui
+    @Environment(GymStore.self) private var gym
+    @Environment(FoodStore.self) private var food
     @State private var showing = false
 
     var body: some View {
@@ -29,7 +31,10 @@ struct PeptideSettingsSection: View {
             .card(padding: 0, cornerRadius: 18)
         }
         .fullScreenCover(isPresented: $showing) {
-            PeptideRoot {
+            PeptideRoot(training: PeptideTrainingContext(
+                workoutDays: gym.activityDates.map { DayKey($0) },
+                weights: food.weights
+            )) {
                 // Straight back to the app: the tracker and Settings both close.
                 showing = false
                 ui.showingSettings = false
@@ -40,6 +45,7 @@ struct PeptideSettingsSection: View {
 
 /// The tracker's own screen stack. It owns its store, so the data is only in memory while this is open.
 struct PeptideRoot: View {
+    let training: PeptideTrainingContext
     let onHide: () -> Void
 
     @State private var store = PeptideStore()
@@ -48,7 +54,7 @@ struct PeptideRoot: View {
 
     var body: some View {
         ZStack {
-            PeptideHome(store: store, onHide: onHide)
+            PeptideHome(store: store, training: training, onHide: onHide)
             if covered {
                 Theme.paper.ignoresSafeArea()
             }

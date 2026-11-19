@@ -9,7 +9,7 @@ import Overlo4dCore
 @Observable
 final class PeptideStore {
     private(set) var data: PeptideData
-    private static let fileURL = URL.documentsDirectory.appending(path: "peptides.json")
+    static let fileURL = URL.documentsDirectory.appending(path: "peptides.json")
 
     init() {
         var data = PeptideData()
@@ -33,6 +33,7 @@ final class PeptideStore {
     private func change(_ body: (inout PeptideData) -> Void) {
         body(&data)
         save()
+        PeptideReminders.reschedule(data)
     }
 
     // MARK: Profiles and log
@@ -44,9 +45,9 @@ final class PeptideStore {
     func startNewVial(_ id: UUID) { change { $0.startNewVial(id, now: .now) } }
 
     @discardableResult
-    func log(_ id: UUID, at date: Date, site: InjectionSite?, notes: String) -> Bool {
+    func log(_ id: UUID, at date: Date, site: InjectionSite?, notes: String, units: Double? = nil, feeling: Int? = nil) -> Bool {
         var logged = false
-        change { logged = $0.log(id, at: date, site: site, notes: notes) != nil }
+        change { logged = $0.log(id, at: date, site: site, notes: notes, units: units, feeling: feeling) != nil }
         return logged
     }
 
@@ -83,5 +84,6 @@ final class PeptideStore {
     func eraseEverything() {
         data = PeptideData()
         try? FileManager.default.removeItem(at: Self.fileURL)
+        PeptideReminders.reschedule(data)
     }
 }

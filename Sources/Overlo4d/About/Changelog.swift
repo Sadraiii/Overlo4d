@@ -20,6 +20,13 @@ struct ChangelogEntry: Identifiable {
 /// What changed in each build. Add an entry, and bump the version in both Info.plists, for every release.
 enum Changelog {
     static let entries: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.19", date: DateComponents(year: 2026, month: 11, day: 19), changes: [
+            "Peptides: cycles with weeks on and off, so nothing is due in an off week and each card shows the week you're in.",
+            "Peptides: spare vials (starting a new vial takes one), how long ago the vial was mixed against the days you set, and a warning when it runs low.",
+            "Peptides: log what you actually drew with − and +, and how you felt from 1 to 5.",
+            "Peptides: a calendar of entries with your training days ringed, how much you stuck to the schedule, and workouts a week and body weight since you started against the time before.",
+            "Peptides: optional reminders on the days something is due. The notification only says \"You have a reminder.\"",
+        ]),
         ChangelogEntry(version: "0.18", date: DateComponents(year: 2026, month: 11, day: 19), changes: [
             "The Training widget shows your weekly goal, like \"2 of 4\", on the Home Screen and Lock Screen.",
             "Fixed: deleting a workout left Overlo4d's copy of it in Apple Health. It now goes too; a Watch session linked to it stays.",

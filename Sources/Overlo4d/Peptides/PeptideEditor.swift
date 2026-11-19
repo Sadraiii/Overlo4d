@@ -8,95 +8,98 @@ struct PeptideForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Name").eyebrow(11.5)
-                TextField("Name", text: $profile.name)
-                    .font(Typo.body(16, .semibold))
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal, 12)
-                    .frame(height: 44)
-                    .background(Theme.fill, in: .rect(cornerRadius: 12))
-                if profile.name.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(PeptideFormat.commonNames, id: \.self) { name in
-                                Button(name) { profile.name = name }
-                                    .font(Typo.body(13, .semibold))
-                                    .foregroundStyle(Theme.ink2)
-                                    .padding(.horizontal, 11)
-                                    .frame(height: 30)
-                                    .background(Theme.fill, in: .capsule)
-                                    .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Name").eyebrow(11.5)
+                    TextField("Name", text: $profile.name)
+                        .font(Typo.body(16, .semibold))
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 12)
+                        .frame(height: 44)
+                        .background(Theme.fill, in: .rect(cornerRadius: 12))
+                    if profile.name.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(PeptideFormat.commonNames, id: \.self) { name in
+                                    Button(name) { profile.name = name }
+                                        .font(Typo.body(13, .semibold))
+                                        .foregroundStyle(Theme.ink2)
+                                        .padding(.horizontal, 11)
+                                        .frame(height: 30)
+                                        .background(Theme.fill, in: .capsule)
+                                        .buttonStyle(.plain)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Vial, mg").eyebrow(11.5)
+                        PeptideNumberField(value: $profile.vialMg, placeholder: "5")
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Water, mL").eyebrow(11.5)
+                        PeptideNumberField(value: $profile.waterMl, placeholder: "2")
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Vial, mg").eyebrow(11.5)
-                    PeptideNumberField(value: $profile.vialMg, placeholder: "5")
+                    Text("Target amount").eyebrow(11.5)
+                    HStack(spacing: 12) {
+                        PeptideNumberField(value: $profile.dose, placeholder: profile.doseUnit == .mg ? "0.25" : "250")
+                        Picker("Unit", selection: $profile.doseUnit) {
+                            ForEach(DoseUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 130)
+                    }
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Water, mL").eyebrow(11.5)
-                    PeptideNumberField(value: $profile.waterMl, placeholder: "2")
-                }
-            }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Target amount").eyebrow(11.5)
-                HStack(spacing: 12) {
-                    PeptideNumberField(value: $profile.dose, placeholder: profile.doseUnit == .mg ? "0.25" : "250")
-                    Picker("Unit", selection: $profile.doseUnit) {
-                        ForEach(DoseUnit.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                VStack(spacing: 0) {
+                    menuRow("Schedule") {
+                        Picker("Schedule", selection: $profile.schedule) {
+                            ForEach(PeptideSchedule.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 130)
-                }
-            }
-
-            VStack(spacing: 0) {
-                menuRow("Schedule") {
-                    Picker("Schedule", selection: $profile.schedule) {
-                        ForEach(PeptideSchedule.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                }
-                divider
-                menuRow("Syringe") {
-                    Picker("Syringe", selection: $profile.syringe) {
-                        ForEach(SyringeSize.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                }
-                if profile.syringe.allowsHalfUnits {
                     divider
-                    Toggle("Half-unit marks", isOn: $profile.halfUnits)
-                        .font(Typo.body(15, .semibold))
-                        .padding(.vertical, 10)
-                }
-                divider
-                Toggle(isOn: $profile.tracksVial) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Count the vial down").font(Typo.body(15, .semibold))
-                        Text("Each log entry takes its amount off the active vial.")
-                            .font(Typo.body(13))
-                            .foregroundStyle(Theme.ink3)
+                    menuRow("Syringe") {
+                        Picker("Syringe", selection: $profile.syringe) {
+                            ForEach(SyringeSize.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }
                     }
+                    if profile.syringe.allowsHalfUnits {
+                        divider
+                        Toggle("Half-unit marks", isOn: $profile.halfUnits)
+                            .font(Typo.body(15, .semibold))
+                            .padding(.vertical, 10)
+                    }
+                    divider
+                    Toggle(isOn: $profile.tracksVial) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Count the vial down").font(Typo.body(15, .semibold))
+                            Text("Each log entry takes its amount off the active vial.")
+                                .font(Typo.body(13))
+                                .foregroundStyle(Theme.ink3)
+                        }
+                    }
+                    .padding(.vertical, 10)
                 }
-                .padding(.vertical, 10)
-            }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Notes").eyebrow(11.5)
-                TextField("Optional", text: $profile.notes, axis: .vertical)
-                    .font(Typo.body(15))
-                    .lineLimit(1...4)
-                    .padding(12)
-                    .background(Theme.fill, in: .rect(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Notes").eyebrow(11.5)
+                    TextField("Optional", text: $profile.notes, axis: .vertical)
+                        .font(Typo.body(15))
+                        .lineLimit(1...4)
+                        .padding(12)
+                        .background(Theme.fill, in: .rect(cornerRadius: 12))
+                }
             }
+            .card(padding: 16, cornerRadius: 20)
+            PeptidePlanForm(profile: $profile)
         }
-        .card(padding: 16, cornerRadius: 20)
     }
 
     private var divider: some View {
@@ -110,6 +113,114 @@ struct PeptideForm: View {
             content().pickerStyle(.menu)
         }
         .padding(.vertical, 4)
+    }
+}
+
+/// Stock, mixed-vial age, cycle and reminder of one peptide.
+struct PeptidePlanForm: View {
+    @Binding var profile: PeptideProfile
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Plan and stock").eyebrow(11.5).padding(.bottom, 6)
+            Stepper(value: $profile.spareVials, in: 0...99) {
+                row("Spare vials", profile.spareVials == 0 ? "None" : "\(profile.spareVials) unopened")
+            }
+            .padding(.vertical, 8)
+            divider
+            Stepper(value: keepsDays, in: 0...90) {
+                row("Use a mixed vial for", profile.keepsDays.map { "\($0) \($0 == 1 ? "day" : "days"), as you set it" } ?? "No limit shown")
+            }
+            .padding(.vertical, 8)
+            divider
+            Toggle(isOn: hasCycle) {
+                row("Cycle", "Weeks on, then weeks off")
+            }
+            .padding(.vertical, 8)
+            if let cycle = profile.cycle {
+                DatePicker("Started", selection: cycleStart, displayedComponents: .date)
+                    .font(Typo.body(15, .semibold))
+                    .padding(.vertical, 4)
+                Stepper(value: cycleBinding(\.weeksOn), in: 1...52) {
+                    Text("\(cycle.weeksOn) \(cycle.weeksOn == 1 ? "week" : "weeks") on").font(Typo.body(15, .semibold))
+                }
+                .padding(.vertical, 6)
+                Stepper(value: cycleBinding(\.weeksOff), in: 0...52) {
+                    Text(cycle.weeksOff == 0 ? "No break, then it ends" : "\(cycle.weeksOff) \(cycle.weeksOff == 1 ? "week" : "weeks") off")
+                        .font(Typo.body(15, .semibold))
+                }
+                .padding(.vertical, 6)
+            }
+            divider
+            Toggle(isOn: hasReminder) {
+                row("Reminder", "On days something is due. The text doesn't say what for.")
+            }
+            .padding(.vertical, 8)
+            if profile.reminderMinutes != nil {
+                DatePicker("Time", selection: reminderTime, displayedComponents: .hourAndMinute)
+                    .font(Typo.body(15, .semibold))
+                    .padding(.vertical, 4)
+            }
+        }
+        .card(padding: 16, cornerRadius: 20)
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Theme.line).frame(height: 1)
+    }
+
+    private func row(_ title: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(Typo.body(15, .semibold))
+            Text(detail).font(Typo.body(13)).foregroundStyle(Theme.ink3)
+        }
+    }
+
+    private var keepsDays: Binding<Int> {
+        Binding(get: { profile.keepsDays ?? 0 }, set: { profile.keepsDays = $0 > 0 ? $0 : nil })
+    }
+
+    private var hasCycle: Binding<Bool> {
+        Binding(
+            get: { profile.cycle != nil },
+            set: { profile.cycle = $0 ? PeptideCycle(start: DayKey(.now), weeksOn: 4) : nil }
+        )
+    }
+
+    private var cycleStart: Binding<Date> {
+        Binding(
+            get: { profile.cycle?.start.date() ?? .now },
+            set: { profile.cycle?.start = DayKey($0) }
+        )
+    }
+
+    private func cycleBinding(_ keyPath: WritableKeyPath<PeptideCycle, Int>) -> Binding<Int> {
+        Binding(
+            get: { profile.cycle?[keyPath: keyPath] ?? 0 },
+            set: { profile.cycle?[keyPath: keyPath] = $0 }
+        )
+    }
+
+    private var hasReminder: Binding<Bool> {
+        Binding(
+            get: { profile.reminderMinutes != nil },
+            set: { on in
+                profile.reminderMinutes = on ? 9 * 60 : nil
+                if on { PeptideReminders.requestPermission() }
+            }
+        )
+    }
+
+    private var reminderTime: Binding<Date> {
+        Binding(
+            get: {
+                Calendar.current.date(byAdding: .minute, value: profile.reminderMinutes ?? 0, to: Calendar.current.startOfDay(for: .now)) ?? .now
+            },
+            set: { date in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                profile.reminderMinutes = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+            }
+        )
     }
 }
 
